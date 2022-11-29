@@ -2,6 +2,16 @@ import csv
 from datetime import datetime
 
 
+class Pick:
+    def __init__(self, date, type, determination="Unaddressed"):
+        self.date = date
+        self.type = type
+        self.determination = determination
+
+    def __str__(self):
+        return (f"{self.date}({self.type}) - {self.determination}")
+
+
 class FFighter:
     def __init__(self, fname, lname, hireDate, picks):
         self.fname = fname
