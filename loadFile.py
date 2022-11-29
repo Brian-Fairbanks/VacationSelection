@@ -1,6 +1,8 @@
 import csv
 from datetime import datetime
 
+date_format = '%m-%d-%Y'
+
 
 class Pick:
     def __init__(self, date, type, determination="Unaddressed"):
@@ -22,7 +24,6 @@ class FFighter:
         self.picks = picks
         self.picksDetermination = {}
         self.priority = None    # default seniority
-        self.cycleSkip = 0  # temporary modifier to account for wonky logic
 
     def __str__(self):
         return (f"f/lname: {self.fname} {self.lname}, prioity/priorityModifier : {self.priority} {self.priorityModifier}, hireDate : {self.hireDate}, picks : {self.picks}")
@@ -37,6 +38,9 @@ def setPriorities(arr):
         Orders by seniority, and sets the priority flag for each ffighter.
         Returns the sorted array of FFighters"""
     arr.sort(key=lambda x: x.hireDate)
+    # TODO: randomize order each run for those sharing the same hire date
+    # assign each firefighter a random number while creating their FFighter Object (dice):
+    # priority order can then be calculated as 1) HireDate  2) dice
 
     # strange that n, firefighter doesnt seem to work...  implementing manual indexing methods...
     for n, ffighter in enumerate(arr):
@@ -113,40 +117,42 @@ def getData(filename):
     with open(filename, mode="r", encoding="utf-8-sig") as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
-            # There has got to be a better way to do this....
-            # why wont referencing columns by index work?
-            picks = [
-                row['1st'],
-                row['2nd'],
-                row['3rd'],
-                row['4th'],
-                row['5th'],
-                row['6th'],
-                row['7th'],
-                row['8th'],
-                row['9th'],
-                row['10th'],
-                row['11th'],
-                row['12th'],
-                row['13th'],
-                row['14th'],
-                row['15th'],
-                row['16th'],
-                row['17th'],
-                row['18th']
-            ]
+
+            # listing every column for ease of keeping consistancy
+
+            # Submission Date
+            fname = row['First Name']
+            lname = row['Last Name']
+            # Today's Date
+            # Employee ID #
+            # Rank
+            startDate = row['Employee Start Date']
+            # Years of Service
+            # Day 1
+            #  Type
+            # Day 2
+            # Type 2
+            # naming pattern continues  to 18, except for the glitch on Type (1)
+            # Shift
+            # Submission ID
 
             pickDates = []
-            for date in picks:
+            for x in range(1, 18):
                 try:
+                    date = row[f"Day {x}"]
+                    if x != 1:
+                        type = row[f"Type {x}"]
+                    else:
+                        type = row[" Type"]
                     pickDates.append(datetime.strptime(
-                        date, '%m/%d/%Y').date())
+                        date, date_format).date())
                 except:
                     pass
 
-            hireDate = datetime.strptime(row['HIRE DATE'], '%m/%d/%Y').date()
+            hireDate = datetime.strptime(
+                startDate, date_format).date()
             ffdata.append(
-                FFighter(row['Name'], row['LNAME'], hireDate, pickDates))
+                FFighter(fname, lname, hireDate, pickDates))
     return ffdata
 
 
@@ -158,7 +164,8 @@ def main():
     # ffighters = getData('testForms.csv')
     # for ffighter in ffighters:
     #     print(ffighter)
-    ffighters = setPriorities(getData('testForms.csv'))
+    # ffighters = setPriorities(getData('testForms.csv'))
+    ffighters = setPriorities(getData('Early_Form_Pull.csv'))
     # for ffighter in ffighters:
     #     print(ffighter)
     results = makeCalendar(ffighters)
