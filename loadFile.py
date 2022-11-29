@@ -1,5 +1,6 @@
 import csv
 from datetime import datetime
+import random
 
 date_format = '%m-%d-%Y'
 
@@ -20,10 +21,10 @@ class FFighter:
         self.lname = lname
         self.name = f"{lname}, {fname[0]}"
         self.hireDate = hireDate
+        self.dice = random.random()
         self.originalPicks = picks
         self.picks = picks
         self.picksDetermination = {}
-        self.priority = None    # default seniority
 
     def __str__(self):
         return (f"f/lname: {self.fname} {self.lname}, prioity/priorityModifier : {self.priority} {self.priorityModifier}, hireDate : {self.hireDate}, picks : {self.picks}")
@@ -37,17 +38,14 @@ def setPriorities(arr):
     """Take an array of FFighters.
         Orders by seniority, and sets the priority flag for each ffighter.
         Returns the sorted array of FFighters"""
-    arr.sort(key=lambda x: x.hireDate)
-    # TODO: randomize order each run for those sharing the same hire date
-    # assign each firefighter a random number while creating their FFighter Object (dice):
-    # priority order can then be calculated as 1) HireDate  2) dice
-
-    # strange that n, firefighter doesnt seem to work...  implementing manual indexing methods...
-    for n, ffighter in enumerate(arr):
-        # print(f"{n} {ffighter.hireDate}")
-        # store this seniority order as priority
-        ffighter.priority = n
+    arr.sort(key=lambda x: (x.hireDate, x.dice))
     return arr
+
+
+def printPriority(arr):
+    for ffighter in arr:
+        print(
+            f'{ffighter.name:<20} : {str(ffighter.hireDate) :<10} - {ffighter.dice:> 20}')
 
 # ================================================================
 
@@ -161,13 +159,9 @@ def getData(filename):
 # ##############################################################################################################################################
 
 def main():
-    # ffighters = getData('testForms.csv')
-    # for ffighter in ffighters:
-    #     print(ffighter)
     # ffighters = setPriorities(getData('testForms.csv'))
     ffighters = setPriorities(getData('Early_Form_Pull.csv'))
-    # for ffighter in ffighters:
-    #     print(ffighter)
+    # printPriority(ffighters)
     results = makeCalendar(ffighters)
 
     print('\n\n  --==     Calendar     ==--\n')
