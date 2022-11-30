@@ -7,12 +7,13 @@ date_format = '%m-%d-%Y'
 
 class Pick:
     def __init__(self, date, type, determination="Unaddressed"):
+        '''date, type, determination: defaults to "Unaddressed"'''
         self.date = date
         self.type = type
         self.determination = determination
 
     def __str__(self):
-        return (f"{self.date}({self.type}) - {self.determination}")
+        return (f"{self.date} ({self.type:^10}) - {self.determination}")
 
 
 class FFighter:
@@ -22,9 +23,8 @@ class FFighter:
         self.name = f"{lname}, {fname[0]}"
         self.hireDate = hireDate
         self.dice = random.random()
-        self.originalPicks = picks
+        self.processed = []
         self.picks = picks
-        self.picksDetermination = {}
 
     def __str__(self):
         return (f"f/lname: {self.fname} {self.lname}, prioity/priorityModifier : {self.priority} {self.priorityModifier}, hireDate : {self.hireDate}, picks : {self.picks}")
@@ -50,16 +50,6 @@ def printPriority(arr):
 # ================================================================
 
 
-def printDictionary(cal):
-    """"""
-    keylist = sorted(cal.keys())
-
-    for key in keylist:
-        print(f"{key}:\n   {cal[key]}\n")
-
-# ================================================================
-
-
 def makeCalendar(ffighters):
     """Analysis of firefighters picks:  fully creates the calendar"""
 
@@ -69,13 +59,13 @@ def makeCalendar(ffighters):
     #  Helper to add a date to the calendar
     def tryAddToCalendar(ffighter, current_pick):
         # add new date if needed
-        if current_pick not in calendar.keys():
-            calendar[current_pick] = [ffighter.name]
+        if current_pick.date not in calendar.keys():
+            calendar[current_pick.date] = [ffighter.name]
             return 1
 
         # add to date if possible
-        if len(calendar[current_pick]) < 5:
-            calendar[current_pick].append(ffighter.name)
+        if len(calendar[current_pick.date]) < 5:
+            calendar[current_pick.date].append(ffighter.name)
             return 1
 
         return 0
@@ -89,15 +79,16 @@ def makeCalendar(ffighters):
                 current_pick = ffighter.picks.pop(0)
 
                 if tryAddToCalendar(ffighter, current_pick):
-                    ffighter.picksDetermination[current_pick] = "approved"
+                    current_pick.determination = "approved"
                     DatesAdded += 1
                 else:
-                    ffighter.picksDetermination[current_pick] = "rejected"
+                    current_pick.determination = "rejected"
                     # mark date in hash table as rejected
                     try:
-                        rejected[ffighter.name].append(current_pick)
+                        rejected[ffighter.name].append(current_pick.date)
                     except:
-                        rejected[ffighter.name] = [current_pick]
+                        rejected[ffighter.name] = [current_pick.date]
+                ffighter.processed.append(current_pick)
         #
     #
     return {"calendar": calendar, "rejected": rejected}
@@ -116,7 +107,7 @@ def getData(filename):
         reader = csv.DictReader(csvfile)
         for row in reader:
 
-            # listing every column for ease of keeping consistancy
+            # listing every column in the form to ease consistancy
 
             # Submission Date
             fname = row['First Name']
@@ -142,8 +133,10 @@ def getData(filename):
                         type = row[f"Type {x}"]
                     else:
                         type = row[" Type"]
-                    pickDates.append(datetime.strptime(
-                        date, date_format).date())
+                    # pickDates.append(datetime.strptime(
+                    #     date, date_format).date())
+                    pickDates.append(
+                        Pick(datetime.strptime(date, date_format).date(), type))
                 except:
                     pass
 
@@ -154,30 +147,59 @@ def getData(filename):
     return ffdata
 
 
-# ##############################################################################################################################################
-#     Main Code
-# ##############################################################################################################################################
-
-def main():
-    # ffighters = setPriorities(getData('testForms.csv'))
-    ffighters = setPriorities(getData('Early_Form_Pull.csv'))
-    # printPriority(ffighters)
-    results = makeCalendar(ffighters)
-
-    print('\n\n  --==     Calendar     ==--\n')
-    printDictionary(results['calendar'])
-
+# ###########################################################################################################
+#     Testing and Printing Functions
+# ###########################################################################################################
+def printRejected(results: dict):
+    '''Expects "results" dictionary returned from makeCalendar.
+    Must contain 'rejected' key'''
     print('\n\n  --==  Rejected Dates  ==--\n')
     # print(results['rejected'])
     for key in results['rejected']:
         print(f"{key} : {results['rejected'][key]}")
 
+
+def printDictionary(cal):
+    """"""
+    keylist = sorted(cal.keys())
+
+    for key in keylist:
+        print(f"{key}:\n   {cal[key]}\n")
+
+
+def printCalendar(results: dict):
+    '''Expects "results" dictionary returned from makeCalendar.
+    Must contain 'calendar' key'''
+    print('\n\n  --==     Calendar     ==--\n')
+    printDictionary(results['calendar'])
+
+
+def printFinal(ffighters: dict):
     print('\n\n  --==  Final Results   ==--\n')
     for ffighter in ffighters:
         print(
             f'{ffighter.name:<20} :')
-        for key in ffighter.picksDetermination:
-            print(f"   {key} : {ffighter.picksDetermination[key]}")
+        for key in ffighter.processed:
+            print(key)
+
+# ##############################################################################################################################################
+#     Main Code
+# ##############################################################################################################################################
+
+
+def main():
+    # ffighters = setPriorities(getData('testForms.csv'))
+    ffighters = setPriorities(getData('Early_Form_Pull.csv'))
+    # printPriority(ffighters)
+
+    # Note that DICTS, LISTS, and SETS are mutable, and so pass by reference, not pass by value like ints and setPriorities
+    # IE, ffighter objects changes
+    results = makeCalendar(ffighters)
+
+    # printCalendar(results)
+    # printRejected(results)
+
+    printFinal(ffighters)
 
 
 if __name__ == '__main__':
