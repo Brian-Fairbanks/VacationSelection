@@ -38,11 +38,14 @@ The list stays generally the same, but you can see a few people shuffle around. 
 (lists bellow are pulled from the last run)
 
 - The first 2:
+
 ```
   Cunnningham, R : 1998-02-01 - 0.11728346733719786
   Randazzo, D : 1998-02-01 - 0.7968179167790319
 ```
+
 - 10th through 2nd to last:
+
 ```
   Neely, W : 2022-01-17 - 0.011172286367265194
   Luckie, H : 2022-01-17 - 0.026730481744500656
@@ -54,3 +57,10 @@ The list stays generally the same, but you can see a few people shuffle around. 
   De Luna, J : 2022-01-17 - 0.8323556134197091
   Finn, K : 2022-01-17 - 0.9165516986359395
 ```
+
+## TODO:
+
+- seperate drafts by shift
+- auto reject probationary members based on time between start date and Pick date
+- output to CSV format
+- add file picker to start (or google api to auto-read from from sheets?)

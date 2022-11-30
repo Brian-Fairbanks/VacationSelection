@@ -17,10 +17,12 @@ class Pick:
 
 
 class FFighter:
-    def __init__(self, fname, lname, hireDate, picks):
+    def __init__(self, fname, lname, hireDate, rank, shift,  picks):
         self.fname = fname
         self.lname = lname
         self.name = f"{lname}, {fname[0]}"
+        self.rank = rank
+        self.shift = shift
         self.hireDate = hireDate
         self.dice = random.random()
         self.processed = []
@@ -114,7 +116,7 @@ def getData(filename):
             lname = row['Last Name']
             # Today's Date
             # Employee ID #
-            # Rank
+            rank = row["Rank"]
             startDate = row['Employee Start Date']
             # Years of Service
             # Day 1
@@ -122,7 +124,7 @@ def getData(filename):
             # Day 2
             # Type 2
             # naming pattern continues  to 18, except for the glitch on Type (1)
-            # Shift
+            shift = row["Shift"]
             # Submission ID
 
             pickDates = []
@@ -143,7 +145,7 @@ def getData(filename):
             hireDate = datetime.strptime(
                 startDate, date_format).date()
             ffdata.append(
-                FFighter(fname, lname, hireDate, pickDates))
+                FFighter(fname, lname, hireDate, rank, shift, pickDates))
     return ffdata
 
 
