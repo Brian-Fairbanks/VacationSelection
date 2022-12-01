@@ -1,14 +1,25 @@
 import csv
 from datetime import datetime
 import random
+from os import path, makedirs
 import logging
 
+runtime = datetime.now().strftime("%Y.%m.%d %H.%M")
+
+# set up logging folder
+writePath = "./output"
+if not path.exists(writePath):
+    makedirs(writePath)
+
+
+# logging setup - write to output file as well as printing visably
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger()
 logger.addHandler(logging.FileHandler(
-    f'output-{datetime.now().strftime("%Y.%m.%d %H.%M")}.log', 'a'))
+    f'{writePath}/RunLog-{runtime}.log', 'a'))
 print = logger.info
 
+# date format
 date_format = '%m-%d-%Y'
 
 
@@ -41,6 +52,54 @@ class FFighter:
 
     def __str__(self):
         return (f"f/lname: {self.fname} {self.lname}, prioity/priorityModifier : {self.priority} {self.priorityModifier}, hireDate : {self.hireDate}, picks : {self.picks}")
+
+
+# ###########################################################################################################
+#     Calendar Handling
+# ###########################################################################################################
+
+def printDictionary(cal):
+    """"""
+    keylist = sorted(cal.keys())
+
+    for key in keylist:
+        print(f"{key}:\n   {cal[key]}\n")
+
+
+def printCalendar(results: dict):
+    '''Expects "results" dictionary returned from makeCalendar().
+    Must contain 'calendar' key'''
+    print('\n\n  --==     Calendar     ==--\n')
+    printDictionary(results['calendar'])
+
+
+def calendarToCSV(results: dict):
+    '''Expects "results" dictionary returned from makeCalendar().
+    Must contain 'calendar' key'''
+
+    cal = results['calendar']
+    logging.debug("Creating File...")
+
+    with open(f'{writePath}/calendar-{runtime}.csv', 'w', newline='') as f:
+        logging.debug("Writing to File...")
+
+        try:
+            # create the csv writer
+            writer = csv.writer(f)
+
+            # Format Header
+            header = ['Date', "First", "Second", "Third", "Fourth", "Fifth"]
+            writer.writerow(header)
+
+            # order the calendar
+            keylist = sorted(cal.keys())
+
+            for key in keylist:
+                writer.writerow([key]+cal[key])
+
+        except Exception as Argument:
+            logging.exception(f"Failed to write to file.\n")
+    logging.debug("File finished writing.")
 
 
 # ###########################################################################################################
@@ -203,21 +262,6 @@ def printRejected(results: dict):
         print(f"{key} : {results['rejected'][key]}")
 
 
-def printDictionary(cal):
-    """"""
-    keylist = sorted(cal.keys())
-
-    for key in keylist:
-        print(f"{key}:\n   {cal[key]}\n")
-
-
-def printCalendar(results: dict):
-    '''Expects "results" dictionary returned from makeCalendar.
-    Must contain 'calendar' key'''
-    print('\n\n  --==     Calendar     ==--\n')
-    printDictionary(results['calendar'])
-
-
 def printFinal(ffighters: dict):
     print('\n\n  --==  Final Results   ==--\n')
     for ffighter in ffighters:
@@ -244,6 +288,7 @@ def main():
     # printRejected(results)
 
     # printFinal(ffighters)
+    calendarToCSV(results)
 
 
 if __name__ == '__main__':
