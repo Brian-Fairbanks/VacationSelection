@@ -61,7 +61,6 @@ The list stays generally the same, but you can see a few people shuffle around. 
 ## TODO:
 
 - seperate drafts by shift
-- output to CSV format
 - add file picker to start (or google api to auto-read from from sheets?)
 - prevent time picks without type
 - prevent one person from submitting multiple forms
@@ -72,4 +71,7 @@ The list stays generally the same, but you can see a few people shuffle around. 
 ## Done:
 
 - re-randomize after every set
+
   - print total array for each cycle
+
+- output to CSV format
