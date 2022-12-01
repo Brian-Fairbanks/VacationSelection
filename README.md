@@ -61,6 +61,15 @@ The list stays generally the same, but you can see a few people shuffle around. 
 ## TODO:
 
 - seperate drafts by shift
-- auto reject probationary members based on time between start date and Pick date
 - output to CSV format
 - add file picker to start (or google api to auto-read from from sheets?)
+- prevent time picks without type
+- prevent one person from submitting multiple forms
+
+- BC and Captains cant take off on the same days past a certain point
+  - get exact details
+
+## Done:
+
+- re-randomize after every set
+  - print total array for each cycle

@@ -1,6 +1,13 @@
 import csv
 from datetime import datetime
 import random
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(message)s')
+logger = logging.getLogger()
+logger.addHandler(logging.FileHandler(
+    f'output-{datetime.now().strftime("%Y.%m.%d %H.%M")}.log', 'a'))
+print = logger.info
 
 date_format = '%m-%d-%Y'
 
@@ -11,9 +18,13 @@ class Pick:
         self.date = date
         self.type = type
         self.determination = determination
+        self.reason = None
 
     def __str__(self):
-        return (f"{self.date} ({self.type:^10}) - {self.determination}")
+        ret = f"{self.date} ({self.type:^10}) - {self.determination}"
+        if self.reason:
+            ret += f' ({self.reason})'
+        return ret
 
 
 class FFighter:
@@ -44,10 +55,21 @@ def setPriorities(arr):
     return arr
 
 
+def randomizeSubPriority(arr):
+    """Take an array of FFighters.
+        Randomize the sorting subpriority, then reorder list
+    """
+    for ffighter in arr:
+        ffighter.dice = random.random()
+    setPriorities(arr)
+    return arr
+
+
 def printPriority(arr):
+    print(f"\n---=== Priority List at {datetime.now()} ===---\n")
     for ffighter in arr:
         print(
-            f'{ffighter.name:<20} : {str(ffighter.hireDate) :<10} - {ffighter.dice:> 20}')
+            f'{ffighter.name:<20} ({len(ffighter.picks):>2}) : {str(ffighter.hireDate) :<10} - {ffighter.dice:< 20}')
 
 # ================================================================
 
@@ -59,7 +81,19 @@ def makeCalendar(ffighters):
     rejected = {}
 
     #  Helper to add a date to the calendar
+    # ----------------------------------------------------------------
     def tryAddToCalendar(ffighter, current_pick):
+
+        # see if the date can even be added to begin with
+        if ffighter.rank == "Probationary Firefighter":
+            # print(f'{current_pick.type} :  {current_pick.date} -  {ffighter.hireDate}    =  {(current_pick.date-ffighter.hireDate).days}')
+            if (current_pick.type == "Holiday") and ((current_pick.date-ffighter.hireDate).days) < 182:
+                current_pick.reason = {"Holiday < 182 Days from Hire Date"}
+                return 0
+            if (current_pick.type == "Vacation") & ((current_pick.date-ffighter.hireDate).days) < 365:
+                current_pick.reason = {"Vacation < 365 Days from Hire Date"}
+                return 0
+
         # add new date if needed
         if current_pick.date not in calendar.keys():
             calendar[current_pick.date] = [ffighter.name]
@@ -69,11 +103,19 @@ def makeCalendar(ffighters):
         if len(calendar[current_pick.date]) < 5:
             calendar[current_pick.date].append(ffighter.name)
             return 1
+        else:
+            current_pick.reason = "Day already has 5 members off"
 
         return 0
 
+    # Loop through every Pick, and insert into hashing calender, or justify decision
+    # --------------------------------------------------------------------------------------
+
     # while any firefighter still has an unaddressed picked day off...
     while any(filter(lambda x: len(x.picks), ffighters)):
+        # Randomize firefighters with matching hire dates
+        randomizeSubPriority(ffighters)
+        printPriority(ffighters)
         # Loop through each fire fighter, and add their day off requests in groups of 2
         for ffighter in ffighters:
             DatesAdded = 0
@@ -81,10 +123,10 @@ def makeCalendar(ffighters):
                 current_pick = ffighter.picks.pop(0)
 
                 if tryAddToCalendar(ffighter, current_pick):
-                    current_pick.determination = "approved"
+                    current_pick.determination = "Approved"
                     DatesAdded += 1
                 else:
-                    current_pick.determination = "rejected"
+                    current_pick.determination = "Rejected"
                     # mark date in hash table as rejected
                     try:
                         rejected[ffighter.name].append(current_pick.date)
@@ -201,7 +243,7 @@ def main():
     # printCalendar(results)
     # printRejected(results)
 
-    printFinal(ffighters)
+    # printFinal(ffighters)
 
 
 if __name__ == '__main__':
