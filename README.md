@@ -4,14 +4,22 @@ This script has been created to help automate vacation requests and approval/den
 
 Notes kept in mind for selection process:
 
-- Each member may pick a maximum of 18 days, or as few as 0
+a _pick_ shall be defined as a prefered day each fire fighter would like to take off.
+
+- Each member may 'pick' a maximum of 18 days, or as few as 0, in order of preferece
+- Each members picks shall be addressed in a draft of 2 approved days before moving on to the next member
+  - unless all of a members picks have been addressed
+  - If a pick is denied for any reason, their next pick will be automatically considered until either 2 days have been approved, or the pick list is empty
 - Drafts will prioritize Seniority
-  - in the case of multiple members starting on the same day, each members will be shuffled randomly
-- Each member shall be approved 2 days before moving on to the next member
-  - unless all requested days have been addressed
-  - If a day is denied, their next pick will be automatically considered until either 2 days have been approved, or the pick list is empty
+  - in the case of multiple members sharing seniority (starting on the same day), member will be shuffled randomly for EACH draft of 2 picks
+
+As per _**Daily Staffing** - OPS 001-01_
+
 - Only 5 members may request off for any given day
-  - 6th and further will be automatically denied.
+- Of those 5, there can be:
+  - No more than 3 Lieutenants
+  - No more than 2 Shift Commanders / Battalion Chief
+  - No more than 3 Apparatus Specialists
 
 ## Data Location
 
