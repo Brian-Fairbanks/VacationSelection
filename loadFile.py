@@ -51,7 +51,8 @@ class FFighter:
         self.picks = picks
 
     def __str__(self):
-        return (f"f/lname: {self.fname} {self.lname}, prioity/priorityModifier : {self.priority} {self.priorityModifier}, hireDate : {self.hireDate}, picks : {self.picks}")
+        # return (f"f/lname: {self.fname} {self.lname}, prioity/priorityModifier : {self.priority} {self.priorityModifier}, hireDate : {self.hireDate}, picks : {self.picks}")
+        return self.name
 
 
 # ###########################################################################################################
@@ -155,12 +156,12 @@ def makeCalendar(ffighters):
 
         # add new date if needed
         if current_pick.date not in calendar.keys():
-            calendar[current_pick.date] = [ffighter.name]
+            calendar[current_pick.date] = [ffighter]
             return 1
 
         # add to date if possible
         if len(calendar[current_pick.date]) < 5:
-            calendar[current_pick.date].append(ffighter.name)
+            calendar[current_pick.date].append(ffighter)
             return 1
         else:
             current_pick.reason = "Day already has 5 members off"
