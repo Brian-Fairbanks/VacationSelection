@@ -144,29 +144,43 @@ def makeCalendar(ffighters):
     # ----------------------------------------------------------------
     def tryAddToCalendar(ffighter, current_pick):
 
-        # see if the date can even be added to begin with
+        # Probation has time limits before they cant take vacation/holidays
         if ffighter.rank == "Probationary Firefighter":
             # print(f'{current_pick.type} :  {current_pick.date} -  {ffighter.hireDate}    =  {(current_pick.date-ffighter.hireDate).days}')
             if (current_pick.type == "Holiday") and ((current_pick.date-ffighter.hireDate).days) < 182:
-                current_pick.reason = {"Holiday < 182 Days from Hire Date"}
+                current_pick.reason = "Holiday < 182 Days from Hire Date"
                 return 0
-            if (current_pick.type == "Vacation") & ((current_pick.date-ffighter.hireDate).days) < 365:
-                current_pick.reason = {"Vacation < 365 Days from Hire Date"}
+            if (current_pick.type == "Vacation") and ((current_pick.date-ffighter.hireDate).days) < 365:
+                current_pick.reason = "Vacation < 365 Days from Hire Date"
                 return 0
 
-        # add new date if needed
+        # grant it if the date hasnt ever been picked
         if current_pick.date not in calendar.keys():
             calendar[current_pick.date] = [ffighter]
             return 1
 
-        # add to date if possible
-        if len(calendar[current_pick.date]) < 5:
-            calendar[current_pick.date].append(ffighter)
-            return 1
-        else:
-            current_pick.reason = "Day already has 5 members off"
+        # otherwise, check who already booked the day...
 
-        return 0
+        # - No more than 3 Lieutenants
+        if ffighter.rank == "Lieutenant" and len(list(filter(lambda x: (x.rank == "Lieutenant"), calendar[current_pick.date]))) >= 3:
+            current_pick.reason = "Day already has 3 Lieutenants off"
+            return 0
+        # - No more than 2 Shift Commanders / Battalion Chief
+        if ffighter.rank in ['Battalion Chief', 'Captain'] and len(list(filter(lambda x: (x.rank in ['Battalion Chief', 'Captain']), calendar[current_pick.date]))) >= 3:
+            current_pick.reason = "Day already has 3 Commanders off"
+            return 0
+        # - No more than 3 Apparatus Specialists
+        if ffighter.rank == "Apparatus Specialist" and len(list(filter(lambda x: (x.rank == "Apparatus Specialist"), calendar[current_pick.date]))) >= 3:
+            current_pick.reason = "Day already has 3 Apparatus Specialist off"
+            return 0
+
+        # no more than 5 members total
+        if len(calendar[current_pick.date]) >= 5:
+            current_pick.reason = "Day already has 5 members off"
+            return 0
+
+        calendar[current_pick.date].append(ffighter)
+        return 1
 
     # Loop through every Pick, and insert into hashing calender, or justify decision
     # --------------------------------------------------------------------------------------
@@ -267,7 +281,7 @@ def printFinal(ffighters: dict):
     print('\n\n  --==  Final Results   ==--\n')
     for ffighter in ffighters:
         print(
-            f'{ffighter.name:<20} :')
+            f'{ffighter.name:<20} : \n{ffighter.hireDate} - ({ffighter.shift}) {ffighter.rank}')
         for key in ffighter.processed:
             print(key)
 
@@ -278,7 +292,7 @@ def printFinal(ffighters: dict):
 
 def main():
     # ffighters = setPriorities(getData('testForms.csv'))
-    ffighters = setPriorities(getData('Early_Form_Pull.csv'))
+    ffighters = setPriorities(getData('Vacation Form Responses.12.2.22.csv'))
     # printPriority(ffighters)
 
     # Note that DICTS, LISTS, and SETS are mutable, and so pass by reference, not pass by value like ints and setPriorities
@@ -288,7 +302,7 @@ def main():
     # printCalendar(results)
     # printRejected(results)
 
-    # printFinal(ffighters)
+    printFinal(ffighters)
     calendarToCSV(results)
 
 
