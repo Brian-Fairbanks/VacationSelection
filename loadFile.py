@@ -74,14 +74,14 @@ def printCalendar(results: dict):
     printDictionary(results['calendar'])
 
 
-def calendarToCSV(results: dict):
+def calendarToCSV(results: dict, suffix):
     '''Expects "results" dictionary returned from makeCalendar().
     Must contain 'calendar' key'''
 
     cal = results['calendar']
     logging.debug("Creating File...")
 
-    with open(f'{writePath}/calendar-{runtime}.csv', 'w', newline='') as f:
+    with open(f'{writePath}/{runtime}-calendar-{suffix}.csv', 'w', newline='') as f:
         logging.debug("Writing to File...")
 
         try:
@@ -285,25 +285,61 @@ def printFinal(ffighters: dict):
         for key in ffighter.processed:
             print(key)
 
+
+def picksToCSV(ffighter: list, suffix):
+
+    logging.debug("Creating File...")
+
+    temp = []
+    temp.extend(ffighter)
+
+    with open(f'{writePath}/{runtime}-FFighters-{suffix}.csv', 'w', newline='') as f:
+        logging.debug("Writing to File...")
+
+        try:
+            # create the csv writer
+            writer = csv.writer(f)
+
+            # order the calendar
+            temp.sort(key=lambda x: x.name)
+
+            header = ['Name', "Rank", "Date Requested",
+                      "Type", "Determination", "Reason"]
+            writer.writerow(header)
+
+            for ffighter in temp:
+                writer.writerow([ffighter.name, ffighter.rank])
+                for key in ffighter.processed:
+                    writer.writerow(
+                        ['', '', key.date, key.type, key.determination, key.reason])
+                writer.writerow([])
+
+        except Exception as Argument:
+            logging.exception(f"Failed to write to file.\n")
+    logging.debug("File finished writing.")
+
 # ##############################################################################################################################################
 #     Main Code
 # ##############################################################################################################################################
 
 
 def main():
-    # ffighters = setPriorities(getData('testForms.csv'))
     ffighters = setPriorities(getData('Vacation Form Responses.12.2.22.csv'))
-    # printPriority(ffighters)
 
     # Note that DICTS, LISTS, and SETS are mutable, and so pass by reference, not pass by value like ints and setPriorities
     # IE, ffighter objects changes
-    results = makeCalendar(ffighters)
 
-    # printCalendar(results)
-    # printRejected(results)
+    for shift in ["A", "B", "C"]:
 
-    printFinal(ffighters)
-    calendarToCSV(results)
+        shiftMembers = list(filter(lambda x: x.shift == shift, ffighters))
+        results = makeCalendar(shiftMembers)
+
+        # printCalendar(results)
+        # printRejected(results)
+
+        printFinal(shiftMembers)
+        calendarToCSV(results, shift)
+        picksToCSV(shiftMembers, shift)
 
 
 if __name__ == '__main__':
