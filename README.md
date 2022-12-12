@@ -18,7 +18,7 @@ As per _**Daily Staffing** - OPS 001-01_
 - Only 5 members may request off for any given day
 - Of those 5, there can be:
   - No more than 3 Lieutenants
-  - No more than 2 Shift Commanders / Battalion Chief
+  - No more than 2 Captains / Battalion Chief
   - No more than 3 Apparatus Specialists
 
 ## Data Location
