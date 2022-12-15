@@ -20,7 +20,7 @@ logger.addHandler(logging.FileHandler(
 print = logger.info
 
 # date format
-date_format = '%m-%d-%Y'
+date_format = '%m/%d/%Y'
 
 
 class Pick:
@@ -166,8 +166,8 @@ def makeCalendar(ffighters):
             current_pick.reason = "Day already has 3 Lieutenants off"
             return 0
         # - No more than 2 Shift Commanders / Battalion Chief
-        if ffighter.rank in ['Battalion Chief', 'Captain'] and len(list(filter(lambda x: (x.rank in ['Battalion Chief', 'Captain']), calendar[current_pick.date]))) >= 3:
-            current_pick.reason = "Day already has 3 Commanders off"
+        if ffighter.rank in ['Battalion Chief', 'Captain'] and len(list(filter(lambda x: (x.rank in ['Battalion Chief', 'Captain']), calendar[current_pick.date]))) >= 2:
+            current_pick.reason = "Day already has 2 Commanders off"
             return 0
         # - No more than 3 Apparatus Specialists
         if ffighter.rank == "Apparatus Specialist" and len(list(filter(lambda x: (x.rank == "Apparatus Specialist"), calendar[current_pick.date]))) >= 3:
@@ -324,7 +324,7 @@ def picksToCSV(ffighter: list, suffix):
 
 
 def main():
-    ffighters = setPriorities(getData('Vacation Form Responses.12.2.22.csv'))
+    ffighters = setPriorities(getData('Vacation Form Responses.12.12.22.csv'))
 
     # Note that DICTS, LISTS, and SETS are mutable, and so pass by reference, not pass by value like ints and setPriorities
     # IE, ffighter objects changes
