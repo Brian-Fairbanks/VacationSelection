@@ -23,10 +23,26 @@ As per _**Daily Staffing** - OPS 001-01_
 
 ## Data Location
 
+~~- Data is gathered via jotform:~~
+~~ form.jotform.com/223213539120040 ~~
+~~- And can be viewed at:~~
+
+~~ docs.google.com/spreadsheets/d/1a9t628BOgbaXZikIHMEOYbJVbG4gTbkJECGNl7knylo ~~
+
 - Data is gathered via jotform:
-  - [https://form.jotform.com/223213539120040](https://form.jotform.com/223213539120040)
+- [https://form.jotform.com/230646669262160](https://form.jotform.com/230646669262160)
+
 - And can be viewed at:
-  - [https://docs.google.com/spreadsheets/d/1a9t628BOgbaXZikIHMEOYbJVbG4gTbkJECGNl7knylo/edit#gid=345096181](https://docs.google.com/spreadsheets/d/1a9t628BOgbaXZikIHMEOYbJVbG4gTbkJECGNl7knylo/edit#gid=345096181)
+  - [https://docs.google.com/spreadsheets/d/1a9t628BOgbaXZikIHMEOYbJVbG4gTbkJECGNl7knylo/edit#gid=345096181](https://docs.google.com/spreadsheets/d/1rO66QQoM29XpuyBGQhFeNCWnBGu0vILAeSS3dHJoalU)
+
+## Set Up
+
+- Remove all data from UNDER THE HEADERS on the current [google sheet](https://docs.google.com/spreadsheets/d/1rO66QQoM29XpuyBGQhFeNCWnBGu0vILAeSS3dHJoalU)
+
+- Make sure that the [JotForm](https://www.jotform.com/build/230646669262160) is configured for the current selection process.
+
+  - For each of the 18 "Date"s, select properties > Limits > Start and End Date
+  - Dates are traditionally done as February 1 - January 31 (2024-02-01 - 2025-01-31)
 
 ## Running
 
@@ -68,9 +84,7 @@ The list stays generally the same, but you can see a few people shuffle around. 
 
 ## TODO:
 
-- seperate drafts by shift
 - add file picker to start (or google api to auto-read from from sheets?)
-- prevent time picks without type
 - prevent one person from submitting multiple forms
 
 - BC and Captains cant take off on the same days past a certain point

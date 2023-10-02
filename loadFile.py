@@ -20,7 +20,7 @@ logger.addHandler(logging.FileHandler(
 print = logger.info
 
 # date format
-date_format = '%m/%d/%Y'
+date_format = '%m-%d-%Y'
 
 
 class Pick:
@@ -49,6 +49,12 @@ class FFighter:
         self.dice = random.random()
         self.processed = []
         self.picks = picks
+
+    def printPicks(self):
+        results = ""
+        for pick in self.picks:
+            results += str(pick)+", "
+        return results
 
     def __str__(self):
         # return (f"f/lname: {self.fname} {self.lname}, prioity/priorityModifier : {self.priority} {self.priorityModifier}, hireDate : {self.hireDate}, picks : {self.picks}")
@@ -129,7 +135,7 @@ def printPriority(arr):
     print(f"\n---=== Priority List at {datetime.now()} ===---\n")
     for ffighter in arr:
         print(
-            f'{ffighter.name:<20} ({len(ffighter.picks):>2}) : {str(ffighter.hireDate) :<10} - {ffighter.dice:< 20}')
+            f'{ffighter.name:<20} : {str(ffighter.hireDate) :<10} - {ffighter.dice:< 22} :: [{ffighter.printPicks()}]')
 
 # ================================================================
 
@@ -245,17 +251,22 @@ def getData(filename):
 
             pickDates = []
             for x in range(1, 18):
+                date = row[f"Day {x}"]
+                if x == 14:
+                    type = row[f"Type {x}"]+'- 14th'
+                elif x != 1:
+                    type = row[f"Type {x}"]
+                else:
+                    type = row[" Type"]
                 try:
-                    date = row[f"Day {x}"]
-                    if x != 1:
-                        type = row[f"Type {x}"]
-                    else:
-                        type = row[" Type"]
                     # pickDates.append(datetime.strptime(
                     #     date, date_format).date())
                     pickDates.append(
                         Pick(datetime.strptime(date, date_format).date(), type))
-                except:
+                except Exception as Argument:
+                    if date != "":
+                        logging.exception(f"{date}")
+                    # print(f'\nERROR - {row[f"Day {x}"]}: {e}\n')
                     pass
 
             hireDate = datetime.strptime(
@@ -324,7 +335,7 @@ def picksToCSV(ffighter: list, suffix):
 
 
 def main():
-    ffighters = setPriorities(getData('Vacation Form Responses.12.12.22.csv'))
+    ffighters = setPriorities(getData('Vacation Form Responses 9.20.23.csv'))
 
     # Note that DICTS, LISTS, and SETS are mutable, and so pass by reference, not pass by value like ints and setPriorities
     # IE, ffighter objects changes
