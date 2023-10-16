@@ -140,7 +140,7 @@ def printPriority(arr):
 # ================================================================
 
 
-def makeCalendar(ffighters):
+def makeCalendar(ffighters, silent_mode=False):
     """Analysis of firefighters picks:  fully creates the calendar"""
 
     calendar = {}
@@ -148,73 +148,118 @@ def makeCalendar(ffighters):
 
     #  Helper to add a date to the calendar
     # ----------------------------------------------------------------
-    def tryAddToCalendar(ffighter, current_pick):
+    def try_to_add_to_calendar(ffighter, current_pick):
 
-        # Probation has time limits before they cant take vacation/holidays
+        # deny probies within exclusion ranges
         if ffighter.rank == "Probationary Firefighter":
-            # print(f'{current_pick.type} :  {current_pick.date} -  {ffighter.hireDate}    =  {(current_pick.date-ffighter.hireDate).days}')
-            if (current_pick.type == "Holiday") and ((current_pick.date-ffighter.hireDate).days) < 182:
+            if (current_pick.type == "Holiday") and ((current_pick.date - ffighter.hireDate).days) < 182:
                 current_pick.reason = "Holiday < 182 Days from Hire Date"
                 return 0
-            if (current_pick.type == "Vacation") and ((current_pick.date-ffighter.hireDate).days) < 365:
+            if (current_pick.type == "Vacation") and ((current_pick.date - ffighter.hireDate).days) < 365:
                 current_pick.reason = "Vacation < 365 Days from Hire Date"
                 return 0
 
-        # grant it if the date hasnt ever been picked
+        # aside from those probies, grant it if the date hasnt ever been picked.  Full stop
         if current_pick.date not in calendar.keys():
             calendar[current_pick.date] = [ffighter]
             return 1
 
-        # otherwise, check who already booked the day...
-
-        # - No more than 3 Lieutenants
-        if ffighter.rank == "Lieutenant" and len(list(filter(lambda x: (x.rank == "Lieutenant"), calendar[current_pick.date]))) >= 3:
-            current_pick.reason = "Day already has 3 Lieutenants off"
-            return 0
-        # - No more than 2 Shift Commanders / Battalion Chief
-        if ffighter.rank in ['Battalion Chief', 'Captain'] and len(list(filter(lambda x: (x.rank in ['Battalion Chief', 'Captain']), calendar[current_pick.date]))) >= 2:
-            current_pick.reason = "Day already has 2 Commanders off"
-            return 0
-        # - No more than 3 Apparatus Specialists
-        if ffighter.rank == "Apparatus Specialist" and len(list(filter(lambda x: (x.rank == "Apparatus Specialist"), calendar[current_pick.date]))) >= 3:
-            current_pick.reason = "Day already has 3 Apparatus Specialist off"
+         # Check if the firefighter is already in the list for the current pick date
+        if ffighter in calendar.get(current_pick.date, []):
+            current_pick.reason = "Already requested this day off"
             return 0
 
-        # no more than 5 members total
+        # Define a function to count firefighters of specific rank(s) off on the current_pick day
+
+        def count_rank_off(ranks):
+            return len(list(filter(lambda x: (x.rank in ranks), calendar[current_pick.date])))
+
+        # Specify current staffing counts
+        num_apparatus_specialists = count_rank_off(["Apparatus Specialist"])
+        num_lieutenants = count_rank_off(["Lieutenant"])
+        num_captains = count_rank_off(["Captain"])
+        num_battalion_chiefs = count_rank_off(["Battalion Chief"])
+
+        # Specify max days off for each rank based on the specified rules
+        max_apparatus_specialists_off = 5
+        max_lieutenants_off = 5 - num_captains
+        max_captains_off = 3 - num_battalion_chiefs
+        # starting with the second captain, each one decreases the amount of BCs
+        max_battalion_chiefs_off = min(2, 3 - num_captains)
+
+        # Check if the firefighter's rank and the current count violate the rules
+        if ffighter.rank == "Apparatus Specialist":
+            if num_apparatus_specialists >= max_apparatus_specialists_off:
+                current_pick.reason = f"Day already has {num_apparatus_specialists} Apparatus Specialists off"
+                return 0
+
+        if ffighter.rank == "Lieutenant":
+            if num_lieutenants >= max_lieutenants_off:
+                current_pick.reason = f"Day already has {num_lieutenants} Lieutenants and {num_captains} Captains off"
+                return 0
+
+        if ffighter.rank == "Captain":
+            if num_captains >= max_captains_off:
+                current_pick.reason = f"Day already has {num_captains} Captains, {num_lieutenants} Lieutenants, and {num_battalion_chiefs} Battalion Chiefs off"
+                return 0
+
+        if ffighter.rank == "Battalion Chief":
+            if num_battalion_chiefs >= max_battalion_chiefs_off:
+                current_pick.reason = f"Day already has {num_battalion_chiefs} Battalion Chiefs and {num_captains} Captains off"
+                return 0
+
         if len(calendar[current_pick.date]) >= 5:
             current_pick.reason = "Day already has 5 members off"
             return 0
 
+        # Made it through the Rule Gauntlet. Award the date
         calendar[current_pick.date].append(ffighter)
         return 1
 
     # Loop through every Pick, and insert into hashing calender, or justify decision
     # --------------------------------------------------------------------------------------
 
+    # -- process a single pick
+    def process_ffighter_pick(ffighter):
+        ''' Take a given firefighter, take their number one pick off of their pick list.
+            try to add it to the calendar if possible '''
+        current_pick = ffighter.picks.pop(0)
+        dateAdded = 0
+
+        if try_to_add_to_calendar(ffighter, current_pick):
+            current_pick.determination = "Approved"
+            dateAdded += 1
+        else:
+            current_pick.determination = "Rejected"
+            # mark date in hash table as rejected
+            try:
+                rejected[ffighter.name].append(current_pick.date)
+            except:
+                rejected[ffighter.name] = [current_pick.date]
+        ffighter.processed.append(current_pick)
+        return dateAdded
+
+    # -- process as many picks as needed for a ffighters round
+    def add_2_picks_for_ffighter(ffighter):
+        ''' Take a firefigher, and process_ffighter_pick
+           Repeat until you assign 2, or their list is depleated '''
+
+        DatesAdded = 0
+        while DatesAdded < 2 and len(ffighter.picks) > 0:
+            DatesAdded += process_ffighter_pick(ffighter)
+
+    # -- Coordinate all ffighters draft rounds
     # while any firefighter still has an unaddressed picked day off...
     while any(filter(lambda x: len(x.picks), ffighters)):
         # Randomize firefighters with matching hire dates
         randomizeSubPriority(ffighters)
-        printPriority(ffighters)
-        # Loop through each fire fighter, and add their day off requests in groups of 2
+        if not silent_mode:
+            printPriority(ffighters)
+        # Loop through each fire fighter, and draft their picks
         for ffighter in ffighters:
-            DatesAdded = 0
-            while DatesAdded < 2 and len(ffighter.picks) > 0:
-                current_pick = ffighter.picks.pop(0)
+            add_2_picks_for_ffighter(ffighter)
 
-                if tryAddToCalendar(ffighter, current_pick):
-                    current_pick.determination = "Approved"
-                    DatesAdded += 1
-                else:
-                    current_pick.determination = "Rejected"
-                    # mark date in hash table as rejected
-                    try:
-                        rejected[ffighter.name].append(current_pick.date)
-                    except:
-                        rejected[ffighter.name] = [current_pick.date]
-                ffighter.processed.append(current_pick)
-        #
-    #
+    # -- Return completed Calendar and Rejections
     return {"calendar": calendar, "rejected": rejected}
 
 
@@ -229,8 +274,8 @@ def getData(filename):
 
     with open(filename, mode="r", encoding="utf-8-sig") as csvfile:
         reader = csv.DictReader(csvfile)
-        for row in reader:
 
+        for row in reader:
             # listing every column in the form to ease consistancy
 
             # Submission Date
@@ -252,12 +297,10 @@ def getData(filename):
             pickDates = []
             for x in range(1, 18):
                 date = row[f"Day {x}"]
-                if x == 14:
-                    type = row[f"Type {x}"]+'- 14th'
-                elif x != 1:
-                    type = row[f"Type {x}"]
-                else:
+                if x == 1 and " Type" in row:   # Legacy change from 2023 vacation Days
                     type = row[" Type"]
+                else:
+                    type = row[f"Type {x}"]
                 try:
                     # pickDates.append(datetime.strptime(
                     #     date, date_format).date())
@@ -335,7 +378,8 @@ def picksToCSV(ffighter: list, suffix):
 
 
 def main():
-    ffighters = setPriorities(getData('Vacation Form Responses 9.20.23.csv'))
+    ffighters = setPriorities(
+        getData('2024 VACATION REQUEST FORM - Form Responses.csv'))
 
     # Note that DICTS, LISTS, and SETS are mutable, and so pass by reference, not pass by value like ints and setPriorities
     # IE, ffighter objects changes

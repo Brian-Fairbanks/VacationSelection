@@ -172,6 +172,18 @@ class TestFirefighterScheduling(unittest.TestCase):
         self.assertEqual(results[5].processed[0].reason,
                          "Day already has 5 members off")
 
+    def test_Same_Day(self):
+        # 0 captains if 2 BCs and 3 lietenants
+        results = test_file(".\\Test CSVs\\SameNameSameDay.csv")
+        printFinal(results)
+
+        self.assertEqual(
+            results[0].processed[0].determination, "Approved")  # First Day Off
+        self.assertEqual(
+            results[0].processed[1].determination, "Rejected")  # Reject requesting same day off
+        self.assertEqual(results[0].processed[1].reason,
+                         "Already requested this day off")
+
 
 if __name__ == '__main__':
     unittest.main()
