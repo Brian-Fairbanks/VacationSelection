@@ -3,6 +3,7 @@ from datetime import datetime
 import random
 from os import path, makedirs
 import logging
+import difflib
 
 runtime = datetime.now().strftime("%Y.%m.%d %H.%M")
 
@@ -266,6 +267,44 @@ def makeCalendar(ffighters, silent_mode=False):
 # ###########################################################################################################
 #     Initial Access of data
 # ###########################################################################################################
+ranks = [
+    "Firefighter",
+    "Probationary Firefighter",
+    "Apparatus Specialist",
+    "Lieutenant",
+    "Captain",
+    "Battalion Chief",
+]
+
+
+def ensure_rank(rank):
+    res = check_rank(rank)
+    if res == None:
+        exit(1)
+    return res
+
+
+def check_rank(rank):
+    # Check if the provided rank is in the list of valid ranks
+
+    if rank in ranks:
+        return rank
+
+    # If not, find the closest match in the list
+    close_matches = difflib.get_close_matches(rank, ranks, n=1, cutoff=0.01)
+    accuracy = difflib.SequenceMatcher(None, rank, close_matches[0]).ratio()
+
+    if close_matches and accuracy >= 0.75:
+        # If a close match is found and it's sufficiently accurate, use it
+        print(
+            f"'{rank}' is not a valid rank. Replacing to '{close_matches[0]}' with {accuracy} certainty.")
+        return close_matches[0]
+    else:
+        # If no close match or not accurate enough, raise an error
+        print(
+            f"\nERROR: '{rank}' is not a valid rank. Presumably '{close_matches[0]}' but only {accuracy} certainty.\n\t- Please correct the file and reprocess.")
+        return None
+
 
 def getData(filename):
     '''Read CSV file, and drop the results into an arrray of FFighter class
@@ -283,11 +322,11 @@ def getData(filename):
             lname = row['Last Name']
             # Today's Date
             # Employee ID #
-            rank = row["Rank"]
+            rank = ensure_rank(row["Rank"])
             startDate = row['Employee Start Date']
             # Years of Service
             # Day 1
-            #  Type
+            # Type 1  :  ' Type' for older files
             # Day 2
             # Type 2
             # naming pattern continues  to 18, except for the glitch on Type (1)
