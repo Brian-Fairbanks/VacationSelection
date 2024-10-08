@@ -23,9 +23,21 @@ print = logger.info
 # date format
 date_format = '%m-%d-%Y'
 
+def calculate_max_days_off(hire_date):
+    """Calculate the maximum number of days off allowed based on years of service."""
+    years_of_service = (datetime.now().date() - hire_date).days // 365
 
+    if years_of_service < 1:
+        return 7  # Example: 1 year or less gets 7 days off
+    elif 1 <= years_of_service < 5:
+        return 14  # Example: 1-5 years get 14 days off
+    elif 5 <= years_of_service < 10:
+        return 21  # Example: 5-10 years get 21 days off
+    else:
+        return 28  # Example: 10+ years get 28 days off
+    
 class Pick:
-    def __init__(self, date, type, determination="Unaddressed"):
+    def __init__(self, date, type="U", determination="Unaddressed"):
         '''date, type, determination: defaults to "Unaddressed"'''
         self.date = date
         self.type = type
@@ -50,6 +62,7 @@ class FFighter:
         self.dice = random.random()
         self.processed = []
         self.picks = picks
+        self.max_days_off = calculate_max_days_off(hireDate)
 
     def printPicks(self):
         results = ""
@@ -334,17 +347,13 @@ def getData(filename):
             # Submission ID
 
             pickDates = []
-            for x in range(1, 18):
+            for x in range(1, 40):
                 date = row[f"Day {x}"]
-                if x == 1 and " Type" in row:   # Legacy change from 2023 vacation Days
-                    type = row[" Type"]
-                else:
-                    type = row[f"Type {x}"]
                 try:
                     # pickDates.append(datetime.strptime(
                     #     date, date_format).date())
                     pickDates.append(
-                        Pick(datetime.strptime(date, date_format).date(), type))
+                        Pick(datetime.strptime(date, date_format).date(), "U"))
                 except Exception as Argument:
                     if date != "":
                         logging.exception(f"{date}")
