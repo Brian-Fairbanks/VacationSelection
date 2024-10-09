@@ -55,7 +55,7 @@ class FFighter:
 
     def calculate_max_days_off(self):
         years_of_service = (datetime.now().date() - self.hireDate).days // 365
-        return 8 + min(years_of_service // 5, 20)
+        return 4 + 8 + min(years_of_service // 5, 20)
 
     def print_picks(self):
         return ", ".join([str(pick) for pick in self.picks])
