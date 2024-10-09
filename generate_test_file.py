@@ -1,6 +1,7 @@
 import pandas as pd
 import random
 import datetime
+import hashlib
 
 # Predefined lists for random name generation
 FIRST_NAMES = [
@@ -39,16 +40,25 @@ while current_date <= end_date:
     current_date += datetime.timedelta(days=1)
 
 # Function to generate a random person entry
-def generate_person(used_ids):
+def generate_person(used_ids, used_names, available_special_names):
     today = datetime.datetime.now()
     submission_date = today - datetime.timedelta(days=random.randint(0, 21))
     submission_time = submission_date.replace(hour=random.randint(0, 23), minute=random.randint(0, 59), second=random.randint(0, 59))
-    if random.random() < 0.3:
-        special_name = random.choice(SPECIAL_NAMES)
-        first_name, last_name = special_name.split(" ", 1)
-    else:
-        first_name = random.choice(FIRST_NAMES)
-        last_name = random.choice(LAST_NAMES)
+    
+    # Generate unique name
+    while True:
+        if available_special_names and random.random() < 0.3:
+            special_name = random.choice(available_special_names)
+            available_special_names.remove(special_name)
+            first_name, last_name = special_name.split(" ", 1)
+        else:
+            first_name = random.choice(FIRST_NAMES)
+            last_name = random.choice(LAST_NAMES)
+        
+        name_hash = hashlib.sha256(f"{first_name} {last_name}".encode()).hexdigest()
+        if name_hash not in used_names:
+            used_names.add(name_hash)
+            break
     
     # Generate a unique employee ID
     employee_id = 1000
@@ -70,7 +80,7 @@ def generate_person(used_ids):
     acknowledgment = random.choices([
         "I would like to continue with the selection process.",
         "I would prefer to skip the selection, and submit a blank request form."
-    ], weights=[.9,.1])
+    ], weights=[.9, .1])
 
     # If skipping, no shift selections
     days = []
@@ -113,7 +123,9 @@ def generate_person(used_ids):
 # Function to generate a file with a specified number of rows
 def generate_file(row_count):
     used_ids = set()
-    people = [generate_person(used_ids) for _ in range(row_count)]
+    used_names = set()
+    available_special_names = SPECIAL_NAMES.copy()
+    people = [generate_person(used_ids, used_names, available_special_names) for _ in range(row_count)]
     df = pd.DataFrame(people)
     return df
 
