@@ -80,7 +80,7 @@ def generate_person(used_ids, used_names, available_special_names):
     acknowledgment = random.choices([
         "I would like to continue with the selection process.",
         "I would prefer to skip the selection, and submit a blank request form."
-    ], weights=[.9, .1])
+    ], weights=[.9, .1])[0]
 
     # If skipping, no shift selections
     days = []
