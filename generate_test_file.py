@@ -3,8 +3,23 @@ import random
 import datetime
 
 # Predefined lists for random name generation
-FIRST_NAMES = ["Noah", "Emma", "Liam", "Ava", "Sophia", "James", "Olivia"]
-LAST_NAMES = ["Smith", "Johnson", "Williams", "Brown", "Jones", "Miller", "Davis"]
+FIRST_NAMES = [
+    "Abigail", "Amelia", "Ava", "Benjamin", "Charlotte", "Daniel", 
+    "Ella", "Elijah", "Emma", "Evelyn", "Faith", "George", "Harper", 
+    "Henry", "Isabella", "James", "Katherine", "Liam", "Logan", 
+    "Lucas", "Mason", "Mia", "Noah", "Olivia", "Oliver", "Parker", 
+    "Quinn", "Rachel", "Sophia", "Thomas", "Uma", "Victoria", 
+    "William", "Xander", "Yara", "Zoe"
+]
+LAST_NAMES = [
+    "Anderson", "Brown", "Clark", "Davis", "Evans", "Foster", 
+    "Garcia", "Gonzalez", "Hernandez", "Ingram", "Jackson", 
+    "Johnson", "Jones", "King", "Lopez", "Martinez", "Miller", 
+    "Nelson", "O'Connor", "Parker", "Quinn", "Rodriguez", 
+    "Smith", "Taylor", "Thomas", "Underwood", "Vasquez", 
+    "White", "Williams", "Wilson", "Xavier", "Young", "Zoolander"
+]
+
 SPECIAL_NAMES = ["Noah Won", "Faye K'Pearson", "Una Reel", "Aibee Fiksean", "Arial Faiknaim", "Anon Ymous"]
 
 # Precompute all eligible days and their shifts between 02/01/2025 and 01/31/2026
@@ -52,10 +67,10 @@ def generate_person(used_ids):
     shift = random.choice(["A", "B", "C"])
     hire_date = today - datetime.timedelta(days=random.randint(0, 365 * 20))
     years_of_service = round((today - hire_date).days / 365, 2)
-    acknowledgment = random.choice([
+    acknowledgment = random.choices([
         "I would like to continue with the selection process.",
         "I would prefer to skip the selection, and submit a blank request form."
-    ])
+    ], weights=[.9,.1])
 
     # If skipping, no shift selections
     days = []
@@ -110,5 +125,5 @@ def export_to_CSV(df, filename=None):
     df.to_csv(filename, index=False)
 
 # Example usage
-df = generate_file(20)
+df = generate_file(50)
 export_to_CSV(df, 'random_vacation_requests.csv')
