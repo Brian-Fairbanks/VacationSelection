@@ -1,4 +1,4 @@
-from setup_logging import setup_logging
+from vacation_selection.setup_logging import setup_logging
 logger = setup_logging('calendar')
 
 import random

@@ -1,15 +1,15 @@
 # file_io.py
 import csv
-import setup_logging
-from validation import ensure_rank  # Import validation function
+import vacation_selection.setup_logging as setup_logging
+from vacation_selection.validation import ensure_rank  # Import validation function
 from datetime import datetime
-from firefighter import FFighter  # Import classes as needed
 
-from firefighter import FFighter, Pick  # Import classes as needed
+from vacation_selection.firefighter import FFighter, Pick  # Import classes as needed
 from datetime import datetime
 
 logger = setup_logging.setup_logging()
 
+# ================================================================================
 # Reading
 # ================================================================================
 
@@ -48,7 +48,8 @@ def read_firefighter_data(filename, date_format, file_format):
 
     return ffdata
 
-
+# Reading Sub Modules
+# ========================
 def process_firefighter_data_2024(reader, date_format):
     logger.debug("starting: 2024")
     ffdata = []
@@ -59,6 +60,7 @@ def process_firefighter_data_2024(reader, date_format):
             fname = row['First Name']
             lname = row['Last Name']
             rank = ensure_rank(row["Rank"])
+            id = row['Employee ID #']
 
             if not fname or not lname or not rank:
                 logger.debug(f"Row {index + 1} skipped due to missing critical information.")
@@ -80,7 +82,7 @@ def process_firefighter_data_2024(reader, date_format):
                         logger.error(f"Failed to parse pick date '{row[day_key]}' in row {index + 1}: {e}")
                         continue
 
-            ffdata.append(FFighter(fname, lname, startDate, rank, shift, pick_dates))
+            ffdata.append(FFighter(fname, lname, id, startDate, rank, shift, pick_dates))
         
         except Exception as e:
             logger.error(f"Failed to process row {index + 1}: {e}")
@@ -124,7 +126,8 @@ def process_firefighter_data_2025(reader, date_format):
 
     return ffdata
 
-# Writing
+# ================================================================================
+# Writing Outputs
 # ================================================================================
 
 def write_calendar_to_csv(calendar, suffix, write_path, runtime):
@@ -135,6 +138,7 @@ def write_calendar_to_csv(calendar, suffix, write_path, runtime):
         for key in sorted(calendar.keys()):
             writer.writerow([key] + calendar[key])
 
+
 def print_final(ffighters):
     """Prints the final results for each firefighter."""
     print('\n\n  --==  Final Results   ==--\n')
@@ -142,6 +146,7 @@ def print_final(ffighters):
         print(f'{ffighter.name:<20} ({ffighter.id}): \n  Started:{ffighter.hireDate} - ({ffighter.shift} shift) {ffighter.rank}')
         for key in ffighter.processed:
             print(key)
+
 
 def write_picks_to_csv(ffighters, suffix, write_path, runtime):
     """Writes the picks and status of each firefighter to a CSV file."""

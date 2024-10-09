@@ -3,7 +3,7 @@ from datetime import datetime
 import random
 
 class Pick:
-    def __init__(self, date, type="U", determination="Unaddressed"):
+    def __init__(self, date, type="Unaddressed", determination="Unaddressed", increments=[1,1]):
         self.date = date
         self.type = type
         self.determination = determination
@@ -16,10 +16,11 @@ class Pick:
         return ret
 
 class FFighter:
-    def __init__(self, fname, lname, hireDate, rank, shift, picks):
+    def __init__(self, id, fname, lname, hireDate, rank, shift, picks):
         self.fname = fname
         self.lname = lname
         self.name = f"{lname}, {fname[0]}"
+        self.id = id
         self.rank = rank
         self.shift = shift
         self.hireDate = hireDate
@@ -28,16 +29,11 @@ class FFighter:
         self.picks = picks
         self.max_days_off = self.calculate_max_days_off()
 
+# Helper Functions
+
     def calculate_max_days_off(self):
         years_of_service = (datetime.now().date() - self.hireDate).days // 365
-        if years_of_service < 1:
-            return 7
-        elif 1 <= years_of_service < 5:
-            return 14
-        elif 5 <= years_of_service < 10:
-            return 21
-        else:
-            return 28
+        return 8 + min(years_of_service // 5, 20)
 
     def print_picks(self):
         return ", ".join([str(pick) for pick in self.picks])

@@ -1,24 +1,24 @@
 # main.py
 from datetime import datetime
-from setup_logging import setup_logging
+from vacation_selection.setup_logging import setup_logging
 
 runtime = datetime.now().strftime("%Y.%m.%d %H.%M")
 write_path = ".//output"
 logger = setup_logging(f"RunLog-{runtime}.log", base=write_path, debug=False)
 print = logger.info
 
-from file_io import read_firefighter_data, write_calendar_to_csv, write_picks_to_csv, print_final
-from firefighter import FFighter
-from priority import set_priorities, randomize_sub_priority
-from cal import make_calendar
+from .file_io import read_firefighter_data, write_calendar_to_csv, write_picks_to_csv, print_final
+from .firefighter import FFighter
+from .priority import set_priorities
+from .cal import make_calendar
 
 
-def main():
+def main(filename, format):
     date_format = '%m-%d-%Y'
 
     # Import File
     try:
-        file = read_firefighter_data('.//Old Files//2024 VACATION REQUEST FORM - Form Responses Final.csv', date_format, 2024)
+        file = read_firefighter_data(filename, date_format, format)
         ffighters = set_priorities(file)
     except Exception as e:
         logger.error("ERROR: {e}")
