@@ -26,12 +26,6 @@ def read_firefighter_data(filename, date_format, file_format):
             headers = reader.fieldnames
             logger.debug(f"File headers: {headers}")
 
-            # Check if required headers exist
-            required_headers = ['First Name', 'Last Name', 'Rank', 'Employee Start Date', 'Shift']
-            for header in required_headers:
-                if header not in headers:
-                    raise ValueError(f"Missing required header: {header}")
-
             logger.debug(f"Processing data for File Format: {file_format}")
             # Step 3: Read each row from the CSV based on file format
             if file_format == 2024:
@@ -60,13 +54,8 @@ def process_firefighter_data_2024(reader, date_format):
             fname = row['First Name']
             lname = row['Last Name']
             rank = ensure_rank(row["Rank"])
-            id = row['Employee ID #']
-
-            if not fname or not lname or not rank:
-                logger.debug(f"Row {index + 1} skipped due to missing critical information.")
-                continue
-
-            startDate = datetime.strptime(row['Employee Start Date'], date_format).date()
+            idnum = row['Employee ID #']
+            startDate = parse_date(row['Employee Start Date'])
             shift = row["Shift"]
 
             pick_dates = []
@@ -75,23 +64,22 @@ def process_firefighter_data_2024(reader, date_format):
                 type_key = f"Type {x}" if x != 1 else " Type"
                 if day_key in row and row[day_key]:
                     try:
-                        pick_date = datetime.strptime(row[day_key], date_format).date()
-                        pick_type = row.get(type_key, "U")
-                        pick_dates.append(Pick(pick_date, pick_type))
+                        pick_date = parse_date(row[day_key])
+                        pick_type = row.get(type_key, "Unaddressed")
+                        pick_dates.append(Pick(pick_date, type=pick_type))
                     except Exception as e:
                         logger.error(f"Failed to parse pick date '{row[day_key]}' in row {index + 1}: {e}")
                         continue
 
-            ffdata.append(FFighter(fname, lname, id, startDate, rank, shift, pick_dates))
+            ffdata.append(FFighter(idnum, fname, lname, startDate, rank, shift, pick_dates))
         
         except Exception as e:
             logger.error(f"Failed to process row {index + 1}: {e}")
 
     return ffdata
 
-
-
 def process_firefighter_data_2025(reader, date_format):
+    logger.debug("starting: 2025")
     ffdata = []
     for index, row in enumerate(reader):
         try:
@@ -100,31 +88,46 @@ def process_firefighter_data_2025(reader, date_format):
             fname = row['First Name']
             lname = row['Last Name']
             rank = ensure_rank(row["Rank"])
-
-            if not fname or not lname or not rank:
-                logger.debug(f"Row {index + 1} skipped due to missing critical information.")
-                continue
-
-            startDate = datetime.strptime(row['Employee Start Date'], date_format).date()
+            idnum = row['Employee ID #']
+            startDate = parse_date(row['Employee Hire Date'])
             shift = row["Shift"]
 
             pick_dates = []
-            for x in range(1, 40):  # Assuming the 2025 format is similar to 2024
+            for x in range(1, 41):
                 day_key = f"Day {x}"
+                shift_key = f"Shift Selection {x}"
                 if day_key in row and row[day_key]:
                     try:
-                        pick_date = datetime.strptime(row[day_key], date_format).date()
-                        pick_dates.append(Pick(pick_date, "U"))
+                        pick_date = parse_date(row[day_key])
+                        pick_dates.append(Pick(pick_date, increments=shift_key))
                     except Exception as e:
-                        logger.debug(f"Failed to parse pick date '{row[day_key]}' in row {index + 1}: {e}")
+                        logger.error(f"Failed to parse pick date '{row[day_key]}' in row {index + 1}: {e}")
                         continue
 
-            ffdata.append(FFighter(fname, lname, startDate, rank, shift, pick_dates))
+            ffdata.append(FFighter(idnum, fname, lname, startDate, rank, shift, pick_dates))
         
         except Exception as e:
             logger.error(f"Failed to process row {index + 1}: {e}")
 
     return ffdata
+
+# Helpers
+# =================================================================================
+def parse_date(date_str):
+    """Try to parse a date string in multiple formats until one works."""
+    possible_formats = [
+        '%m-%d-%Y',  # e.g., 06-11-2009
+        '%m/%d/%Y',  # e.g., 06/11/2009
+        '%Y-%m-%d',  # e.g., 2009-06-11
+        '%d-%m-%Y',  # e.g., 11-06-2009
+        '%d/%m/%Y'   # e.g., 11/06/2009
+    ]
+    for fmt in possible_formats:
+        try:
+            return datetime.strptime(date_str, fmt).date()
+        except ValueError:
+            continue
+    raise ValueError(f"Date format for '{date_str}' not recognized.")
 
 # ================================================================================
 # Writing Outputs
@@ -143,7 +146,7 @@ def print_final(ffighters):
     """Prints the final results for each firefighter."""
     print('\n\n  --==  Final Results   ==--\n')
     for ffighter in ffighters:
-        print(f'{ffighter.name:<20} ({ffighter.id}): \n  Started:{ffighter.hireDate} - ({ffighter.shift} shift) {ffighter.rank}')
+        print(f'{ffighter.name:<20} ({ffighter.idnum}): \n  Started:{ffighter.hireDate} - ({ffighter.shift} shift) {ffighter.rank}')
         for key in ffighter.processed:
             print(key)
 

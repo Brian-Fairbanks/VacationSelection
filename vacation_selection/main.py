@@ -23,6 +23,11 @@ def main(filename, format):
     except Exception as e:
         logger.error("ERROR: {e}")
 
+    # Check if ffighters list is empty after import
+    if not ffighters:
+        logger.error("\nNo firefighter data available to process.")
+        exit(1)
+
     # Work in shifts:
     for shift in ["A", "B", "C"]:
         shift_members = [ff for ff in ffighters if ff.shift == shift]

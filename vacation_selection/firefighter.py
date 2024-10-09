@@ -3,24 +3,46 @@ from datetime import datetime
 import random
 
 class Pick:
-    def __init__(self, date, type="Unaddressed", determination="Unaddressed", increments=[1,1]):
+    def __init__(self, date, type="Untyped", determination="Unaddressed", increments='AMPM'):
         self.date = date
         self.type = type
         self.determination = determination
         self.reason = None
+        self.increments = self.process_increments(increments)
 
+    def process_increments(self, shift_selection):
+        increment_mapping = {
+            "AM":[1,0],
+            "PM":[0,1],
+            "AMPM":[1,1]
+            }
+        if shift_selection in increment_mapping:
+            return increment_mapping[shift_selection]
+        return [1,1]
+    
+    def increments_plain_text(self, increment):
+        reverse_mapping = {
+            (1, 0): "AM",
+            (0, 1): "PM",
+            (1, 1): "FULL"
+        }
+        increment_tuple = tuple(increment)  # Convert the list to a tuple
+        if increment_tuple in reverse_mapping:
+            return reverse_mapping[increment_tuple]
+        return "ERROR"
+        
     def __str__(self):
-        ret = f"{self.date} ({self.type:^10}) - {self.determination}"
+        ret = f"{self.date} ({self.increments_plain_text(self.increments)}) ({self.type:^10}) - {self.determination}"
         if self.reason:
             ret += f' ({self.reason})'
         return ret
 
 class FFighter:
-    def __init__(self, id, fname, lname, hireDate, rank, shift, picks):
+    def __init__(self, idnum, fname, lname, hireDate, rank, shift, picks):
         self.fname = fname
         self.lname = lname
         self.name = f"{lname}, {fname[0]}"
-        self.id = id
+        self.idnum = idnum
         self.rank = rank
         self.shift = shift
         self.hireDate = hireDate
