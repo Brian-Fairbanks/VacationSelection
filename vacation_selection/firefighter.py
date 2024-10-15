@@ -2,6 +2,9 @@
 from datetime import datetime
 import random
 
+import vacation_selection.setup_logging as setup_logging
+logger = setup_logging.setup_logging("classes.log")
+
 class Pick:
     def __init__(self, date, type="Untyped", determination="Unaddressed", increments='AMPM'):
         self.date = date
@@ -12,13 +15,16 @@ class Pick:
 
     def process_increments(self, shift_selection):
         increment_mapping = {
-            "AM":[1,0],
-            "PM":[0,1],
-            "AMPM":[1,1]
-            }
+            "AM": [1, 0],
+            "PM": [0, 1],
+            "AMPM": [1, 1]
+        }
         if shift_selection in increment_mapping:
             return increment_mapping[shift_selection]
-        return [1,1]
+        else:
+            # Log or raise an error if an unexpected value is passed
+            print(f"Warning: Unexpected shift selection '{shift_selection}', defaulting to 'AMPM'")
+            return [1, 1]
     
     def increments_plain_text(self, increment):
         reverse_mapping = {
@@ -50,6 +56,7 @@ class FFighter:
         self.processed = []
         self.picks = picks
         self.max_days_off = self.calculate_max_days_off()
+        self.approved_days_count = 0
 
 # Helper Functions
 

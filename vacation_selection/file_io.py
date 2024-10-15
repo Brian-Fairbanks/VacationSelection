@@ -99,7 +99,7 @@ def process_firefighter_data_2025(reader, date_format):
                 if day_key in row and row[day_key]:
                     try:
                         pick_date = parse_date(row[day_key])
-                        pick_dates.append(Pick(pick_date, increments=shift_key))
+                        pick_dates.append(Pick(pick_date, increments=row.get(shift_key)))
                     except Exception as e:
                         logger.error(f"Failed to parse pick date '{row[day_key]}' in row {index + 1}: {e}")
                         continue
@@ -136,10 +136,23 @@ def parse_date(date_str):
 def write_calendar_to_csv(calendar, suffix, write_path, runtime):
     with open(f'{write_path}/{runtime}-calendar-{suffix}.csv', 'w', newline='') as f:
         writer = csv.writer(f)
-        header = ['Date', "First", "Second", "Third", "Fourth", "Fifth"]
+        header = ['Date', 'Shift', 'First', 'Second', 'Third', 'Fourth', 'Fifth']
         writer.writerow(header)
-        for key in sorted(calendar.keys()):
-            writer.writerow([key] + calendar[key])
+
+        for date in sorted(calendar.keys()):
+            # Write the AM row
+            am_row = [date, " (AM)"] + [
+                slot['ffighter'].name if slot else "" 
+                for slot in (calendar[date][0] + [None] * 5)[:5]
+            ]
+            writer.writerow(am_row)
+            
+            # Write the PM row
+            pm_row = [date, " (PM)"] + [
+                slot['ffighter'].name if slot else "" 
+                for slot in (calendar[date][1] + [None] * 5)[:5]
+            ]
+            writer.writerow(pm_row)
 
 
 def print_final(ffighters):
@@ -155,11 +168,11 @@ def write_picks_to_csv(ffighters, suffix, write_path, runtime):
     """Writes the picks and status of each firefighter to a CSV file."""
     with open(f'{write_path}/{runtime}-FFighters-{suffix}.csv', 'w', newline='') as f:
         writer = csv.writer(f)
-        header = ['Name', "Rank", "Date Requested", "Type", "Determination", "Reason"]
+        header = ['Name', "Rank", "Date Requested", "Type", "Increments" "Determination", "Reason"]
         writer.writerow(header)
 
         for ffighter in ffighters:
             writer.writerow([ffighter.name, ffighter.rank])
             for key in ffighter.processed:
-                writer.writerow(['', '', key.date, key.type, key.determination, key.reason])
+                writer.writerow(['', '', key.date, key.type, key.increments, key.determination, key.reason])
             writer.writerow([])
