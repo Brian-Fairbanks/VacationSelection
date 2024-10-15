@@ -23,6 +23,21 @@ LAST_NAMES = [
 
 SPECIAL_NAMES = ["Noah Won", "Faye K'Pearson", "Una Reel", "Aibee Fiksean", "Arial Faiknaim", "Anon Ymous"]
 
+# Traditional holidays and surrounding days to weight more heavily
+HOLIDAYS = [
+    "01/01/2025",  # New Year's Day
+    "01/20/2025", "01/19/2025", "01/21/2025",  # Martin Luther King Jr. Day and surrounding days
+    "02/17/2025", "02/16/2025", "02/18/2025",  # Presidents' Day and surrounding days
+    "05/26/2025", "05/25/2025", "05/27/2025",  # Memorial Day and surrounding days
+    "07/04/2025", "07/03/2025", "07/05/2025",  # Independence Day and surrounding days
+    "09/01/2025", "08/31/2025", "09/02/2025",  # Labor Day and surrounding days
+    "10/13/2025", "10/12/2025", "10/14/2025",  # Columbus Day and surrounding days
+    "11/11/2025", "11/10/2025", "11/12/2025",  # Veterans Day and surrounding days
+    "11/27/2025", "11/26/2025", "11/28/2025",  # Thanksgiving and surrounding days
+    "12/25/2025", "12/24/2025", "12/26/2025",  # Christmas and surrounding days
+    "01/01/2026"   # New Year's Day 2026
+]
+
 # Precompute all eligible days and their shifts between 02/01/2025 and 01/31/2026
 start_date = datetime.datetime(2025, 2, 1)
 end_date = datetime.datetime(2026, 1, 31)
@@ -31,12 +46,13 @@ days_dict = {"A": [], "B": [], "C": []}
 current_date = start_date
 while current_date <= end_date:
     shift_day_number = (current_date - start_date).days % 3
+    formatted_date = current_date.strftime("%m/%d/%Y")
     if shift_day_number == 0:
-        days_dict["A"].append(current_date.strftime("%m/%d/%Y"))
+        days_dict["A"].append(formatted_date)
     elif shift_day_number == 1:
-        days_dict["B"].append(current_date.strftime("%m/%d/%Y"))
+        days_dict["B"].append(formatted_date)
     else:
-        days_dict["C"].append(current_date.strftime("%m/%d/%Y"))
+        days_dict["C"].append(formatted_date)
     current_date += datetime.timedelta(days=1)
 
 # Function to generate a random person entry
@@ -47,7 +63,7 @@ def generate_person(used_ids, used_names, available_special_names):
     
     # Generate unique name
     while True:
-        if available_special_names and random.random() < 0.3:
+        if available_special_names and random.random() < 0.15:
             special_name = random.choice(available_special_names)
             available_special_names.remove(special_name)
             first_name, last_name = special_name.split(" ", 1)
@@ -89,9 +105,19 @@ def generate_person(used_ids, used_names, available_special_names):
     if "continue" in acknowledgment:
         num_days = random.randint(5, 40)
         available_days = days_dict[shift]
-        selected_days = random.sample(available_days, min(num_days, len(available_days)))
-        days.extend(selected_days)
-        for _ in range(len(selected_days)):
+
+        # Weight holidays more heavily and allow duplicates
+        weighted_days = [day for day in available_days if day in HOLIDAYS] * 5 + available_days
+        selected_days = random.choices(weighted_days, k=num_days)
+
+        # Create weighted selection for finalization
+        finalized_days = [(day, random.random() * 3 if day in HOLIDAYS else random.random()) for day in selected_days]
+
+        # Sort the finalized_days by weight
+        finalized_days.sort(key=lambda x: x[1], reverse=True)
+        days = [day for day, _ in finalized_days]
+
+        for _ in range(len(days)):
             shifts.append(random.choices(["AM", "PM", "AMPM"], weights=[0.1, 0.1, 0.8], k=1)[0])
 
     # Create the person dictionary
@@ -118,6 +144,10 @@ def generate_person(used_ids, used_names, available_special_names):
     for i in range(total_shift_selections + 1, next_multiple_of_10 + 1):
         person[f"Shift Selection {i}"] = "AMPM"
 
+    # Fill remaining day columns with empty strings
+    for i in range(num_days + 1, next_multiple_of_10 + 1):
+        person[f"Day {i}"] = ""
+
     return person
 
 # Function to generate a file with a specified number of rows
@@ -137,5 +167,5 @@ def export_to_CSV(df, filename=None):
     df.to_csv(filename, index=False)
 
 # Example usage
-df = generate_file(50)
+df = generate_file(200)
 export_to_CSV(df, 'random_vacation_requests.csv')
