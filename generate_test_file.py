@@ -82,17 +82,23 @@ def generate_person(used_ids, used_names, available_special_names):
         employee_id += 1
     used_ids.add(employee_id)
     
-    rank = random.choices(
-        [
-            "Probationary Firefighter", "FireFighter", "Apparatus Specialist",
-            "Lieutenant", "Captain", "Battalion Chief"
-        ],
-        weights=[10, 65, 10, 5, 5, 5],
-        k=1
-    )[0]
-    shift = random.choice(["A", "B", "C"])
     hire_date = today - datetime.timedelta(days=random.randint(0, 365 * 20))
     years_of_service = round((today - hire_date).days / 365, 2)
+    
+    # Determine rank based on years of service
+    if years_of_service < 1:
+        rank = "Probationary Firefighter"
+    else:
+        rank = random.choices(
+            [
+                "FireFighter", "Apparatus Specialist",
+                "Lieutenant", "Captain", "Battalion Chief"
+            ],
+            weights=[65, 10, 5, 5, 5],
+            k=1
+        )[0]
+    
+    shift = random.choice(["A", "B", "C"])
     acknowledgment = random.choices([
         "I would like to continue with the selection process.",
         "I would prefer to skip the selection, and submit a blank request form."
