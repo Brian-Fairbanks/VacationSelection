@@ -26,7 +26,8 @@ class Pick:
             print(f"Warning: Unexpected shift selection '{shift_selection}', defaulting to 'AMPM'")
             return [1, 1]
     
-    def increments_plain_text(self, increment):
+    def increments_plain_text(self, increment = None):
+        if increment == None: increment = self.increments
         reverse_mapping = {
             (1, 0): "AM",
             (0, 1): "PM",
@@ -57,8 +58,30 @@ class FFighter:
         self.picks = picks
         self.max_days_off = self.calculate_max_days_off()
         self.approved_days_count = 0
+        self.current_pick = None  # A holding place for the pick being processed
 
-# Helper Functions
+    def process_next_pick(self):
+        """Move the next pick from the queue to the holding spot for approval or denial."""
+        if self.picks:
+            self.current_pick = self.picks.pop(0)
+        else:
+            self.current_pick = None
+
+    def approve_current_pick(self):
+        """Approve the current pick and update the firefighter's data."""
+        if self.current_pick:
+            self.current_pick.determination = "Approved"
+            self.processed.append(self.current_pick)
+            self.approved_days_count += 0.5
+            self.current_pick = None
+
+    def deny_current_pick(self, reason):
+        """Deny the current pick with a reason and update the firefighter's data."""
+        if self.current_pick:
+            self.current_pick.determination = "Rejected"
+            self.current_pick.reason = reason
+            self.processed.append(self.current_pick)
+            self.current_pick = None
 
     def calculate_max_days_off(self):
         years_of_service = (datetime.now().date() - self.hireDate).days // 365
