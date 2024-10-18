@@ -6,42 +6,70 @@ import random
 # Day Class
 # ================================================================================================
 class Day:
-    # Class-level configurations
+    # Class-level configurations remain the same...
     max_total_ffighters_allowed = 5
-    max_apparatus_specialists_allowed = 5
-    max_lieutenants_allowed = 5
-    max_captains_allowed = 3
-    max_battalion_chiefs_allowed = 2
 
     def __init__(self, date):
         self.date = date
         self.ffighters = []
         self.rank_counts = {
-            'Probationary Firefighter':0,
-            'Firefighter': 0,
             'Apparatus Specialist': 0,
             'Lieutenant': 0,
             'Captain': 0,
             'Battalion Chief': 0
         }
-        self.increments = {'AM': [], 'PM': []}  # New attribute to store increments
+        self.increments = {'AM': [], 'PM': []}
+        self.denial_reason = ''  # Attribute to store denial reasons
 
     def is_full(self):
         return len(self.ffighters) >= Day.max_total_ffighters_allowed
 
     def can_add_rank(self, rank):
-        rank_key = f'max_{rank.lower().replace(" ", "_")}s_allowed'
-        max_allowed = getattr(Day, rank_key, None)
-        if max_allowed is None:
-            # If the rank is not specified, allow by default
+        # Current counts
+        num_apparatus_specialists = self.rank_counts['Apparatus Specialist']
+        num_lieutenants = self.rank_counts['Lieutenant']
+        num_captains = self.rank_counts['Captain']
+        num_battalion_chiefs = self.rank_counts['Battalion Chief']
+
+        # Calculate maximums
+        max_firefighters_off = 5  # No dependencies
+        max_apparatus_specialists_off = 5  # No dependencies
+        max_lieutenants_off = 5 - num_captains
+        max_captains_off = 3 - num_battalion_chiefs
+        max_battalion_chiefs_off = min(2, 3 - num_captains)
+
+        # Check limitations
+        if rank == 'Apparatus Specialist':
+            if num_apparatus_specialists >= max_apparatus_specialists_off:
+                self.denial_reason = f"Day already has {num_apparatus_specialists} Apparatus Specialists off"
+                return False
+        elif rank == 'Lieutenant':
+            if num_lieutenants >= max_lieutenants_off:
+                self.denial_reason = f"Day already has {num_lieutenants} Lieutenants and {num_captains} Captains off"
+                return False
+        elif rank == 'Captain':
+            if num_captains >= max_captains_off:
+                self.denial_reason = f"Day already has {num_captains} Captains and {num_battalion_chiefs} Battalion Chiefs off"
+                return False
+        elif rank == 'Battalion Chief':
+            if num_battalion_chiefs >= max_battalion_chiefs_off:
+                self.denial_reason = f"Day already has {num_battalion_chiefs} Battalion Chiefs and {num_captains} Captains off"
+                return False
+        else:
+            # For ranks without specific limitations, allow by default
             return True
-        return self.rank_counts[rank] < max_allowed
+
+        # Allow addition if no limitations are exceeded
+        return True
 
     def has_ffighter(self, ffighter):
         return ffighter in self.ffighters
 
     def add_ffighter(self, ffighter):
         self.ffighters.append(ffighter)
+        # Update rank counts
+        if ffighter.rank not in self.rank_counts:
+            self.rank_counts[ffighter.rank] = 0
         self.rank_counts[ffighter.rank] += 1
 
         # Store increment information
@@ -112,17 +140,21 @@ def ffighter_not_already_on_day(ffighter, calendar, rejected):
         return False
 
     return True
+
+
 def rank_limitation_checks(ffighter, calendar, rejected):
     """Checks if adding the firefighter would exceed the rank limitations for the day."""
     date = ffighter.current_pick.date
     day = calendar.get(date)
 
     if not day:
-        # If the day doesn't exist yet, it can't have rank limitations exceeded
-        return True
+        # Create a temporary Day instance to perform the check
+        day = Day(date)
 
     if not day.can_add_rank(ffighter.rank):
-        deny_ffighter_pick(ffighter, rejected, f"Rank limitation reached for {ffighter.rank}")
+        # Use the denial reason from the Day class
+        reason = getattr(day, 'denial_reason', f"Rank limitation reached for {ffighter.rank}")
+        deny_ffighter_pick(ffighter, rejected, reason)
         return False
 
     return True
