@@ -7,14 +7,14 @@ import random
 # Pick Validation Helpers
 # ================================================================================================
 
-def probationary_limitations(ffighter):
-    """Checks if probationary firefighters are restricted from taking the day off."""
+def probationary_limitations(ffighter, calendar, rejected):
+    """Checks if probationary ffighters are restricted from taking the day off."""
 
     days_since_hire = (ffighter.current_pick.date - ffighter.hireDate).days
 
     # No days allowed within the first 182 days
     if days_since_hire < 182:
-        ffighter.deny_current_pick("No days off allowed within the first 182 days of hire")
+        deny_ffighter_pick(ffighter, rejected, "No days off allowed within the first 182 days of hire")
         return True
 
     # Between 182 and 365 days: Only holidays are allowed, up to 4 days
@@ -25,7 +25,7 @@ def probationary_limitations(ffighter):
             and pick.determination == "Approved"
         )
         if approved_in_period >= 4:
-            ffighter.deny_current_pick("Reached 4 holidays limit between 182 and 365 days")
+            deny_ffighter_pick(ffighter, rejected, "Reached 4 holidays limit between 182 and 365 days")
             return True
         ffighter.current_pick.type = "Holiday"
 
@@ -33,14 +33,15 @@ def probationary_limitations(ffighter):
     return False
 
 
-def has_reached_max_days(ffighter):
-    """Checks if the firefighter has reached their maximum allowed days off."""
+def has_reached_max_days(ffighter, calendar, rejected):
+    """Checks if the ffighter has reached their maximum allowed days off."""
     if ffighter.approved_days_count >= ffighter.max_days_off:
-        ffighter.deny_current_pick("Max days off already reached")
+        deny_ffighter_pick(ffighter, rejected, "Max days off already reached")
         return True
     return False
 
-def day_has_available_slots(calendar, ffighter):
+
+def day_has_available_slots(ffighter, calendar, rejected):
     """Checks if the requested increments (AM/PM) have available slots left."""
     date = ffighter.current_pick.date
     increments = ffighter.current_pick.increments
@@ -54,36 +55,37 @@ def day_has_available_slots(calendar, ffighter):
         if increment == 1:
             # Check if there are fewer than 5 slots filled for the requested increment (AM or PM)
             if len(calendar[date][i]) >= 5:
-                ffighter.deny_current_pick(f"Day already has 5 members off for {'AM' if i == 0 else 'PM'}")
+                deny_ffighter_pick(ffighter, rejected, f"Day already has 5 members off for {'AM' if i == 0 else 'PM'}")
                 return False
 
     # If no issues found, return True indicating the requested increments are available
     return True
 
-def ffighter_not_already_on_day(calendar, ffighter):
-    """Checks if the firefighter is already approved for the requested day."""
+
+def ffighter_not_already_on_day(ffighter, calendar, rejected):
+    """Checks if the ffighter is already approved for the requested day."""
     date = ffighter.current_pick.date
 
-    # If the date is not in the calendar, firefighter has not requested the day
+    # If the date is not in the calendar, ffighter has not requested the day
     if date not in calendar:
         return True
 
     # Loop over both increments (AM and PM)
     for increment_slots in calendar[date]:  # AM slots and PM slots
-        # Loop over each slot to see if firefighter is already present
+        # Loop over each slot to see if ffighter is already present
         for entry in increment_slots:
             if entry['ffighter'] == ffighter:
-                ffighter.deny_current_pick("Already requested this day/time off")
+                deny_ffighter_pick(ffighter, rejected, "Already requested this day/time off")
                 return False
 
-    # If firefighter is not found in any of the increments, return True
+    # If ffighter is not found in any of the increments, return True
     return True
 
 
-def rank_limitation_checks(calendar, ffighter):
-    """Checks if adding the firefighter would exceed the rank limitations for the day."""
+def rank_limitation_checks(ffighter, calendar, rejected):
+    """Checks if adding the ffighter would exceed the rank limitations for the day."""
     def count_rank_off(ranks):
-        """Counts how many firefighters of the specified ranks are off on the given day."""
+        """Counts how many ffighters of the specified ranks are off on the given day."""
         total_count = 0
 
         # Iterate over both AM and PM slots in the calendar for the current date
@@ -108,22 +110,23 @@ def rank_limitation_checks(calendar, ffighter):
 
     # Validate against rules for each rank
     if ffighter.rank == "Apparatus Specialist" and num_apparatus_specialists >= max_apparatus_specialists_off:
-        ffighter.deny_current_pick(f"Day already has {num_apparatus_specialists} Apparatus Specialists off")
+        deny_ffighter_pick(ffighter, rejected, f"Day already has {num_apparatus_specialists} Apparatus Specialists off")
         return False
     if ffighter.rank == "Lieutenant" and num_lieutenants >= max_lieutenants_off:
-        ffighter.deny_current_pick(f"Day already has {num_lieutenants} Lieutenants and {num_captains} Captains off")
+        deny_ffighter_pick(ffighter, rejected, f"Day already has {num_lieutenants} Lieutenants and {num_captains} Captains off")
         return False
     if ffighter.rank == "Captain" and num_captains >= max_captains_off:
-        ffighter.deny_current_pick(f"Day already has {num_captains} Captains, {num_lieutenants} Lieutenants, and {num_battalion_chiefs} Battalion Chiefs off")
+        deny_ffighter_pick(ffighter, rejected, f"Day already has {num_captains} Captains, {num_lieutenants} Lieutenants, and {num_battalion_chiefs} Battalion Chiefs off")
         return False
     if ffighter.rank == "Battalion Chief" and num_battalion_chiefs >= max_battalion_chiefs_off:
-        ffighter.deny_current_pick(f"Day already has {num_battalion_chiefs} Battalion Chiefs and {num_captains} Captains off")
+        deny_ffighter_pick(ffighter, rejected, f"Day already has {num_battalion_chiefs} Battalion Chiefs and {num_captains} Captains off")
         return False
 
     return True
 
-def process_pick_increments(calendar, ffighter):
-    """Assigns the firefighter to the requested increments (AM/PM)."""
+
+def process_pick_increments(ffighter, calendar):
+    """Assigns the ffighter to the requested increments (AM/PM)."""
     date = ffighter.current_pick.date
     increments = ffighter.current_pick.increments
 
@@ -134,20 +137,17 @@ def process_pick_increments(calendar, ffighter):
     # Iterate over the requested increments (AM or PM)
     for i, increment in enumerate(increments):
         if increment == 1:
-            # Only add the firefighter if there are available slots (less than 5)
+            # Only add the ffighter if there are available slots (less than 5)
             if len(calendar[date][i]) < 5:
                 calendar[date][i].append({"ffighter": ffighter, "pick": ffighter.current_pick})
                 ffighter.approve_current_pick()
 
 
-# Pick Assignment
-# ================================================================================================
-
-def validate_pick_with_reasoning(calendar, ffighter):
+def validate_pick_with_reasoning(ffighter, calendar, rejected):
     """Validates a pick, and assigns a reason if failure"""
 
     # Immediate Failures for probationary limitations and max days off
-    if probationary_limitations(ffighter) or has_reached_max_days(ffighter):
+    if probationary_limitations(ffighter, calendar, rejected) or has_reached_max_days(ffighter, calendar, rejected):
         return False
 
     # Initialize the day in the calendar if not already present
@@ -156,28 +156,33 @@ def validate_pick_with_reasoning(calendar, ffighter):
 
     # Validate other conditions before proceeding with the pick
     if not (
-        ffighter_not_already_on_day(calendar, ffighter)
-        and day_has_available_slots(calendar, ffighter)
-        and rank_limitation_checks(calendar, ffighter)
+        ffighter_not_already_on_day(ffighter, calendar, rejected)
+        and day_has_available_slots(ffighter, calendar, rejected)
+        and rank_limitation_checks(ffighter, calendar, rejected)
     ):
         return False
 
     # Send back OK to assign the date if all checks are passed
-    process_pick_increments(calendar, ffighter)
+    process_pick_increments(ffighter, calendar)
     return True
 
-def process_ffighter_pick(calendar, rejected, ffighter):
-    """Processes a single pick for the firefighter."""
-    ffighter.process_next_pick()
-    logger.info(f"Processing: {ffighter} - Pick {ffighter.current_pick}")
+def deny_ffighter_pick(ffighter, rejected, reason):
+    """Denies the firefighter's current pick and adds it to the rejected list."""
+    ffighter.deny_current_pick(reason)
+    if ffighter.current_pick is None:  # After being denied, current_pick should be None
+        rejected.setdefault(ffighter.name, []).append(ffighter.processed[-1].date)
 
-    if ffighter.current_pick is None:
+
+def process_ffighter_pick(ffighter, calendar, rejected):
+    """Processes a single pick for the ffighter."""
+    ffighter.process_next_pick()
+
+    if ffighter.current_pick is None:  # When a ffighter is out of picks
         return 0
 
-    if validate_pick_with_reasoning(calendar, ffighter):
+    if validate_pick_with_reasoning(ffighter, calendar, rejected):
         return 1
     else:
-        rejected.setdefault(ffighter.name, []).append(ffighter.current_pick.date)
         return 0
 
 # Other Helpers
@@ -197,10 +202,10 @@ def add_2_picks_for_ffighter(calendar, rejected, ffighter):
     dates_added = 0
     # while a firefighter has valid picks remaining, keep trying until 2 are approved
     while dates_added < 2 and len(ffighter.picks) > 0:
-        dates_added += process_ffighter_pick(calendar, rejected, ffighter)
+        dates_added += process_ffighter_pick(ffighter, calendar, rejected)
 
 def make_calendar(ffighters, silent_mode=False):
-    """Analysis of firefighters picks: fully creates the calendar."""
+    """Analysis of ffighters picks: fully creates the calendar."""
 
     calendar = {}
     rejected = {}
