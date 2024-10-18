@@ -140,20 +140,17 @@ def write_calendar_to_csv(calendar, suffix, write_path, runtime):
         writer.writerow(header)
 
         for date in sorted(calendar.keys()):
-            # Write the AM row
-            am_row = [date, " (AM)"] + [
-                slot['ffighter'].name if slot else "" 
-                for slot in (calendar[date][0] + [None] * 5)[:5]
-            ]
-            writer.writerow(am_row)
-            
-            # Write the PM row
-            pm_row = [date, " (PM)"] + [
-                slot['ffighter'].name if slot else "" 
-                for slot in (calendar[date][1] + [None] * 5)[:5]
-            ]
-            writer.writerow(pm_row)
+            day = calendar[date]
 
+            # Prepare AM row
+            am_ffighters = [ffighter.name for ffighter in day.increments.get('AM', [])]
+            am_row = [date, " (AM)"] + (am_ffighters + [""] * 5)[:5]
+            writer.writerow(am_row)
+
+            # Prepare PM row
+            pm_ffighters = [ffighter.name for ffighter in day.increments.get('PM', [])]
+            pm_row = [date, " (PM)"] + (pm_ffighters + [""] * 5)[:5]
+            writer.writerow(pm_row)
 
 def print_final(ffighters):
     """Prints the final results for each firefighter."""
@@ -174,5 +171,5 @@ def write_picks_to_csv(ffighters, suffix, write_path, runtime):
         for ffighter in ffighters:
             writer.writerow([ffighter.name, ffighter.rank])
             for key in ffighter.processed:
-                writer.writerow(['', '', key.date, key.type, key.increments, key.determination, key.reason])
+                writer.writerow(['', '', key.date, key.type, key.increments_plain_text(), key.determination, key.reason])
             writer.writerow([])
