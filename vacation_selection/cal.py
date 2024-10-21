@@ -7,8 +7,10 @@ import random
 # ================================================================================================
 class Day:
     # Class-level configurations remain the same...
-    max_total_ffighters_allowed = 5
     single_day_increment = True
+    if single_day_increment:
+        max_total_ffighters_allowed = 5
+    max_total_ffighters_allowed = 10
 
     def __init__(self, date):
         self.date = date
