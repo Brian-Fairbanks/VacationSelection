@@ -5,6 +5,7 @@ from vacation_selection.validation import ensure_rank  # Import validation funct
 from datetime import datetime
 
 from vacation_selection.firefighter import FFighter, Pick  # Import classes as needed
+from vacation_selection.cal import Day
 from datetime import datetime
 
 logger = setup_logging.setup_logging()
@@ -136,21 +137,11 @@ def parse_date(date_str):
 def write_calendar_to_csv(calendar, suffix, write_path, runtime):
     with open(f'{write_path}/{runtime}-calendar-{suffix}.csv', 'w', newline='') as f:
         writer = csv.writer(f)
-        header = ['Date', 'Shift', 'First', 'Second', 'Third', 'Fourth', 'Fifth']
+        header = Day.get_header()
         writer.writerow(header)
 
         for date in sorted(calendar.keys()):
-            day = calendar[date]
-
-            # Prepare AM row
-            am_ffighters = [ffighter.name for ffighter in day.increments.get('AM', [])]
-            am_row = [date, " (AM)"] + (am_ffighters + [""] * 5)[:5]
-            writer.writerow(am_row)
-
-            # Prepare PM row
-            pm_ffighters = [ffighter.name for ffighter in day.increments.get('PM', [])]
-            pm_row = [date, " (PM)"] + (pm_ffighters + [""] * 5)[:5]
-            writer.writerow(pm_row)
+            calendar[date].write_to_row(writer)
 
 def print_final(ffighters):
     """Prints the final results for each firefighter."""
