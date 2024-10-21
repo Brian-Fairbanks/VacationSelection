@@ -8,6 +8,7 @@ import random
 class Day:
     # Class-level configurations remain the same...
     max_total_ffighters_allowed = 5
+    single_day_increment = True
 
     def __init__(self, date):
         self.date = date
@@ -18,11 +19,42 @@ class Day:
             'Captain': 0,
             'Battalion Chief': 0
         }
-        self.increments = {'AM': [], 'PM': []}
+        if self.single_day_increment:
+            self.increments = {'ALL':[]}
+        else:
+            self.increments = {'AM': [], 'PM': []}
         self.denial_reason = ''  # Attribute to store denial reasons
 
+    @staticmethod
+    def get_header():
+        if Day.single_day_increment:
+            header = ['Date', 'Shift', 'First', 'Second', 'Third', 'Fourth', 'Fifth']
+        else:
+            header = ['Date', 'Shift', 'First', 'Second', 'Third', 'Fourth', 'Fifth']
+        return header
+    
+    def write_to_row(self, writer):
+        if Day.single_day_increment:
+            # Handle the single increment case
+            all_ffighters = [f"{ff.name} ({inc})" for ff, inc in self.increments.get('ALL', [])]
+            row = [self.date, " (ALL)"] + (all_ffighters + [""] * 5)[:5]
+            writer.writerow(row)
+        else:
+            # Handle multi-increment case as before
+            am_ffighters = [ffighter.name for ffighter in self.increments.get('AM', [])]
+            am_row = [self.date, " (AM)"] + (am_ffighters + [""] * 5)[:5]
+            writer.writerow(am_row)
+
+            pm_ffighters = [ffighter.name for ffighter in self.increments.get('PM', [])]
+            pm_row = [self.date, " (PM)"] + (pm_ffighters + [""] * 5)[:5]
+            writer.writerow(pm_row)
+
+
     def is_full(self):
-        return len(self.ffighters) >= Day.max_total_ffighters_allowed
+        isfull = len(self.ffighters) >= Day.max_total_ffighters_allowed
+        if isfull: self.denial_reason = "Maximim amount of requests already approved"
+        return isfull
+        
 
     def can_add_rank(self, rank):
         # Current counts
@@ -63,8 +95,24 @@ class Day:
         return True
 
     def has_ffighter(self, ffighter):
-        return ffighter in self.ffighters
+        check = ffighter in self.ffighters
+        if check:self.denial_reason = "Already requested this day off"
+        return check
 
+
+    def add_single_increment(self, ffighter):
+        # Add the firefighter with their increment info as a tuple
+        self.increments['ALL'].append((ffighter, ffighter.increments_plain_text))
+        return True
+    
+    def add_multi_increment(self, ffighter):
+        # Store increment information
+        increments = ffighter.current_pick.increments  # Assuming increments is a list like [1, 0] for AM only
+        if increments[0] == 1:
+            self.increments['AM'].append(ffighter)
+        if increments[1] == 1:
+            self.increments['PM'].append(ffighter)
+        
     def add_ffighter(self, ffighter):
         self.ffighters.append(ffighter)
         # Update rank counts
@@ -72,14 +120,13 @@ class Day:
             self.rank_counts[ffighter.rank] = 0
         self.rank_counts[ffighter.rank] += 1
 
-        # Store increment information
-        increments = ffighter.current_pick.increments  # Assuming increments is a list like [1, 0] for AM only
-        if increments[0] == 1:
-            self.increments['AM'].append(ffighter)
-        if increments[1] == 1:
-            self.increments['PM'].append(ffighter)
+        if self.single_day_increment:
+            self.add_single_increment(ffighter)
+        else:
+            self.add_multi_increment(ffighter)
 
         return True
+
 
 # Pick Validation Helpers
 # ================================================================================================
@@ -118,75 +165,36 @@ def has_reached_max_days(ffighter, rejected):
     return False
 
 
-def day_has_available_slots(ffighter, calendar, rejected):
-    """Checks if the day has available slots."""
-    date = ffighter.current_pick.date
-    day = calendar.get(date)
-
-    if day and day.is_full():
-        deny_ffighter_pick(ffighter, rejected, "Day already has maximum firefighters off")
-        return False
-
-    return True
-
-
-def ffighter_not_already_on_day(ffighter, calendar, rejected):
-    """Checks if the firefighter is already approved for the requested day."""
-    date = ffighter.current_pick.date
-    day = calendar.get(date)
-
-    if day and day.has_ffighter(ffighter):
-        deny_ffighter_pick(ffighter, rejected, "Already requested this day off")
-        return False
-
-    return True
-
-
-def rank_limitation_checks(ffighter, calendar, rejected):
-    """Checks if adding the firefighter would exceed the rank limitations for the day."""
-    date = ffighter.current_pick.date
-    day = calendar.get(date)
-
-    if not day:
-        # Create a temporary Day instance to perform the check
-        day = Day(date)
-
-    if not day.can_add_rank(ffighter.rank):
-        # Use the denial reason from the Day class
-        reason = getattr(day, 'denial_reason', f"Rank limitation reached for {ffighter.rank}")
-        deny_ffighter_pick(ffighter, rejected, reason)
-        return False
-
-    return True
-
-
-def process_pick_increments(ffighter, calendar):
-    """Assigns the firefighter to the requested increments (AM/PM)."""
-    date = ffighter.current_pick.date
-    if date not in calendar:
-        calendar[date] = Day(date)
-    day = calendar[date]
-
-    if day.add_ffighter(ffighter):
-        ffighter.approve_current_pick()
-
 def validate_pick_with_reasoning(ffighter, calendar, rejected):
     """Validates a pick, and assigns a reason if failure"""
 
     # Immediate Failures for probationary limitations and max days off
     if probationary_limitations(ffighter, rejected) or has_reached_max_days(ffighter, rejected):
         return False
+    
+    # Set up date
+    date = ffighter.current_pick.date
+    if date not in calendar:
+        calendar[date] = Day(date)
+    day = calendar[date]
 
     # Validate other conditions before proceeding with the pick
-    if not (
-        ffighter_not_already_on_day(ffighter, calendar, rejected)
-        and day_has_available_slots(ffighter, calendar, rejected)
-        and rank_limitation_checks(ffighter, calendar, rejected)
-    ):
+    if day.is_full():
+        reason = getattr(day, 'denial_reason', "Day already has maximum firefighters off")
+        deny_ffighter_pick(ffighter, rejected, reason)
+        return False
+    if not day.can_add_rank(ffighter.rank):
+        reason = getattr(day, 'denial_reason', "Day already has maximum firefighters off")
+        deny_ffighter_pick(ffighter, rejected, reason)
+        return False
+    if day.has_ffighter(ffighter):
+        reason = getattr(day, 'denial_reason', "Firefighter has already requested this day off")
+        deny_ffighter_pick(ffighter, rejected, reason)
         return False
 
     # All checks passed, add firefighter to the day
-    process_pick_increments(ffighter, calendar)
+    if day.add_ffighter(ffighter):
+        ffighter.approve_current_pick()
     return True
 
 def deny_ffighter_pick(ffighter, rejected, reason):
