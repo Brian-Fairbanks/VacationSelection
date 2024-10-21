@@ -72,7 +72,7 @@ class FFighter:
         if self.current_pick:
             self.current_pick.determination = "Approved"
             self.processed.append(self.current_pick)
-            self.approved_days_count += sum(self.increments) * (1 / len(self.increments))
+            self.approved_days_count += sum(self.current_pick.increments) * (1 / len(self.current_pick.increments))
             self.current_pick = None
 
     def deny_current_pick(self, reason):

@@ -102,7 +102,7 @@ class Day:
 
     def add_single_increment(self, ffighter):
         # Add the firefighter with their increment info as a tuple
-        self.increments['ALL'].append((ffighter, ffighter.increments_plain_text))
+        self.increments['ALL'].append((ffighter, ffighter.current_pick.increments_plain_text()))
         return True
     
     def add_multi_increment(self, ffighter):
