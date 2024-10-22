@@ -3,6 +3,7 @@ logger = setup_logging('calendar')
 from vacation_selection.increment import Increment
 
 import random
+from datetime import datetime
 
 # Day Class
 # ================================================================================================
@@ -151,7 +152,10 @@ def has_reached_max_days(ffighter, rejected):
 
 
 def validate_pick_with_reasoning(ffighter, calendar, rejected):
-    # Existing probationary and max days checks...
+
+    # Immediate Failures for probationary limitations and max days off
+    if probationary_limitations(ffighter, rejected) or has_reached_max_days(ffighter, rejected):
+        return False
 
     date = ffighter.current_pick.date
     if date not in calendar:
@@ -196,6 +200,11 @@ def randomize_sub_priority(ffighters):
         ffighter.dice = random.random()
     ffighters.sort(key=lambda x: (x.hireDate, x.dice))
 
+def printPriority(arr):
+    logger.info(f"\n---=== Priority List at {datetime.now()} ===---\n")
+    for ffighter in arr:
+        logger.info(
+            f'{ffighter.name:<20} : {str(ffighter.hireDate) :<10} - {ffighter.dice:< 22} :: [{ffighter.print_picks()}]')
 
 # Calendar Formation
 # ================================================================================================
@@ -217,7 +226,7 @@ def make_calendar(ffighters, silent_mode=False):
     while any(filter(lambda x: len(x.picks), ffighters)):
         randomize_sub_priority(ffighters)
         if not silent_mode:
-            logger.info("Processing a round of picks...")
+            printPriority(ffighters)
         # Grant no more than 2 picks per person per round
         for ffighter in ffighters:
             add_2_picks_for_ffighter(calendar, rejected, ffighter)
