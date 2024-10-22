@@ -64,29 +64,23 @@ class Increment:
         if rank == 'Apparatus Specialist':
             if num_apparatus_specialists >= max_apparatus_specialists_off:
                 self.denial_reason = f"Increment already has {num_apparatus_specialists} Apparatus Specialists off"
-                # logger.warning(f"{ffighter} - {ffighter.current_pick} -FAILED IN RANK")
                 return True
         elif rank == 'Lieutenant':
             if num_lieutenants >= max_lieutenants_off:
-                self.denial_reason = f"Increment already has {num_lieutenants} Lieutenants and {num_captains} Captains off"
-                # logger.warning(f"{ffighter} - {ffighter.current_pick} -FAILED IN RANK")
+                self.denial_reason = f"Increment already has {num_lieutenants} Lieutenants, {num_captains} Captains, and {num_battalion_chiefs} Battalion Chiefs off"
                 return True
         elif rank == 'Captain':
             if num_captains >= max_captains_off:
-                self.denial_reason = f"Increment already has {num_captains} Captains and {num_battalion_chiefs} Battalion Chiefs off"
-                # logger.warning(f"{ffighter} - {ffighter.current_pick} -FAILED IN RANK")
+                self.denial_reason = f"Increment already has {num_captains} Captains, {num_lieutenants} Lieutenants, and {num_battalion_chiefs} Battalion Chiefs off"
                 return True
         elif rank == 'Battalion Chief':
             if num_battalion_chiefs >= max_battalion_chiefs_off:
-                self.denial_reason = f"Increment already has {num_battalion_chiefs} Battalion Chiefs and {num_captains} Captains off"
-                # logger.warning(f"{ffighter} - {ffighter.current_pick} -FAILED IN RANK")
+                self.denial_reason = f"Increment already has {num_battalion_chiefs} Battalion Chiefs, {num_captains} Captains, and {num_lieutenants} Lieutenants off"
                 return True
-        else:
-            # For ranks without specific limitations, allow by default
-            return False
 
-        # Allow addition if no limitations are exceeded
+        # If no limitations are exceeded, allow addition
         return False
+
 
     def has_ffighter(self, ffighter):
         check = ffighter in self.ffighters
