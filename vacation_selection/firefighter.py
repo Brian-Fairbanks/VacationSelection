@@ -13,6 +13,9 @@ class Pick:
         self.reason = None
         self.increments = self.process_increments(increments)
 
+    def get_increments(self):
+        return self.increments
+
     def process_increments(self, shift_selection):
         increment_mapping = {
             "AM": [1, 0],

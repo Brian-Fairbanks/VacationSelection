@@ -1,4 +1,6 @@
 # increment.py
+from vacation_selection.setup_logging import setup_logging
+logger = setup_logging('Increment')
 
 # Increment Class
 # ================================================================================================
@@ -7,9 +9,9 @@ class Increment:
     max_total_ffighters_allowed = 5
 
     def __init__(self, date, name, only_increment=False ):
-        self.only_increment = only_increment
         self.date = date
         self.name = name
+        self.only_increment = only_increment
         self.ffighters = []
         self.picks=[]
         self.rank_counts = {
@@ -18,6 +20,7 @@ class Increment:
             'Captain': 0,
             'Battalion Chief': 0
         }
+        self.denial_reason=""
     
     def write_to_row(self, writer):
         """Write the increment details to the CSV row."""
@@ -37,11 +40,13 @@ class Increment:
 
     def is_full(self):
         isfull = len(self.ffighters) >= Increment.max_total_ffighters_allowed
-        if isfull: self.denial_reason = "Maximim amount of requests already approved"
+        if isfull:
+            self.denial_reason = "Day already has maximum firefighters off"
         return isfull
         
 
-    def can_add_rank(self, rank):
+    def is_rank_full(self, ffighter):
+        rank = ffighter.rank
         # Current counts
         num_apparatus_specialists = self.rank_counts['Apparatus Specialist']
         num_lieutenants = self.rank_counts['Lieutenant']
@@ -59,29 +64,35 @@ class Increment:
         if rank == 'Apparatus Specialist':
             if num_apparatus_specialists >= max_apparatus_specialists_off:
                 self.denial_reason = f"Increment already has {num_apparatus_specialists} Apparatus Specialists off"
-                return False
+                # logger.warning(f"{ffighter} - {ffighter.current_pick} -FAILED IN RANK")
+                return True
         elif rank == 'Lieutenant':
             if num_lieutenants >= max_lieutenants_off:
                 self.denial_reason = f"Increment already has {num_lieutenants} Lieutenants and {num_captains} Captains off"
-                return False
+                # logger.warning(f"{ffighter} - {ffighter.current_pick} -FAILED IN RANK")
+                return True
         elif rank == 'Captain':
             if num_captains >= max_captains_off:
                 self.denial_reason = f"Increment already has {num_captains} Captains and {num_battalion_chiefs} Battalion Chiefs off"
-                return False
+                # logger.warning(f"{ffighter} - {ffighter.current_pick} -FAILED IN RANK")
+                return True
         elif rank == 'Battalion Chief':
             if num_battalion_chiefs >= max_battalion_chiefs_off:
                 self.denial_reason = f"Increment already has {num_battalion_chiefs} Battalion Chiefs and {num_captains} Captains off"
-                return False
+                # logger.warning(f"{ffighter} - {ffighter.current_pick} -FAILED IN RANK")
+                return True
         else:
             # For ranks without specific limitations, allow by default
-            return True
+            return False
 
         # Allow addition if no limitations are exceeded
-        return True
+        return False
 
     def has_ffighter(self, ffighter):
         check = ffighter in self.ffighters
-        if check:self.denial_reason = "Already requested this Increment off"
+        if check:
+            self.denial_reason = f"Already requested this day off ({self.name})"
+            # logger.warning("FAILED ON ALREADY ASSIGNED")
         return check
     
     def add_ffighter(self, ffighter):
