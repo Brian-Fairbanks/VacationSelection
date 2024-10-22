@@ -40,7 +40,33 @@ class Pick:
         if increment_tuple in reverse_mapping:
             return reverse_mapping[increment_tuple]
         return "ERROR"
-        
+    
+    # Json Read/Write
+    def to_dict(self):
+        """Converts the Pick object to a dictionary."""
+        return {
+            'date': self.date.strftime('%Y-%m-%d'),
+            'type': self.type,
+            'determination': self.determination,
+            'reason': self.reason,
+            'increments': self.increments_plain_text(self.increments)
+        }
+
+    @classmethod
+    def from_dict(cls, pick_dict):
+        """Creates a Pick object from a dictionary."""
+        date = datetime.strptime(pick_dict['date'], '%Y-%m-%d')
+        increments = pick_dict.get('increments', 'AMPM')
+        pick = cls(
+            date=date,
+            type=pick_dict.get('type', "Untyped"),
+            determination=pick_dict.get('determination', "Unaddressed"),
+            increments=increments
+        )
+        pick.reason = pick_dict.get('reason')
+        return pick
+    
+    # Pick print
     def __str__(self):
         ret = f"{self.date} ({self.increments_plain_text(self.increments)}) ({self.type:^10}) - {self.determination}"
         if self.reason:
@@ -92,6 +118,41 @@ class FFighter:
 
     def print_picks(self):
         return ", ".join([str(pick) for pick in self.picks])
+    
+    # Json Read/Write
+    @classmethod
+    def from_dict(cls, ff_dict):
+        """Creates an FFighter object from a dictionary."""
+        hireDate = datetime.strptime(ff_dict['hireDate'], '%Y-%m-%d')
+        picks = [Pick.from_dict(pick) for pick in ff_dict.get('picks', [])]
+        ffighter = cls(
+            idnum=ff_dict.get('idnum', 0),
+            fname=ff_dict.get('fname', ''),
+            lname=ff_dict.get('lname', ''),
+            hireDate=hireDate,
+            rank=ff_dict.get('rank', ''),
+            shift=ff_dict.get('shift', ''),
+            picks=picks
+        )
+        ffighter.approved_days_count = ff_dict.get('approved_days_count', 0)
+        ffighter.processed = [Pick.from_dict(proc) for proc in ff_dict.get('processed', [])]
+        return ffighter
+
+    def to_dict(self):
+        """Converts the FFighter object to a dictionary."""
+        return {
+            'idnum': self.idnum,
+            'fname': self.fname,
+            'lname': self.lname,
+            'name': self.name,
+            'rank': self.rank,
+            'shift': self.shift,
+            'hireDate': self.hireDate.strftime('%Y-%m-%d'),
+            'approved_days_count': self.approved_days_count,
+            'max_days_off': self.max_days_off,
+            'picks': [pick.to_dict() for pick in self.picks],
+            'processed': [pick.to_dict() for pick in self.processed]
+        }
 
     def __str__(self):
         return self.name

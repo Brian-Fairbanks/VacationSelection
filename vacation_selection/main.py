@@ -7,7 +7,7 @@ write_path = ".//output"
 logger = setup_logging(f"RunLog-{runtime}.log", base=write_path, debug=False)
 print = logger.info
 
-from .file_io import read_firefighter_data, write_calendar_to_csv, write_picks_to_csv, print_final
+from .file_io import read_firefighter_data, write_calendar_to_csv, write_picks_to_csv, print_final, write_ffighters_to_json
 from .firefighter import FFighter
 from .priority import set_priorities
 from .cal import make_calendar
@@ -32,6 +32,7 @@ def main(filename, format):
     for shift in ["A", "B", "C"]:
         shift_members = [ff for ff in ffighters if ff.shift == shift]
         results = make_calendar(shift_members)
+        write_ffighters_to_json(ffighters, 'final_ffighters.json', write_path, runtime)
         write_calendar_to_csv(results['calendar'], shift, write_path, runtime)
         write_picks_to_csv(shift_members, shift, write_path, runtime)
         print_final(shift_members)

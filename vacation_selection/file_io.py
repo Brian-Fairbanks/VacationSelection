@@ -8,6 +8,8 @@ from vacation_selection.firefighter import FFighter, Pick  # Import classes as n
 from vacation_selection.cal import Day
 from datetime import datetime
 
+import json
+
 logger = setup_logging.setup_logging()
 
 # ================================================================================
@@ -164,3 +166,41 @@ def write_picks_to_csv(ffighters, suffix, write_path, runtime):
             for key in ffighter.processed:
                 writer.writerow(['', '', key.date, key.type, key.increments_plain_text(), key.determination, key.reason])
             writer.writerow([])
+
+
+# ================================================================================
+# Writing Outputs
+# ================================================================================
+def write_ffighters_to_json(ffighters, suffix, write_path, runtime):
+    """Writes the firefighter list and their processed picks to a JSON file."""
+    # Prepare the data for JSON serialization
+    ffighter_data = []
+    for ffighter in ffighters:
+        ffighter_dict = ffighter.to_dict()  # Convert the firefighter to a dictionary
+        ffighter_data.append(ffighter_dict)
+    
+    # Construct the file name using the suffix and runtime
+    file_name = f"{write_path}/{runtime}-FFighters-{suffix}.json"
+    
+    # Write the data to a JSON file
+    with open(file_name, 'w') as json_file:
+        json.dump(ffighter_data, json_file, indent=4)
+
+
+# def read_ffighters_from_json(file_path):
+#     """Reads the firefighter list from a JSON file.
+
+#     Args:
+#     file_path (str): File path of the JSON file.
+
+#     Returns:
+#     list: List of Firefighter objects.
+#     """
+#     from your_module.firefighter import Firefighter  # Import the Firefighter class
+
+#     with open(file_path, 'r') as json_file:
+#         ffighter_dicts = json.load(json_file)
+
+#     # Convert dictionaries to Firefighter objects
+#     ffighter_list = [Firefighter.from_dict(ff_dict) for ff_dict in ffighter_dicts]
+#     return ffighter_list
