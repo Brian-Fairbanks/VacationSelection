@@ -1,43 +1,38 @@
 # file_io.py
 import csv
-import vacation_selection.setup_logging as setup_logging
-from vacation_selection.validation import ensure_rank  # Import validation function
-from datetime import datetime
-
-from vacation_selection.firefighter import FFighter, Pick  # Import classes as needed
-from vacation_selection.cal import Day
-from datetime import datetime
-
 import json
+from datetime import datetime
+import vacation_selection.setup_logging as setup_logging
+from vacation_selection.firefighter import FFighter, Pick
+from vacation_selection.cal import Day
+from vacation_selection.validation import ensure_rank  # Import validation function
 
 logger = setup_logging.setup_logging()
 
 # ================================================================================
-# Reading
+# Reading from CSV
 # ================================================================================
 
 def read_firefighter_data(filename, date_format, file_format):
-
+    """Reads firefighter data from a CSV file and processes it based on the specified file format."""
     ffdata = []
     try:
-        # Step 1: Attempt to open the file
         with open(filename, mode="r", encoding="utf-8-sig") as csvfile:
             logger.debug(f"Successfully opened file: {filename}")
 
-            # Step 2: Create the CSV reader and read the headers
+            # Create the CSV reader and read the headers
             reader = csv.DictReader(csvfile)
             headers = reader.fieldnames
             logger.debug(f"File headers: {headers}")
 
             logger.debug(f"Processing data for File Format: {file_format}")
-            # Step 3: Read each row from the CSV based on file format
+            # Read each row based on the specified file format
             if file_format == 2024:
                 ffdata = process_firefighter_data_2024(reader, date_format)
             elif file_format == 2025:
                 ffdata = process_firefighter_data_2025(reader, date_format)
             else:
                 raise ValueError("Unsupported file format year.")
-
             logger.debug("Finished reading firefighter data.")
 
     except Exception as e:
@@ -45,15 +40,14 @@ def read_firefighter_data(filename, date_format, file_format):
 
     return ffdata
 
-# Reading Sub Modules
-# ========================
+# Helper functions to process CSV data
+# ================================================================================
 def process_firefighter_data_2024(reader, date_format):
-    logger.debug("starting: 2024")
+    """Processes firefighter data in the 2024 format."""
+    logger.debug("Starting 2024 data processing")
     ffdata = []
     for index, row in enumerate(reader):
         try:
-            logger.debug(f"Processing row {index + 1}: {row}")
-
             fname = row['First Name']
             lname = row['Last Name']
             rank = ensure_rank(row["Rank"])
@@ -75,19 +69,18 @@ def process_firefighter_data_2024(reader, date_format):
                         continue
 
             ffdata.append(FFighter(idnum, fname, lname, startDate, rank, shift, pick_dates))
-        
+
         except Exception as e:
             logger.error(f"Failed to process row {index + 1}: {e}")
 
     return ffdata
 
 def process_firefighter_data_2025(reader, date_format):
-    logger.debug("starting: 2025")
+    """Processes firefighter data in the 2025 format."""
+    logger.debug("Starting 2025 data processing")
     ffdata = []
     for index, row in enumerate(reader):
         try:
-            logger.debug(f"Processing row {index + 1}: {row}")
-
             fname = row['First Name']
             lname = row['Last Name']
             rank = ensure_rank(row["Rank"])
@@ -108,14 +101,13 @@ def process_firefighter_data_2025(reader, date_format):
                         continue
 
             ffdata.append(FFighter(idnum, fname, lname, startDate, rank, shift, pick_dates))
-        
+
         except Exception as e:
             logger.error(f"Failed to process row {index + 1}: {e}")
 
     return ffdata
 
-# Helpers
-# =================================================================================
+# Helper function to parse dates from strings
 def parse_date(date_str):
     """Try to parse a date string in multiple formats until one works."""
     possible_formats = [
@@ -156,51 +148,48 @@ def print_final(ffighters):
 
 def write_picks_to_csv(ffighters, suffix, write_path, runtime):
     """Writes the picks and status of each firefighter to a CSV file."""
-    with open(f'{write_path}/{runtime}-FFighters-{suffix}.csv', 'w', newline='') as f:
+    file_name = f'{write_path}/{runtime}-FFighters-{suffix}.csv'
+    with open(file_name, 'w', newline='') as f:
         writer = csv.writer(f)
-        header = ['Name', "Rank", "Date Requested", "Type", "Increments" "Determination", "Reason"]
+        header = ['Name', "Rank", "Date Requested", "Type", "Increments", "Determination", "Reason"]
         writer.writerow(header)
 
         for ffighter in ffighters:
             writer.writerow([ffighter.name, ffighter.rank])
             for key in ffighter.processed:
-                writer.writerow(['', '', key.date, key.type, key.increments_plain_text(), key.determination, key.reason])
+                writer.writerow([
+                    '', '', key.date, key.type,
+                    key.increments_plain_text(), key.determination, key.reason
+                ])
             writer.writerow([])
 
-
-# ================================================================================
-# Writing Outputs
-# ================================================================================
 def write_ffighters_to_json(ffighters, suffix, write_path, runtime):
     """Writes the firefighter list and their processed picks to a JSON file."""
-    # Prepare the data for JSON serialization
-    ffighter_data = []
-    for ffighter in ffighters:
-        ffighter_dict = ffighter.to_dict()  # Convert the firefighter to a dictionary
-        ffighter_data.append(ffighter_dict)
-    
-    # Construct the file name using the suffix and runtime
+    ffighter_data = [ffighter.to_dict() for ffighter in ffighters]
     file_name = f"{write_path}/{runtime}-FFighters-{suffix}.json"
-    
-    # Write the data to a JSON file
+
     with open(file_name, 'w') as json_file:
         json.dump(ffighter_data, json_file, indent=4)
 
+def read_ffighters_from_json(file_path):
+    """Reads firefighter data from a JSON file and returns a list of FFighter objects."""
+    ffighter_list = []
+    try:
+        with open(file_path, 'r') as json_file:
+            ffighter_dicts = json.load(json_file)
+            ffighter_list = [FFighter.from_dict(ff_dict) for ff_dict in ffighter_dicts]
+    except Exception as e:
+        logger.error(f"Failed to read from JSON: {e}")
 
-# def read_ffighters_from_json(file_path):
-#     """Reads the firefighter list from a JSON file.
+    return ffighter_list
 
-#     Args:
-#     file_path (str): File path of the JSON file.
+def write_calendar_to_csv(calendar, suffix, write_path, runtime):
+    """Writes the calendar data to a CSV file."""
+    file_name = f'{write_path}/{runtime}-calendar-{suffix}.csv'
+    with open(file_name, 'w', newline='') as f:
+        writer = csv.writer(f)
+        header = Day.get_header()
+        writer.writerow(header)
 
-#     Returns:
-#     list: List of Firefighter objects.
-#     """
-#     from your_module.firefighter import Firefighter  # Import the Firefighter class
-
-#     with open(file_path, 'r') as json_file:
-#         ffighter_dicts = json.load(json_file)
-
-#     # Convert dictionaries to Firefighter objects
-#     ffighter_list = [Firefighter.from_dict(ff_dict) for ff_dict in ffighter_dicts]
-#     return ffighter_list
+        for date in sorted(calendar.keys()):
+            calendar[date].write_to_row(writer)

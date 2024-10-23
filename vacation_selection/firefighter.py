@@ -122,17 +122,18 @@ class FFighter:
     # Json Read/Write
     @classmethod
     def from_dict(cls, ff_dict):
-        """Creates an FFighter object from a dictionary."""
-        hireDate = datetime.strptime(ff_dict['hireDate'], '%Y-%m-%d')
-        picks = [Pick.from_dict(pick) for pick in ff_dict.get('picks', [])]
+        """Creates a FFighter object from a dictionary."""
+        # Convert 'hireDate' from string to a date object
+        hire_date = datetime.strptime(ff_dict['hireDate'], '%Y-%m-%d').date()
+        
         ffighter = cls(
             idnum=ff_dict.get('idnum', 0),
             fname=ff_dict.get('fname', ''),
             lname=ff_dict.get('lname', ''),
-            hireDate=hireDate,
+            hireDate=hire_date,  # Use the converted date object
             rank=ff_dict.get('rank', ''),
             shift=ff_dict.get('shift', ''),
-            picks=picks
+            picks=[Pick.from_dict(pick) for pick in ff_dict.get('picks', [])]
         )
         ffighter.approved_days_count = ff_dict.get('approved_days_count', 0)
         ffighter.processed = [Pick.from_dict(proc) for proc in ff_dict.get('processed', [])]

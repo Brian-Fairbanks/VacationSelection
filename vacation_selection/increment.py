@@ -67,7 +67,7 @@ class Increment:
                 return True
         elif rank == 'Lieutenant':
             if num_lieutenants >= max_lieutenants_off:
-                self.denial_reason = f"Increment already has {num_lieutenants} Lieutenants, {num_captains} Captains, and {num_battalion_chiefs} Battalion Chiefs off"
+                self.denial_reason = f"Increment already has {num_lieutenants} Lieutenants and {num_captains} Captains off"
                 return True
         elif rank == 'Captain':
             if num_captains >= max_captains_off:
@@ -75,7 +75,7 @@ class Increment:
                 return True
         elif rank == 'Battalion Chief':
             if num_battalion_chiefs >= max_battalion_chiefs_off:
-                self.denial_reason = f"Increment already has {num_battalion_chiefs} Battalion Chiefs, {num_captains} Captains, and {num_lieutenants} Lieutenants off"
+                self.denial_reason = f"Increment already has {num_battalion_chiefs} Battalion Chiefs and {num_captains} Captains off"
                 return True
 
         # If no limitations are exceeded, allow addition

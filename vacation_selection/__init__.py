@@ -6,3 +6,4 @@ from . import file_io
 from . import validation
 from . import priority
 from . import setup_logging
+from . import increment
