@@ -82,6 +82,7 @@ def process_firefighter_data_2025(reader, date_format):
     ffdata = []
     for index, row in enumerate(reader):
         try:
+            # Parse basic firefighter data
             fname = row['First Name']
             lname = row['Last Name']
             rank = ensure_rank(row["Rank"])
@@ -89,19 +90,31 @@ def process_firefighter_data_2025(reader, date_format):
             startDate = parse_date(row['Employee Hire Date'])
             shift = row["Shift"]
 
-            pick_dates = []
-            for x in range(1, 41):
-                day_key = f"Day {x}"
-                shift_key = f"Shift Selection {x}"
-                if day_key in row and row[day_key]:
-                    try:
-                        pick_date = parse_date(row[day_key])
-                        pick_dates.append(Pick(pick_date, increments=row.get(shift_key)))
-                    except Exception as e:
-                        logger.error(f"Failed to parse pick date '{row[day_key]}' in row {index + 1}: {e}")
-                        continue
+            # Check acknowledgment of form completion
+            acknowledgment = row.get('Acknowledgment of Form Completion', '').strip()
+            
+            # If the user prefers to skip the selection, do not add any picks
+            if acknowledgment == "I would prefer to skip the selection, and submit a blank request form.":
+                logger.info(f"Skipping pick selection for {fname} {lname} (ID: {idnum}) as per their acknowledgment.")
+                pick_dates = []  # No picks are added
+            else:
+                # Parse pick dates and shifts if the user continues with the selection
+                pick_dates = []
+                for x in range(1, 41):
+                    day_key = f"Day {x}"
+                    shift_key = f"Shift Selection {x}"
+                    if day_key in row and row[day_key]:
+                        try:
+                            pick_date = parse_date(row[day_key])
+                            shift_selection = row.get(shift_key, 'AMPM')
+                            pick_dates.append(Pick(pick_date, increments=shift_selection))
+                        except Exception as e:
+                            logger.error(f"Failed to parse pick date '{row[day_key]}' in row {index + 1}: {e}")
+                            continue
+            # Create FFighter instance
+            ffighter = FFighter(idnum, fname, lname, startDate, rank, shift, pick_dates)
 
-            ffdata.append(FFighter(idnum, fname, lname, startDate, rank, shift, pick_dates))
+            ffdata.append(ffighter)
 
         except Exception as e:
             logger.error(f"Failed to process row {index + 1}: {e}")

@@ -22,6 +22,9 @@ def validate_against_hr(ffighters, hr_data):
     """
     validated_ffighters = []
     for ff in ffighters:
+        # Initialize hr_validations dictionary
+        ff.hr_validations = {}
+
         # Find corresponding HR record by Employee Number
         hr_record = next((hr for hr in hr_data if str(hr['Employee Number']).strip() == str(ff.idnum).strip()), None)
         
@@ -30,14 +33,18 @@ def validate_against_hr(ffighters, hr_data):
             hire_date = datetime.strptime(hr_record['Hire Date'], '%m/%d/%Y').date()
             if ff.hireDate != hire_date:
                 logger.warning(f"Mismatch for {ff.name} (ID: {ff.idnum}): Hire Date mismatch. Overwriting with HR data.")
+                ff.hr_validations['Hire Date'] = (ff.hireDate, hire_date)
                 ff.hireDate = hire_date
             
             # Leave hours consistency (assuming these fields exist in the HR record)
             hr_vacation_hours = hr_record.get('# of Vacation Leave Hours awarded', 0)
             hr_holiday_hours = hr_record.get('# of Holiday Leave Hours awarded', 0)
-            hr_total_allowed_day_count = (hr_vacation_hours + hr_holiday_hours) / 24
-            if ff.approved_days_count != hr_total_allowed_day_count:
+            hr_total_allowed_day_count = int((hr_vacation_hours + hr_holiday_hours) / 24)
+            
+            # Convert both values to integers for a proper comparison
+            if int(ff.max_days_off) != hr_total_allowed_day_count:
                 logger.warning(f"Mismatch for {ff.name} (ID: {ff.idnum}): Max Days Off mismatch (HR Confirmed: {hr_total_allowed_day_count}, Got: {ff.max_days_off}). Overwriting with HR data.")
+                ff.hr_validations['Max Days Off'] = (ff.max_days_off, hr_total_allowed_day_count)
                 ff.max_days_off = hr_total_allowed_day_count
             
             # If all checks pass, add firefighter to validated list
@@ -46,6 +53,7 @@ def validate_against_hr(ffighters, hr_data):
             logger.warning(f"No matching HR record found for {ff.name} (ID: {ff.idnum}). Available HR IDs: {[str(hr['Employee Number']).strip() for hr in hr_data]}")
 
     return validated_ffighters
+
 
 def main(pick_filename, hr_filename, format):
     date_format = '%m-%d-%Y'
