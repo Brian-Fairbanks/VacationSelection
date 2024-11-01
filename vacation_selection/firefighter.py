@@ -132,43 +132,43 @@ class FFighter:
         return ", ".join([str(pick) for pick in self.picks])
     
     # Json Read/Write
-@classmethod
-def from_dict(cls, ff_dict):
-    """Creates a FFighter object from a dictionary."""
-    # Convert 'hireDate' from string to a date object
-    hire_date = datetime.strptime(ff_dict['hireDate'], '%Y-%m-%d').date()
-    
-    ffighter = cls(
-        idnum=ff_dict.get('idnum', 0),
-        fname=ff_dict.get('fname', ''),
-        lname=ff_dict.get('lname', ''),
-        hireDate=hire_date,  # Use the converted date object
-        rank=ff_dict.get('rank', ''),
-        shift=ff_dict.get('shift', ''),
-        picks=[Pick.from_dict(pick) for pick in ff_dict.get('picks', [])]
-    )
-    ffighter.approved_days_count = ff_dict.get('approved_days_count', 0)
-    ffighter.processed = [Pick.from_dict(proc) for proc in ff_dict.get('processed', [])]
-    ffighter.hr_validations = ff_dict.get('hr_validations', None)  # Added hr_validations to be loaded from the dictionary
-    return ffighter
+    @classmethod
+    def from_dict(cls, ff_dict):
+        """Creates a FFighter object from a dictionary."""
+        # Convert 'hireDate' from string to a date object
+        hire_date = datetime.strptime(ff_dict['hireDate'], '%Y-%m-%d').date()
+        
+        ffighter = cls(
+            idnum=ff_dict.get('idnum', 0),
+            fname=ff_dict.get('fname', ''),
+            lname=ff_dict.get('lname', ''),
+            hireDate=hire_date,  # Use the converted date object
+            rank=ff_dict.get('rank', ''),
+            shift=ff_dict.get('shift', ''),
+            picks=[Pick.from_dict(pick) for pick in ff_dict.get('picks', [])]
+        )
+        ffighter.approved_days_count = ff_dict.get('approved_days_count', 0)
+        ffighter.processed = [Pick.from_dict(proc) for proc in ff_dict.get('processed', [])]
+        ffighter.hr_validations = ff_dict.get('hr_validations', None)  # Added hr_validations to be loaded from the dictionary
+        return ffighter
 
 
-def to_dict(self):
-    """Converts the FFighter object to a dictionary."""
-    return {
-        'idnum': self.idnum,
-        'fname': self.fname,
-        'lname': self.lname,
-        'name': self.name,
-        'rank': self.rank,
-        'shift': self.shift,
-        'hireDate': self.hireDate.strftime('%Y-%m-%d'),
-        'approved_days_count': self.approved_days_count,
-        'max_days_off': self.max_days_off,
-        'picks': [pick.to_dict() for pick in self.picks],
-        'processed': [pick.to_dict() for pick in self.processed],
-        'hr_validations': self.hr_validations  # Added hr_validations to be included in the dictionary
-    }
+    def to_dict(self):
+        """Converts the FFighter object to a dictionary."""
+        return {
+            'idnum': self.idnum,
+            'fname': self.fname,
+            'lname': self.lname,
+            'name': self.name,
+            'rank': self.rank,
+            'shift': self.shift,
+            'hireDate': self.hireDate.strftime('%Y-%m-%d'),
+            'approved_days_count': self.approved_days_count,
+            'max_days_off': self.max_days_off,
+            'picks': [pick.to_dict() for pick in self.picks],
+            'processed': [pick.to_dict() for pick in self.processed],
+            'hr_validations': self.hr_validations  # Added hr_validations to be included in the dictionary
+        }
 
     def __str__(self):
         return self.name
