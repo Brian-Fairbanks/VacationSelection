@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox
+from tkinter import ttk
 import csv
 from datetime import datetime
 from vacation_selection.setup_logging import setup_logging
@@ -17,35 +18,47 @@ class FirefighterApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Firefighter Vacation Selection")
+        self.root.geometry("1024x768")
+        self.root.columnconfigure(0, weight=1)
+        self.root.rowconfigure(1, weight=1)
         
         self.hr_filename = ""
         self.pick_filename = ""
         self.ffighters = []
 
         # UI Elements
-        self.hr_button = tk.Button(root, text="Select HR Validation File", command=self.select_hr_file)
-        self.hr_button.pack(pady=10)
+        # ---------------------- File Selection Frame ----------------------
+        self.file_selection_frame = tk.Frame(root)
+        self.file_selection_frame.pack(side=tk.TOP, pady=10, fill=tk.X)
+        self.file_frame = tk.Frame(self.file_selection_frame)
+        self.file_frame.pack(fill=tk.X)
 
-        self.hr_label = tk.Label(root, text="No HR file selected", fg="grey")
-        self.hr_label.pack(pady=5)
+        # HR File Selection
+        self.hr_button = tk.Button(self.file_frame, text="Select HR Validation File", command=self.select_hr_file)
+        self.hr_button.grid(row=0, column=0, padx=5)
+        self.hr_label = tk.Label(self.file_frame, text="No HR file selected", fg="grey")
+        self.hr_label.grid(row=0, column=1, padx=5)
 
-        self.pick_button = tk.Button(root, text="Select Firefighter Pick File", command=self.select_pick_file)
-        self.pick_button.pack(pady=10)
+        # Pick File Selection
+        self.pick_button = tk.Button(self.file_frame, text="Select Firefighter Pick File", command=self.select_pick_file)
+        self.pick_button.grid(row=1, column=0, padx=5)
+        self.pick_label = tk.Label(self.file_frame, text="No Pick file selected", fg="grey")
+        self.pick_label.grid(row=1, column=1, padx=5)
 
-        self.pick_label = tk.Label(root, text="No Pick file selected", fg="grey")
-        self.pick_label.pack(pady=5)
+        # Load Firefighters Button
+        self.load_button = tk.Button(self.file_frame, text="Load Firefighters", command=self.load_firefighters)
+        self.load_button.grid(row=2, column=0, columnspan=2, pady=5)
 
-        self.load_button = tk.Button(root, text="Load Firefighters", command=self.load_firefighters)
-        self.load_button.pack(pady=10)
-
+        # ---------------------- End of File Selection Frame ----------------------
+        
+        # Validation and Processing Elements
         self.validate_button = tk.Button(root, text="Validate Firefighters", command=self.validate_firefighters)
         self.validate_button.pack(pady=10)
 
         self.process_button = tk.Button(root, text="Process Selections", command=self.process_selections)
         self.process_button.pack(pady=10)
 
-        self.text_area = tk.Text(root, height=20, width=100)
-        self.text_area.pack(pady=10)
+        self.setup_ffighter_tree_view()
 
     def select_hr_file(self):
         self.hr_filename = filedialog.askopenfilename(title="Select HR Validation File", filetypes=[("Excel files", "*.xlsx")])
@@ -67,15 +80,60 @@ class FirefighterApp:
         try:
             date_format = '%m-%d-%Y'
             self.ffighters = read_firefighter_data(self.pick_filename, date_format, 2025)
-            self.display_firefighters(self.ffighters)
+            self.update_ffighters_tree(self.ffighters)
         except Exception as e:
             logger.error(f"Error loading firefighter data: {e}")
             messagebox.showerror("Error", "Failed to load firefighter data.")
 
-    def display_firefighters(self, ffighters):
-        self.text_area.delete(1.0, tk.END)
+    def update_ffighters_tree(self, ffighters):
+        # Clear previous entries
+        for item in self.ff_tree.get_children():
+            self.ff_tree.delete(item)
+        
+        # Add firefighters to the Treeview
         for ff in ffighters:
-            self.text_area.insert(tk.END, f"{ff}\n")
+            self.display_ffighter(ff)
+
+    def setup_ffighter_tree_view(self):
+        # Treeview for displaying firefighters
+        self.tree_frame = tk.Frame(self.root)
+        self.tree_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        self.ff_tree = ttk.Treeview(self.tree_frame, columns=("ID", "Name", "Rank", "Years of Service", "Shift", "Number of Picks", "Type", "Determination", "Reason", "Increments"), show='tree headings', selectmode='browse')
+        self.ff_tree.heading("#0", text="Firefighter", anchor='w')
+        self.ff_tree.heading("ID", text="ID", anchor='w')
+        self.ff_tree.heading("Name", text="Name", anchor='w')
+        self.ff_tree.heading("Rank", text="Rank", anchor='w')
+        self.ff_tree.heading("Years of Service", text="Years of Service", anchor='w')
+        self.ff_tree.heading("Shift", text="Shift", anchor='w')
+        self.ff_tree.heading("Number of Picks", text="Number of Picks", anchor='w')
+        self.ff_tree.heading("Type", text="Type", anchor='w')
+        self.ff_tree.heading("Determination", text="Determination", anchor='w')
+        self.ff_tree.heading("Reason", text="Reason", anchor='w')
+        self.ff_tree.heading("Increments", text="Increments", anchor='w')
+
+        # Set column widths for better readability
+        self.ff_tree.column("ID", width=50, anchor='w')
+        self.ff_tree.column("Name", width=120, anchor='w')
+        self.ff_tree.column("Rank", width=80, anchor='w')
+        self.ff_tree.column("Years of Service", width=100, anchor='w')
+        self.ff_tree.column("Shift", width=50, anchor='w')
+        self.ff_tree.column("Number of Picks", width=80, anchor='w')
+        self.ff_tree.column("Type", width=80, anchor='w')
+        self.ff_tree.column("Determination", width=100, anchor='w')
+        self.ff_tree.column("Reason", width=120, anchor='w')
+        self.ff_tree.column("Increments", width=80, anchor='w')
+        self.ff_tree.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+    def display_ffighter(self, ff):
+        years_of_service = (datetime.now().date() - ff.hireDate).days // 365
+        num_picks = len(ff.picks)
+        parent = self.ff_tree.insert('', 'end', text=ff.name, values=(ff.idnum, ff.name, ff.rank, years_of_service, ff.shift, num_picks))
+        
+        # Add Picks directly under the firefighter, indicating processed or unprocessed
+        for pick in ff.processed + ff.picks:
+            status = "Processed" if pick in ff.processed else "Unprocessed"
+            self.ff_tree.insert(parent, 'end', text=f"{status}", values=('','','','','',pick.date,pick.type, pick.determination, pick.reason if pick.reason else "N/A", pick.increments_plain_text()))
 
     def validate_firefighters(self):
         if not self.ffighters:
