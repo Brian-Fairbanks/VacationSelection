@@ -2,6 +2,8 @@ import pandas as pd
 import random
 import datetime
 import hashlib
+import openpyxl
+import math
 
 # Predefined lists for random name generation
 FIRST_NAMES = [
@@ -113,11 +115,11 @@ def generate_person(used_ids, used_names, available_special_names):
         available_days = days_dict[shift]
 
         # Weight holidays more heavily and allow duplicates
-        weighted_days = [day for day in available_days if day in HOLIDAYS] * 5 + available_days
+        weighted_days = [day for day in available_days if day in HOLIDAYS] * 2 + available_days
         selected_days = random.choices(weighted_days, k=num_days)
 
         # Create weighted selection for finalization
-        finalized_days = [(day, random.random() * 3 if day in HOLIDAYS else random.random()) for day in selected_days]
+        finalized_days = [(day, random.random() * 2.5 if day in HOLIDAYS else random.random()) for day in selected_days]
 
         # Sort the finalized_days by weight
         finalized_days.sort(key=lambda x: x[1], reverse=True)
@@ -154,16 +156,36 @@ def generate_person(used_ids, used_names, available_special_names):
     for i in range(num_days + 1, next_multiple_of_10 + 1):
         person[f"Day {i}"] = ""
 
-    return person
+    floored_years = years_of_service//1
+    hr_validation_data = {
+        "Department Code": "0400",
+        "Employee Number": employee_id,
+        "Employee Name": f"{last_name}, {first_name} {random.choice(FIRST_NAMES)} ",
+        "Hire Date": hire_date.strftime("%m/%d/%Y"),
+        "Years of Service": floored_years,
+        "# of Vacation Leave Hours awarded": 192.0 + (24 * (floored_years // 5)),
+        "# of Holiday Leave Hours awarded": 144.0
+    }
+
+    return person, hr_validation_data  # Return both dictionaries
 
 # Function to generate a file with a specified number of rows
 def generate_file(row_count):
     used_ids = set()
     used_names = set()
     available_special_names = SPECIAL_NAMES.copy()
-    people = [generate_person(used_ids, used_names, available_special_names) for _ in range(row_count)]
+    people = []
+    hr_validations = [] 
+
+    for _ in range(row_count):
+        person_data, hr_data = generate_person(used_ids, used_names, available_special_names)
+        people.append(person_data)
+        hr_validations.append(hr_data)
+
     df = pd.DataFrame(people)
-    return df
+    df_hr = pd.DataFrame(hr_validations)  # Create DataFrame for HR validations
+    return df, df_hr
+
 
 # Function to export the DataFrame to a CSV file
 def export_to_CSV(df, filename=None):
@@ -172,6 +194,17 @@ def export_to_CSV(df, filename=None):
         filename = f"2025 VACATION REQUEST FORM - Form Responses{timestamp}.csv"
     df.to_csv(filename, index=False)
 
+def export_to_excel(df, filename=None):
+    timestamp = datetime.datetime.now().strftime("%m.%d-%H.%M")
+    if filename is None:
+        filename = f"HR_validations{timestamp}.xlsx"
+    
+    # Sort the DataFrame before exporting
+    df = df.sort_values(by=['Years of Service', 'Employee Name'], ascending=[False, True])
+    
+    df.to_excel(filename, index=False)
+
 # Example usage
-df = generate_file(200)
+df, df_hr = generate_file(200)  # Generate both DataFrames
 export_to_CSV(df, 'random_vacation_requests.csv')
+export_to_excel(df_hr, 'HR_validations.xlsx')  # Export HR validations to Excel

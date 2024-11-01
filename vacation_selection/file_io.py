@@ -1,6 +1,7 @@
 # file_io.py
 import csv
 import json
+import pandas as pd
 from datetime import datetime
 import vacation_selection.setup_logging as setup_logging
 from vacation_selection.firefighter import FFighter, Pick
@@ -123,6 +124,24 @@ def parse_date(date_str):
         except ValueError:
             continue
     raise ValueError(f"Date format for '{date_str}' not recognized.")
+
+
+# Read in the HR_Validation File
+def read_hr_validation(filename):
+    """Reads HR validation data from an Excel file and returns it as a list of dictionaries."""
+    hr_data = []
+    try:
+        # Read the .xlsx file using pandas
+        df = pd.read_excel(filename, engine='openpyxl')
+
+        # Convert DataFrame to a list of dictionaries
+        hr_data = df.to_dict(orient='records')
+        logger.debug(f"Successfully read HR validation file: {filename}")
+        
+    except Exception as e:
+        logger.error(f"Failed to read HR validation file: {e}")
+
+    return hr_data
 
 # ================================================================================
 # Writing Outputs
