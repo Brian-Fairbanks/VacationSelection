@@ -27,7 +27,7 @@ class Increment:
         # Prepare the list of firefighters with increment details
         if self.only_increment:
             # Include only the firefighter names with increments_plain_text()
-            all_ffighters = [f"{ff.name} ({pick.increments_plain_text()})" for ff, pick in zip(self.ffighters, self.picks)]
+            all_ffighters = [f"{ff.name} - {ff.idnum} ({pick.increments_plain_text()})" for ff, pick in zip(self.ffighters, self.picks)]
             row = [self.date] + (all_ffighters + [""] * 5)[:5]
         else:
             # Include firefighter names with increment names

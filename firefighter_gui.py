@@ -172,10 +172,20 @@ class FirefighterApp:
         # Add picks to the pick_tree
         if hasattr(ff, 'processed') and hasattr(ff, 'picks'):
             for pick in ff.processed + ff.picks:
+                # Determination status with colored dots
+                if pick.determination == "Unaddressed":
+                    determination_display = "⚪ Unprocessed"
+                elif pick.determination == "Approved":
+                    determination_display = "🟢 Approved"
+                elif pick.determination == "Rejected":
+                    determination_display = "🔴 Rejected"
+                else:
+                    determination_display = pick.determination
+
                 self.pick_tree.insert('', 'end', values=(
                     pick.date,
                     pick.type,
-                    pick.determination,
+                    determination_display,
                     pick.reason if pick.reason else "N/A",
                     pick.increments_plain_text()
                 ))
@@ -237,6 +247,7 @@ class FirefighterApp:
 
             # Process selections for each shift
             for shift in ["A", "B", "C"]:
+                logger.info(f'\n\n=================================================================  \n Processing {shift} Shift\n=================================================================  \n\n')
                 shift_members = [ff for ff in prioritized_ffighters if ff.shift == shift]
                 results = make_calendar(shift_members)
 

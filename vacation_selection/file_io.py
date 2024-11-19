@@ -173,7 +173,8 @@ def print_final(ffighters):
     """Prints the final results for each firefighter."""
     print('\n\n  --==  Final Results   ==--\n')
     for ffighter in ffighters:
-        print(f'{ffighter.name:<20} ({ffighter.idnum}): \n  Started:{ffighter.hireDate} - ({ffighter.shift} shift) {ffighter.rank}')
+        # Include ID in the name for clarity
+        print(f'{ffighter.name:<20} (ID: {ffighter.idnum}): \n  Started:{ffighter.hireDate} - ({ffighter.shift} shift) {ffighter.rank}')
         for key in ffighter.processed:
             print(key)
 
@@ -183,11 +184,12 @@ def write_picks_to_csv(ffighters, suffix, write_path, runtime):
     file_name = f'{write_path}/{runtime}-FFighters-{suffix}.csv'
     with open(file_name, 'w', newline='') as f:
         writer = csv.writer(f)
-        header = ['Name', "Rank", "Date Requested", "Type", "Increments", "Determination", "Reason"]
+        header = ['Name (ID)', "Rank", "Date Requested", "Type", "Increments", "Determination", "Reason"]
         writer.writerow(header)
 
         for ffighter in ffighters:
-            writer.writerow([ffighter.name, ffighter.rank])
+            # Include ID in the name for clarity
+            writer.writerow([f'{ffighter.name} (ID: {ffighter.idnum})', ffighter.rank])
             for key in ffighter.processed:
                 writer.writerow([
                     '', '', key.date, key.type,
@@ -197,7 +199,11 @@ def write_picks_to_csv(ffighters, suffix, write_path, runtime):
 
 def write_ffighters_to_json(ffighters, suffix, write_path, runtime):
     """Writes the firefighter list and their processed picks to a JSON file."""
-    ffighter_data = [ffighter.to_dict() for ffighter in ffighters]
+    # Include ID in the name field in the dictionary representation
+    ffighter_data = [
+        {**ffighter.to_dict(), "name": f"{ffighter.name} (ID: {ffighter.idnum})"} 
+        for ffighter in ffighters
+    ]
     file_name = f"{write_path}/{runtime}-FFighters-{suffix}.json"
 
     with open(file_name, 'w') as json_file:
