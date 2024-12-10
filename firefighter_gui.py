@@ -9,10 +9,13 @@ from vacation_selection.main import validate_against_hr
 from vacation_selection.priority import set_priorities
 from vacation_selection.cal import make_calendar
 
+default_picks_filename="./2025 VACATION REQUEST FORM - Form Responses_final.csv"
+default_validation_filename="./Vacation Bidding Information.xlsx"
+
 # Set up runtime and logging
 runtime = datetime.now().strftime("%Y.%m.%d %H.%M")
 write_path = ".//output"
-logger = setup_logging(f"RunLog-{runtime}.log", base=write_path, debug=False)
+logger = setup_logging(f"RunLog-{runtime}.log", base=write_path, debug=True)
 
 class FirefighterApp:
     def __init__(self, root):
@@ -22,8 +25,8 @@ class FirefighterApp:
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(1, weight=1)
         
-        self.hr_filename = './HR_validations.xlsx'
-        self.pick_filename = "./random_vacation_requests.csv"
+        self.hr_filename = default_validation_filename
+        self.pick_filename = default_picks_filename
         self.ffighters = []
 
         # UI Elements
@@ -215,26 +218,43 @@ class FirefighterApp:
         if not self.ffighters:
             messagebox.showwarning("No Firefighters Loaded", "Please load firefighter data before validating.")
             return
-        
+                
         try:
+            # Read HR validation data
+            logger.debug(f"Reading HR validation data from file: {self.hr_filename}")
             hr_data = read_hr_validation(self.hr_filename)
+            logger.debug(f"HR validation data loaded successfully. Entries: {len(hr_data)}")
+
+            # Validate firefighters against HR data
+            logger.debug(f"Validating {len(self.ffighters)} firefighters against HR data.")
             validated_ffighters = validate_against_hr(self.ffighters, hr_data)
-            # Update ffighters list to the validated one
+            logger.debug(f"Validation complete. Validated firefighters: {len(validated_ffighters)}")
+
+            # Update TreeView and internal list
             self.ffighters = validated_ffighters
             self.update_ffighters_tree(validated_ffighters)
-            
+
             # Write validated data to CSV
             verified_filename = f"{self.pick_filename.split('.')[0]}-Verified.csv"
+            logger.debug(f"Writing validated data to: {verified_filename}")
             with open(verified_filename, 'w', newline='') as csvfile:
                 writer = csv.writer(csvfile)
                 writer.writerow(["ID", "Name", "Hire Date", "Rank", "Shift", "Max Days Off", "Approved Days Count"])
                 for ff in validated_ffighters:
+                    logger.debug(f"Writing firefighter to CSV: {ff}")
                     writer.writerow([ff.idnum, ff.name, ff.hireDate, ff.rank, ff.shift, ff.max_days_off, ff.approved_days_count])
-            
+
             logger.info(f"Validated firefighter data written to {verified_filename}")
+        except AttributeError as ae:
+            logger.error(f"Attribute error in firefighter object: {ae}")
+            messagebox.showerror("Error", f"Attribute error in firefighter data: {ae}")
+        except FileNotFoundError as fe:
+            logger.error(f"File not found: {fe}")
+            messagebox.showerror("Error", f"File not found: {fe}")
         except Exception as e:
             logger.error(f"Error validating firefighter data: {e}")
             messagebox.showerror("Error", "Failed to validate firefighter data.")
+
 
     def process_selections(self):
         if not self.ffighters:
