@@ -17,10 +17,11 @@ from .cal import make_calendar
 
 def validate_against_hr(ffighters, hr_data):
     """
-    Validates firefighter data against HR data.
+    Validates firefighter data against HR data, checking Hire Date, Vacation Hours, and Holiday Hours.
     Returns a list of validated firefighter objects.
     """
     validated_ffighters = []
+    
     for ff in ffighters:
         # Initialize hr_validations dictionary
         ff.hr_validations = {}
@@ -29,16 +30,32 @@ def validate_against_hr(ffighters, hr_data):
         hr_record = next((hr for hr in hr_data if str(hr['Employee Number']).strip() == str(ff.idnum).strip()), None)
         
         if hr_record:
-            # Example validation: Check Hire Date consistency
+            # Validate Hire Date
             hire_date = datetime.strptime(hr_record['Hire Date'], '%m/%d/%Y').date()
             if ff.hireDate != hire_date:
                 logger.warning(f"Mismatch for {ff.name} (ID: {ff.idnum}): Hire Date mismatch. Overwriting with HR data.")
                 ff.hr_validations['Hire Date'] = (ff.hireDate, hire_date)
                 ff.hireDate = hire_date
             
-            # Leave hours consistency (assuming these fields exist in the HR record)
-            hr_vacation_hours = hr_record.get('# of Vacation Leave Hours awarded', 0)
-            hr_holiday_hours = hr_record.get('# of Holiday Leave Hours awarded', 0)
+            # Validate Vacation and Holiday Hours
+            hr_vacation_hours = int(hr_record.get('# of Vacation Leave Hours awarded', 0))
+            hr_holiday_hours = int(hr_record.get('# of Holiday Leave Hours awarded', 0))
+            hr_vacation_days = hr_vacation_hours / 24
+            hr_holiday_days = hr_holiday_hours / 24
+
+            # Check awarded vacation days
+            if ff.awarded_vacation_days != hr_vacation_days:
+                logger.warning(f"Vacation days mismatch for {ff.name} (ID: {ff.idnum}): Expected {hr_vacation_days}, Found {ff.awarded_vacation_days}. Overwriting with HR data.")
+                ff.hr_validations['Vacation Days'] = (ff.awarded_vacation_days, hr_vacation_days)
+                ff.awarded_vacation_days = hr_vacation_days
+
+            # Check awarded holiday days
+            if ff.awarded_holiday_days != hr_holiday_days:
+                logger.warning(f"Holiday days mismatch for {ff.name} (ID: {ff.idnum}): Expected {hr_holiday_days}, Found {ff.awarded_holiday_days}. Overwriting with HR data.")
+                ff.hr_validations['Holiday Days'] = (ff.awarded_holiday_days, hr_holiday_days)
+                ff.awarded_holiday_days = hr_holiday_days
+
+            # Check Max Days Off
             hr_total_allowed_day_count = int((hr_vacation_hours + hr_holiday_hours) / 24)
             
             # Convert both values to integers for a proper comparison
