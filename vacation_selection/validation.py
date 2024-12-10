@@ -18,6 +18,6 @@ def check_rank(rank):
 def ensure_rank(rank):
     result = check_rank(rank)
     if not result:
-        print(f"No Rank Found: Assigning {rank[0]}")
-        result = rank[0]
+        print(f"No Rank Found: Assigning {ranks[0]}")
+        result = ranks[0]
     return result
