@@ -82,20 +82,30 @@ def process_firefighter_data_2025(reader, date_format):
     ffdata = []
     for index, row in enumerate(reader):
         try:
+            logger.debug(f"Processing row {index + 1}: {row}")
+
             # Parse basic firefighter data
-            fname = row['First Name']
-            lname = row['Last Name']
-            rank = ensure_rank(row["Rank"])
-            idnum = row['Employee ID #']
-            startDate = parse_date(row['Employee Hire Date'])
-            shift = row["Shift"]
+            try:
+                fname = row['First Name']
+                lname = row['Last Name']
+                rank = ensure_rank(row["Rank"])
+                idnum = row['Employee ID #']
+                startDate = parse_date(row['Employee Hire Date'])
+                shift = row["Shift"]
+                logger.debug(f"Parsed data - Name: {fname} {lname}, Rank: {rank}, ID: {idnum}, Start Date: {startDate}, Shift: {shift}")
+            except KeyError as ke:
+                logger.error(f"Missing key in row {index + 1}: {ke}. Row: {row}")
+                continue
+            except ValueError as ve:
+                logger.error(f"Invalid value in row {index + 1}: {ve}. Row: {row}")
+                continue
 
             # Check acknowledgment of form completion
             acknowledgment = row.get('Acknowledgment of Form Completion', '').strip()
             
             # If the user prefers to skip the selection, do not add any picks
             if acknowledgment == "I would prefer to skip the selection, and submit a blank request form.":
-                logger.info(f"Skipping pick selection for {fname} {lname} (ID: {idnum}) as per their acknowledgment.")
+                logger.info(f"Skipping pick selection for {fname} {lname} (ID: {idnum}) as per acknowledgment.")
                 pick_dates = []  # No picks are added
             else:
                 # Parse pick dates and shifts if the user continues with the selection
@@ -108,35 +118,54 @@ def process_firefighter_data_2025(reader, date_format):
                             pick_date = parse_date(row[day_key])
                             shift_selection = row.get(shift_key, 'AMPM')
                             pick_dates.append(Pick(pick_date, increments=shift_selection))
-                        except Exception as e:
-                            logger.error(f"Failed to parse pick date '{row[day_key]}' in row {index + 1}: {e}")
+                            logger.debug(f"Added pick - Date: {pick_date}, Shift: {shift_selection} for {fname} {lname}")
+                        except ValueError as ve:
+                            logger.error(f"Failed to parse pick date '{row[day_key]}' in row {index + 1}: {ve}")
                             continue
+
             # Create FFighter instance
             ffighter = FFighter(idnum, fname, lname, startDate, rank, shift, pick_dates)
+            logger.debug(f"Created FFighter instance: {ffighter}")
 
             ffdata.append(ffighter)
 
         except Exception as e:
-            logger.error(f"Failed to process row {index + 1}: {e}")
-
+            logger.error(f"Unhandled error processing row {index + 1}: {e}. Row: {row}")
+            # Optionally, include stack trace for deeper debugging
+            logger.exception(e)
     return ffdata
 
+
 # Helper function to parse dates from strings
-def parse_date(date_str):
-    """Try to parse a date string in multiple formats until one works."""
-    possible_formats = [
-        '%m-%d-%Y',  # e.g., 06-11-2009
-        '%m/%d/%Y',  # e.g., 06/11/2009
-        '%Y-%m-%d',  # e.g., 2009-06-11
-        '%d-%m-%Y',  # e.g., 11-06-2009
-        '%d/%m/%Y'   # e.g., 11/06/2009
-    ]
-    for fmt in possible_formats:
-        try:
-            return datetime.strptime(date_str, fmt).date()
-        except ValueError:
-            continue
-    raise ValueError(f"Date format for '{date_str}' not recognized.")
+def parse_date(date_value):
+    """Parses a date from various input types, including strings and pandas Timestamps."""
+    from pandas import Timestamp
+
+    # If the value is already a Timestamp, convert it to a date
+    if isinstance(date_value, Timestamp):
+        return date_value.date()
+
+    # If the value is a string, parse it
+    if isinstance(date_value, str):
+        possible_formats = [
+            '%Y-%m-%d %H:%M:%S',  # e.g., 2024-11-15 08:53:32
+            '%Y-%m-%d %H:%M',     # e.g., 2024-11-15 08:53
+            '%Y-%m-%d',           # e.g., 2024-11-15
+            '%m-%d-%Y',           # e.g., 11-15-2024
+            '%m/%d/%Y',           # e.g., 11/15/2024
+            '%d-%m-%Y',           # e.g., 15-11-2024
+            '%d/%m/%Y'            # e.g., 15/11/2024
+        ]
+        for fmt in possible_formats:
+            try:
+                return datetime.strptime(date_value, fmt).date()
+            except ValueError:
+                continue
+        raise ValueError(f"Unrecognized date format for '{date_value}'")
+
+    # If the value is not a recognized type, raise an error
+    raise TypeError(f"Unsupported date type: {type(date_value)}")
+
 
 
 # Read in the HR_Validation File
