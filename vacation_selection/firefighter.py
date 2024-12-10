@@ -86,7 +86,15 @@ class FFighter:
         self.hr_validations = None
         self.processed = []
         self.picks = picks
-        self.max_days_off = self.calculate_max_days_off()
+
+        # Calculate max days off and unpack the dictionary
+        days_off_data = self.calculate_max_days_off()
+        self.awarded_holiday_days = days_off_data['total_holiday_days']
+        self.awarded_vacation_days = days_off_data['total_vacation_days']
+        self.max_days_off = days_off_data['max_days_off']
+
+        self.used_vacation_days = 0
+        self.used_holiday_days = 0
         self.approved_days_count = 0
         self.current_pick = None  # A holding place for the pick being processed
 
@@ -101,8 +109,15 @@ class FFighter:
         """Approve the current pick and update the firefighter's data."""
         if self.current_pick:
             self.current_pick.determination = "Approved"
+            requested_hours = sum(self.current_pick.increments) * (1 / len(self.current_pick.increments))
+            if self.used_vacation_days+requested_hours <= self.used_vacation_days:
+                self.used_vacation_days += requested_hours
+                self.current_pick.type = "Vacation"
+            else:
+                self.used_holiday_days += requested_hours
+                self.current_pick.type = "Vacation"
             self.processed.append(self.current_pick)
-            self.approved_days_count += sum(self.current_pick.increments) * (1 / len(self.current_pick.increments))
+            self.approved_days_count += requested_hours
             self.current_pick = None
 
     def deny_current_pick(self, reason):
@@ -117,16 +132,20 @@ class FFighter:
         # Calculate years of service rounded to the nearest full year
         years_of_service = (datetime.now().date() - self.hireDate).days // 365
 
-        # Calculate max days off based on the given formula
+        # Base and additional days calculation
         base_vacation_days = 6  # Base vacation days
         base_holiday_days = 8   # Base holiday days
         additional_days = min(years_of_service // 5, 6)  # Additional days based on years of service, capped at 20 total days
 
         # Total allowed days off
-        max_days_off = base_vacation_days + base_holiday_days + additional_days
+        max_days_off = base_vacation_days + additional_days + base_holiday_days
 
-        # Return the calculated max days off
-        return max_days_off
+        # Return the breakdown of days in a dictionary
+        return {
+            'total_holiday_days': base_holiday_days,
+            'total_vacation_days': base_vacation_days + additional_days,
+            'max_days_off': max_days_off
+        }
 
     def print_picks(self):
         return ", ".join([str(pick) for pick in self.picks])
@@ -134,23 +153,25 @@ class FFighter:
     # Json Read/Write
     @classmethod
     def from_dict(cls, ff_dict):
-        """Creates a FFighter object from a dictionary."""
-        # Convert 'hireDate' from string to a date object
         hire_date = datetime.strptime(ff_dict['hireDate'], '%Y-%m-%d').date()
-        
-        ffighter = cls(
+        ff = cls(
             idnum=ff_dict.get('idnum', 0),
             fname=ff_dict.get('fname', ''),
             lname=ff_dict.get('lname', ''),
-            hireDate=hire_date,  # Use the converted date object
+            hireDate=hire_date,
             rank=ff_dict.get('rank', ''),
             shift=ff_dict.get('shift', ''),
             picks=[Pick.from_dict(pick) for pick in ff_dict.get('picks', [])]
         )
-        ffighter.approved_days_count = ff_dict.get('approved_days_count', 0)
-        ffighter.processed = [Pick.from_dict(proc) for proc in ff_dict.get('processed', [])]
-        ffighter.hr_validations = ff_dict.get('hr_validations', None)  # Added hr_validations to be loaded from the dictionary
-        return ffighter
+        ff.max_days_off = ff_dict.get('max_days_off', 0)
+        ff.awarded_vacation_days = ff_dict.get('awarded_vacation_days', 0)
+        ff.awarded_holiday_days = ff_dict.get('awarded_holiday_days', 0)
+        ff.used_vacation_days = ff_dict.get('used_vacation_days', 0)
+        ff.used_holiday_days = ff_dict.get('used_holiday_days', 0)
+        ff.approved_days_count = ff_dict.get('approved_days_count', 0)
+        ff.processed = [Pick.from_dict(proc) for proc in ff_dict.get('processed', [])]
+        ff.hr_validations = ff_dict.get('hr_validations', {})
+        return ff
 
 
     def to_dict(self):
@@ -163,6 +184,11 @@ class FFighter:
             'rank': self.rank,
             'shift': self.shift,
             'hireDate': self.hireDate.strftime('%Y-%m-%d'),
+            'max_days_off': self.max_days_off,
+            'awarded_vacation_days': self.awarded_vacation_days,
+            'awarded_holiday_days': self.awarded_holiday_days,
+            'used_vacation_days': self.used_vacation_days,
+            'used_holiday_days': self.used_holiday_days,
             'approved_days_count': self.approved_days_count,
             'max_days_off': self.max_days_off,
             'picks': [pick.to_dict() for pick in self.picks],
