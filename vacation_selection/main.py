@@ -1,4 +1,5 @@
 from datetime import datetime
+from .file_io import parse_date
 from vacation_selection.setup_logging import setup_logging
 
 # Set up runtime and logging
@@ -31,9 +32,10 @@ def validate_against_hr(ffighters, hr_data):
         
         if hr_record:
             # Validate Hire Date
-            hire_date = datetime.strptime(hr_record['Hire Date'], '%m/%d/%Y').date()
+            # hire_date = datetime.strptime(hr_record['Hire Date'], '%m/%d/%Y').date()
+            hire_date = parse_date(hr_record['Hire Date'])  # Use parse_date here
             if ff.hireDate != hire_date:
-                logger.warning(f"Mismatch for {ff.name} (ID: {ff.idnum}): Hire Date mismatch. Overwriting with HR data.")
+                logger.warning(f"Hire Date mismatch for {ff.name} (ID: {ff.idnum}):   {ff.hireDate} - Overwriting with {hire_date} from HR data.")
                 ff.hr_validations['Hire Date'] = (ff.hireDate, hire_date)
                 ff.hireDate = hire_date
             
@@ -45,13 +47,13 @@ def validate_against_hr(ffighters, hr_data):
 
             # Check awarded vacation days
             if ff.awarded_vacation_days != hr_vacation_days:
-                logger.warning(f"Vacation days mismatch for {ff.name} (ID: {ff.idnum}): Expected {hr_vacation_days}, Found {ff.awarded_vacation_days}. Overwriting with HR data.")
+                logger.warning(f"Vacation days mismatch for {ff.name} (ID: {ff.idnum}):   {ff.awarded_vacation_days} - Overwriting with {hr_vacation_days} from HR data.")
                 ff.hr_validations['Vacation Days'] = (ff.awarded_vacation_days, hr_vacation_days)
                 ff.awarded_vacation_days = hr_vacation_days
 
             # Check awarded holiday days
             if ff.awarded_holiday_days != hr_holiday_days:
-                logger.warning(f"Holiday days mismatch for {ff.name} (ID: {ff.idnum}): Expected {hr_holiday_days}, Found {ff.awarded_holiday_days}. Overwriting with HR data.")
+                logger.warning(f"Holiday days mismatch for {ff.name} (ID: {ff.idnum}):   {ff.awarded_holiday_days} - Overwriting with {hr_holiday_days} from HR data.")
                 ff.hr_validations['Holiday Days'] = (ff.awarded_holiday_days, hr_holiday_days)
                 ff.awarded_holiday_days = hr_holiday_days
 
@@ -60,7 +62,7 @@ def validate_against_hr(ffighters, hr_data):
             
             # Convert both values to integers for a proper comparison
             if int(ff.max_days_off) != hr_total_allowed_day_count:
-                logger.warning(f"Mismatch for {ff.name} (ID: {ff.idnum}): Max Days Off mismatch (HR Confirmed: {hr_total_allowed_day_count}, Got: {ff.max_days_off}). Overwriting with HR data.")
+                logger.warning(f"Max Days Off mismatch for {ff.name} (ID: {ff.idnum}):   {ff.max_days_off} - Overwriting with {hr_total_allowed_day_count} from HR data.")
                 ff.hr_validations['Max Days Off'] = (ff.max_days_off, hr_total_allowed_day_count)
                 ff.max_days_off = hr_total_allowed_day_count
             
