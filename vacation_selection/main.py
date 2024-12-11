@@ -15,10 +15,11 @@ from .file_io import (
 from .firefighter import FFighter
 from .priority import set_priorities
 from .cal import make_calendar
+from vacation_selection.validation import ensure_rank  # Import validation function
 
 def validate_against_hr(ffighters, hr_data):
     """
-    Validates firefighter data against HR data, checking Hire Date, Vacation Hours, and Holiday Hours.
+    Validates firefighter data against HR data, checking Hire Date, Vacation Hours, Holiday Hours, and Rank.
     Returns a list of validated firefighter objects.
     """
     validated_ffighters = []
@@ -32,7 +33,6 @@ def validate_against_hr(ffighters, hr_data):
         
         if hr_record:
             # Validate Hire Date
-            # hire_date = datetime.strptime(hr_record['Hire Date'], '%m/%d/%Y').date()
             hire_date = parse_date(hr_record['Hire Date'])  # Use parse_date here
             if ff.hireDate != hire_date:
                 logger.warning(f"Hire Date mismatch for {ff.name} (ID: {ff.idnum}):   {ff.hireDate} - Overwriting with {hire_date} from HR data.")
@@ -65,6 +65,13 @@ def validate_against_hr(ffighters, hr_data):
                 logger.warning(f"Max Days Off mismatch for {ff.name} (ID: {ff.idnum}):   {ff.max_days_off} - Overwriting with {hr_total_allowed_day_count} from HR data.")
                 ff.hr_validations['Max Days Off'] = (ff.max_days_off, hr_total_allowed_day_count)
                 ff.max_days_off = hr_total_allowed_day_count
+
+            # Validate Rank
+            hr_rank = ensure_rank(hr_record.get('Rank', '').strip())
+            if ff.rank != hr_rank:
+                logger.warning(f"Rank mismatch for {ff.name} (ID: {ff.idnum}):   {ff.rank} - Overwriting with {hr_rank} from HR data.")
+                ff.hr_validations['Rank'] = (ff.rank, hr_rank)
+                ff.rank = hr_rank
             
             # If all checks pass, add firefighter to validated list
             validated_ffighters.append(ff)
@@ -72,6 +79,7 @@ def validate_against_hr(ffighters, hr_data):
             logger.warning(f"No matching HR record found for {ff.name} (ID: {ff.idnum}). Available HR IDs: {[str(hr['Employee Number']).strip() for hr in hr_data]}")
 
     return validated_ffighters
+
 
 
 def main(pick_filename, hr_filename, format):
