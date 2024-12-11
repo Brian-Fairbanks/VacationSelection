@@ -133,8 +133,8 @@ class FFighter:
         years_of_service = (datetime.now().date() - self.hireDate).days // 365
 
         # Base and additional days calculation
-        base_vacation_days = 6  # Base vacation days
-        base_holiday_days = 8   # Base holiday days
+        base_vacation_days = 8  # Base vacation days
+        base_holiday_days = 6   # Base holiday days
         additional_days = min(years_of_service // 5, 6)  # Additional days based on years of service, capped at 20 total days
 
         # Total allowed days off
