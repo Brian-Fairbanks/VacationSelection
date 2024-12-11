@@ -10,7 +10,7 @@ from vacation_selection.priority import set_priorities
 from vacation_selection.cal import make_calendar
 
 default_picks_filename="./2025 VACATION REQUEST FORM - Form Responses_final.csv"
-default_validation_filename="./Vacation Bidding Information.xlsx"
+default_validation_filename="./HR_data_plus_ranks.xlsx"
 
 # Set up runtime and logging
 runtime = datetime.now().strftime("%Y.%m.%d %H.%M")
