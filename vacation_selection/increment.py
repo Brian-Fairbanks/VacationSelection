@@ -1,6 +1,7 @@
 # increment.py
 from vacation_selection.setup_logging import setup_logging
 logger = setup_logging('Increment')
+from datetime import date, timedelta
 
 # Increment Class
 # ================================================================================================
@@ -10,6 +11,7 @@ class Increment:
 
     def __init__(self, date, name, only_increment=False ):
         self.date = date
+        self.is_holiday = check_holiday(date)
         self.name = name
         self.only_increment = only_increment
         self.ffighters = []
@@ -60,6 +62,12 @@ class Increment:
         max_captains_off = 3 - num_battalion_chiefs
         max_battalion_chiefs_off = min(2, 3 - num_captains)
 
+        def failed_holiday_exception():
+            if self.is_holiday and (num_captains > 0 or num_battalion_chiefs > 0) :
+                self.denial_reason = f"Increment is a holiday, and already has {num_captains} Captains, and {num_battalion_chiefs} Battalion Chiefs off"
+                return True
+            return False
+
         # Check limitations
         if rank == 'Apparatus Specialist':
             if num_apparatus_specialists >= max_apparatus_specialists_off:
@@ -70,10 +78,14 @@ class Increment:
                 self.denial_reason = f"Increment already has {num_lieutenants} Lieutenants and {num_captains} Captains off"
                 return True
         elif rank == 'Captain':
+            if failed_holiday_exception():
+                return True               
             if num_captains >= max_captains_off:
                 self.denial_reason = f"Increment already has {num_captains} Captains, {num_lieutenants} Lieutenants, and {num_battalion_chiefs} Battalion Chiefs off"
                 return True
         elif rank == 'Battalion Chief':
+            if failed_holiday_exception():
+                return True
             if num_battalion_chiefs >= max_battalion_chiefs_off:
                 self.denial_reason = f"Increment already has {num_battalion_chiefs} Battalion Chiefs and {num_captains} Captains off"
                 return True
@@ -97,3 +109,43 @@ class Increment:
         self.rank_counts[ffighter.rank] += 1
         self.picks.append(ffighter.current_pick)
         return True
+
+
+def check_holiday(day: date) -> bool:
+    def nth_weekday(year, month, weekday, n):
+        first_day = date(year, month, 1)
+        offset = (weekday - first_day.weekday()) % 7
+        return first_day + timedelta(days=offset + (n-1)*7)
+
+    def last_monday(year, month):
+        last_day = date(year, month + 1, 1) - timedelta(days=1)
+        while last_day.weekday() != 0:  # Monday
+            last_day -= timedelta(days=1)
+        return last_day
+
+    y, m, d = day.year, day.month, day.day
+
+    fixed_holidays = [
+        (1, 1),   # New Year's Day
+        (6, 19),  # Juneteenth
+        (7, 4),   # Independence Day
+        (11, 11), # Veterans Day
+        (12, 24), # Christmas Eve
+        (12, 25), # Christmas Day
+        (12, 26)  # Boxing Day
+    ]
+
+    if (m, d) in fixed_holidays:
+        return True
+
+    variable_holidays = [
+        nth_weekday(y, 1, 0, 3),  # MLK Day
+        nth_weekday(y, 2, 0, 3),  # President's Day
+        last_monday(y, 5),        # Memorial Day
+        nth_weekday(y, 9, 0, 1),  # Labor Day
+        nth_weekday(y, 11, 3, 4)  # Thanksgiving
+    ]
+    if day in variable_holidays:
+        return True
+
+    return False

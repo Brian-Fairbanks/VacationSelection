@@ -2,7 +2,7 @@
 import csv
 import json
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, date
 import vacation_selection.setup_logging as setup_logging
 from vacation_selection.firefighter import FFighter, Pick
 from vacation_selection.cal import Day
@@ -226,6 +226,14 @@ def write_picks_to_csv(ffighters, suffix, write_path, runtime):
                 ])
             writer.writerow([])
 
+# ==========    JSON    ==============================================================
+
+class CustomJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, date):
+            return obj.isoformat()  # Convert `date` to a string in ISO 8601 format
+        return super().default(obj)
+    
 def write_ffighters_to_json(ffighters, suffix, write_path, runtime):
     """Writes the firefighter list and their processed picks to a JSON file."""
     # Include ID in the name field in the dictionary representation
@@ -236,7 +244,8 @@ def write_ffighters_to_json(ffighters, suffix, write_path, runtime):
     file_name = f"{write_path}/{runtime}-FFighters-{suffix}.json"
 
     with open(file_name, 'w') as json_file:
-        json.dump(ffighter_data, json_file, indent=4)
+        # Use the custom encoder to handle `date` serialization
+        json.dump(ffighter_data, json_file, indent=4, cls=CustomJSONEncoder)
 
 def read_ffighters_from_json(file_path):
     """Reads firefighter data from a JSON file and returns a list of FFighter objects."""
