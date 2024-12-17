@@ -110,12 +110,12 @@ class FFighter:
         if self.current_pick:
             self.current_pick.determination = "Approved"
             requested_hours = sum(self.current_pick.increments) * (1 / len(self.current_pick.increments))
-            if self.used_vacation_days+requested_hours <= self.used_vacation_days:
+            if self.used_vacation_days+requested_hours <= self.awarded_vacation_days:
                 self.used_vacation_days += requested_hours
                 self.current_pick.type = "Vacation"
             else:
                 self.used_holiday_days += requested_hours
-                self.current_pick.type = "Vacation"
+                self.current_pick.type = "Holiday"
             self.processed.append(self.current_pick)
             self.approved_days_count += requested_hours
             self.current_pick = None
