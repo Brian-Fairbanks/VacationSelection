@@ -33,9 +33,9 @@ class Day:
     @staticmethod
     def get_header():
         if Day.single_day_increment:
-            header = ['Date', 'Shift', 'First', 'Second', 'Third', 'Fourth', 'Fifth']
+            header = ['Date', 'First', 'Second', 'Third', 'Fourth', 'Fifth']
         else:
-            header = ['Date', 'Shift', 'First', 'Second', 'Third', 'Fourth', 'Fifth']
+            header = ['Date', 'First', 'Second', 'Third', 'Fourth', 'Fifth']
         return header
     
     def write_to_row(self, writer):
