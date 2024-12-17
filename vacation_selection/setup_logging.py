@@ -2,7 +2,7 @@
 import logging
 from os import makedirs, path
 
-def setup_logging(filename="default.log", base="..\\logs\\", debug=False):
+def setup_logging(filename="default.log", base=".\\output\\", debug=False):
     """Setup logging configuration."""
     if debug:
         loglevel=logging.DEBUG
