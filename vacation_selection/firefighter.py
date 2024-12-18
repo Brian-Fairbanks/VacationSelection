@@ -86,6 +86,7 @@ class FFighter:
         self.hr_validations = None
         self.processed = []
         self.picks = picks
+        self.exclusions = []
 
         # Calculate max days off and unpack the dictionary
         days_off_data = self.calculate_max_days_off()
@@ -150,6 +151,16 @@ class FFighter:
     def print_picks(self):
         return ", ".join([str(pick) for pick in self.picks])
     
+    # Add exclusion
+    def add_exclusion(self, leave_start, leave_end=None, reason=None):
+        exclusion = {
+            "Leave Start": leave_start,
+            "Leave End": leave_end,
+            "Reason": reason
+        }
+        self.exclusions.append(exclusion)
+
+    
     # Json Read/Write
     @classmethod
     def from_dict(cls, ff_dict):
@@ -163,6 +174,7 @@ class FFighter:
             shift=ff_dict.get('shift', ''),
             picks=[Pick.from_dict(pick) for pick in ff_dict.get('picks', [])]
         )
+        ff.exclusions = ff_dict.get('exclusions', [])  # Load exclusions
         ff.max_days_off = ff_dict.get('max_days_off', 0)
         ff.awarded_vacation_days = ff_dict.get('awarded_vacation_days', 0)
         ff.awarded_holiday_days = ff_dict.get('awarded_holiday_days', 0)
@@ -193,7 +205,8 @@ class FFighter:
             'max_days_off': self.max_days_off,
             'picks': [pick.to_dict() for pick in self.picks],
             'processed': [pick.to_dict() for pick in self.processed],
-            'hr_validations': self.hr_validations  # Added hr_validations to be included in the dictionary
+            'hr_validations': self.hr_validations,
+            'exclusions': self.exclusions
         }
 
     def __str__(self):

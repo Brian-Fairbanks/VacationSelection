@@ -1,21 +1,25 @@
+#ffighter_gui.py
+from datetime import datetime
+from vacation_selection.setup_logging import setup_logging
+# Set up runtime and logging
+runtime = datetime.now().strftime("%Y.%m.%d %H.%M")
+write_path = ".//output"
+logger = setup_logging(f"RunLog-{runtime}.log", base=write_path, debug=False)
+
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from tkinter import ttk
 import csv
-from datetime import datetime
-from vacation_selection.setup_logging import setup_logging
-from vacation_selection.file_io import read_firefighter_data, write_ffighters_to_json, write_calendar_to_csv, write_picks_to_csv, print_final, read_hr_validation
+
+from vacation_selection.file_io import read_firefighter_data, write_ffighters_to_json, write_calendar_to_csv, write_picks_to_csv, print_final, read_hr_validation, read_exclusions_file
 from vacation_selection.main import validate_against_hr
 from vacation_selection.priority import set_priorities
 from vacation_selection.cal import make_calendar
+from difflib import SequenceMatcher
 
 default_picks_filename="./2025 VACATION REQUEST FORM - Form Responses_final.csv"
 default_validation_filename="./HR_data_plus_ranks.xlsx"
-
-# Set up runtime and logging
-runtime = datetime.now().strftime("%Y.%m.%d %H.%M")
-write_path = ".//output"
-logger = setup_logging(f"RunLog-{runtime}.log", base=write_path, debug=True)
+default_exclusions_filename="./exclusions.xlsx"
 
 class FirefighterApp:
     def __init__(self, root):
@@ -27,6 +31,7 @@ class FirefighterApp:
         
         self.hr_filename = default_validation_filename
         self.pick_filename = default_picks_filename
+        self.exclusions_filename = default_exclusions_filename
         self.ffighters = []
 
         # UI Elements
@@ -38,19 +43,26 @@ class FirefighterApp:
 
         # HR File Selection
         self.hr_button = tk.Button(self.file_frame, text="Select HR Validation File", command=self.select_hr_file)
-        self.hr_button.grid(row=0, column=0, padx=5)
+        self.hr_button.grid(row=0, column=0, padx=5, sticky='w')
         self.hr_label = tk.Label(self.file_frame, text=self.hr_filename if self.hr_filename else "No HR file selected", fg="black" if self.hr_filename else "grey")
-        self.hr_label.grid(row=0, column=1, padx=5)
+        self.hr_label.grid(row=0, column=1, padx=5, sticky='w')
 
         # Pick File Selection
         self.pick_button = tk.Button(self.file_frame, text="Select Firefighter Pick File", command=self.select_pick_file)
-        self.pick_button.grid(row=1, column=0, padx=5)
+        self.pick_button.grid(row=1, column=0, padx=5, sticky='w')
         self.pick_label = tk.Label(self.file_frame, text=self.pick_filename if self.pick_filename else "No Pick file selected", fg="black" if self.pick_filename else "grey")
-        self.pick_label.grid(row=1, column=1, padx=5)
+        self.pick_label.grid(row=1, column=1, padx=5, sticky='w')
 
-        # Load Firefighters Button
-        self.load_button = tk.Button(self.file_frame, text="Load Firefighters", command=self.load_firefighters)
-        self.load_button.grid(row=2, column=0, columnspan=2, pady=5)
+        # Exclusions File Selection (Optional)
+        self.exclusions_button = tk.Button(self.file_frame, text="Select Exclusions File (Optional)", command=self.select_exclusions_file)
+        self.exclusions_button.grid(row=2, column=0, padx=5, sticky='w')
+        self.exclusions_label = tk.Label(self.file_frame, text=self.exclusions_filename if self.exclusions_filename else "No Pick file selected", fg="black" if self.exclusions_filename else "grey")
+        self.exclusions_label.grid(row=2, column=1, padx=5, sticky='w')
+
+        # Load Firefighters Button (placed below file selection)
+        self.load_button = tk.Button(self.file_selection_frame, text="Load Firefighters", command=self.load_firefighters)
+        self.load_button.pack(pady=10)
+
 
         # ---------------------- End of File Selection Frame ----------------------
         
@@ -76,18 +88,75 @@ class FirefighterApp:
             logger.info(f"Selected Firefighter Pick File: {self.pick_filename}")
             self.pick_label.config(text=self.pick_filename, fg="black")
 
+    def select_exclusions_file(self):
+        self.exclusions_filename = filedialog.askopenfilename(title="Select Exclusions File", filetypes=[("Excel files", "*.xlsx")])
+        if self.exclusions_filename:
+            logger.info(f"Selected Exclusions File: {self.exclusions_filename}")
+            self.exclusions_label.config(text=self.exclusions_filename, fg="black")
+
+
     def load_firefighters(self):
         if not self.hr_filename or not self.pick_filename:
             messagebox.showwarning("Missing Files", "Please select both HR and Pick files.")
             return
-        
+
         try:
             date_format = '%m-%d-%Y'
             self.ffighters = read_firefighter_data(self.pick_filename, date_format, 2025)
+
+            # Apply exclusions if file is selected
+            if self.exclusions_filename:
+                exclusions = read_exclusions_file(self.exclusions_filename)
+                self.apply_exclusions(exclusions)
+
             self.update_ffighters_tree(self.ffighters)
         except Exception as e:
             logger.error(f"Error loading firefighter data: {e}")
             messagebox.showerror("Error", "Failed to load firefighter data.")
+
+    def apply_exclusions(self, exclusions):
+        """
+        Applies exclusions to firefighters with name matching and accuracy checks.
+        Alerts for successful matches and unmatched exclusions.
+        """
+        unmatched_exclusions = []
+
+        for exclusion in exclusions:
+            lname_excl = exclusion['LName'].lower()
+            fname_excl = exclusion['FName'].lower()
+            leave_start = exclusion['Leave Start']
+            leave_end = exclusion.get('Leave End')  # Handle optional 'Leave End'
+            reason = exclusion['Reason']
+
+            matched = False
+
+            for ff in self.ffighters:
+                lname_ff = ff.lname.lower()
+                fname_ff = ff.fname.lower()
+
+                # Name matching logic
+                last_name_match = SequenceMatcher(None, lname_excl, lname_ff).ratio() >= 0.8
+                first_name_match = SequenceMatcher(None, fname_excl, fname_ff).ratio() >= 0.8
+
+                swapped_names = fname_excl == lname_ff and lname_excl == fname_ff
+
+                if (last_name_match and first_name_match) or swapped_names:
+                    # Apply the exclusion with leave_end
+                    ff.add_exclusion(leave_start, leave_end, reason)
+                    logger.info(f"Exclusion '{fname_excl} {lname_excl}' applied to '{ff.fname} {ff.lname}'.")
+                    matched = True
+                    break
+
+            if not matched:
+                unmatched_exclusions.append(f"{exclusion['FName']} {exclusion['LName']}")
+
+        # Alert for unmatched exclusions
+        if unmatched_exclusions:
+            unmatched_str = "\n".join(unmatched_exclusions)
+            logger.warning(f"Unmatched exclusions:\n{unmatched_str}")
+            messagebox.showwarning("Unmatched Exclusions",
+                                f"The following exclusions did not match any firefighter:\n{unmatched_str}")
+
 
     def update_ffighters_tree(self, ffighters):
         # Clear previous entries
@@ -103,13 +172,19 @@ class FirefighterApp:
         self.ff_tree_frame = tk.Frame(self.root)
         self.ff_tree_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        self.ff_tree = ttk.Treeview(self.ff_tree_frame, columns=("ID", "Name", "Rank", "Max Days Off", "Shift", "Number of Picks"), show='headings', selectmode='browse')
+        self.ff_tree = ttk.Treeview(
+            self.ff_tree_frame, 
+            columns=("ID", "Name", "Rank", "Max Days Off", "Shift", "Number of Picks", "Exclusions"), 
+            show='headings', 
+            selectmode='browse'
+        )
         self.ff_tree.heading("ID", text="ID", anchor='w')
         self.ff_tree.heading("Name", text="Name", anchor='w')
         self.ff_tree.heading("Rank", text="Rank", anchor='w')
         self.ff_tree.heading("Max Days Off", text="Max Days Off", anchor='w')
         self.ff_tree.heading("Shift", text="Shift", anchor='w')
         self.ff_tree.heading("Number of Picks", text="Number of Picks", anchor='w')
+        self.ff_tree.heading("Exclusions", text="Exclusions", anchor='w')
         
         # Set column widths for better readability
         self.ff_tree.column("ID", width=50, anchor='w')
@@ -118,6 +193,7 @@ class FirefighterApp:
         self.ff_tree.column("Max Days Off", width=100, anchor='w')
         self.ff_tree.column("Shift", width=50, anchor='w')
         self.ff_tree.column("Number of Picks", width=80, anchor='w')
+        self.ff_tree.column("Exclusions", width=200, anchor='w')
         
         # Scrollbars for the firefighter Treeview
         self.ff_tree_scrollbar_y = ttk.Scrollbar(self.ff_tree_frame, orient='vertical', command=self.ff_tree.yview)
@@ -195,15 +271,25 @@ class FirefighterApp:
 
     def display_ffighter(self, ff):
         num_picks = len(ff.picks)
-        
+
+        # Format exclusions as a readable string
+        exclusions_display = "; ".join(
+            f"{excl['Leave Start'].strftime('%Y-%m-%d') if isinstance(excl['Leave Start'], datetime) else excl['Leave Start']} - "
+            f"{excl['Leave End'].strftime('%Y-%m-%d') if isinstance(excl['Leave End'], datetime) else excl['Leave End']} "
+            f"({excl['Reason']})"
+            for excl in getattr(ff, "exclusions", [])
+        ) or "None"
+
         self.ff_tree.insert('', 'end', values=(
             ff.idnum,
             ff.name,
             self.get_display_value(ff, 'Rank'),
             self.get_display_value(ff, 'Max Days Off'),
             self.get_display_value(ff, 'Shift'),
-            num_picks
+            num_picks,
+            exclusions_display  # Display the exclusions
         ))
+
 
     def get_display_value(self, ff, field_name):
         # Prepare the display value with the change marker if applicable

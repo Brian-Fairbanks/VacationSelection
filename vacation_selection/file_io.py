@@ -41,6 +41,61 @@ def read_firefighter_data(filename, date_format, file_format):
 
     return ffdata
 
+# ================================================================================
+# Reading Exclusions File
+# ================================================================================
+
+def read_exclusions_file(file_path):
+    """
+    Reads exclusions data from an Excel file, processes combined 'LName,FName' column,
+    and returns a list of dictionaries with standardized fields.
+    """
+    exclusions = []
+    try:
+        logger.info(f"Reading exclusions file: {file_path}")
+        exclusions_df = pd.read_excel(file_path, parse_dates=['Leave Start', 'Leave End'])
+
+        # Log column names for debugging
+        logger.debug(f"Exclusions file columns: {exclusions_df.columns.tolist()}")
+
+        # Check if the problematic 'LName,FName' column exists
+        if 'LName,FName' in exclusions_df.columns:
+            logger.info("Splitting combined 'LName,FName' column into 'LName' and 'FName'")
+            exclusions_df[['LName', 'FName']] = exclusions_df['LName,FName'].str.split(',', expand=True)
+            
+            # Strip whitespace from the new columns
+            exclusions_df['LName'] = exclusions_df['LName'].str.strip()
+            exclusions_df['FName'] = exclusions_df['FName'].str.strip()
+
+            # Drop the original combined column
+            exclusions_df.drop(columns=['LName,FName'], inplace=True)
+        
+        # Standardize column names
+        exclusions_df.columns = exclusions_df.columns.str.strip()
+
+        # Validate required columns
+        required_columns = ['LName', 'FName', 'Leave Start', 'Reason']
+        for col in required_columns:
+            if col not in exclusions_df.columns:
+                raise ValueError(f"Missing required column '{col}' in exclusions file.")
+
+        # Handle optional 'Leave End' column
+        if 'Leave End' not in exclusions_df.columns:
+            logger.warning("Column 'Leave End' not found. Setting to None for all rows.")
+            exclusions_df['Leave End'] = None
+
+        # Replace NaT in 'Leave End' with None
+        exclusions_df['Leave End'] = exclusions_df['Leave End'].where(pd.notna(exclusions_df['Leave End']), None)
+
+        # Convert to dictionary records
+        exclusions = exclusions_df.to_dict(orient='records')
+        logger.info(f"Loaded {len(exclusions)} exclusions from {file_path}")
+    except Exception as e:
+        logger.error(f"Failed to read exclusions file: {e}")
+        raise Exception(f"Error reading exclusions file: {e}")
+    return exclusions
+
+
 # Helper functions to process CSV data
 # ================================================================================
 def process_firefighter_data_2024(reader, date_format):

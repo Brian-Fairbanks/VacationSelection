@@ -123,6 +123,28 @@ def probationary_limitations(ffighter, rejected):
     # After 365 days, no probationary restrictions apply
     return False
 
+def is_within_exclusion(ffighter, rejected):
+    """
+    Checks if the firefighter's current pick falls within an exclusion period.
+    Handles both Pandas Timestamp and datetime.date types.
+    """
+    for exclusion in ffighter.exclusions:
+        leave_start = exclusion.get('Leave Start')
+        leave_end = exclusion.get('Leave End') or leave_start  # Default to Leave Start if Leave End is None
+
+        # Convert to datetime.date if needed
+        if hasattr(leave_start, 'date'):  # Pandas.Timestamp or datetime.datetime
+            leave_start = leave_start.date()
+        if hasattr(leave_end, 'date'):  # Pandas.Timestamp or datetime.datetime
+            leave_end = leave_end.date()
+
+        # Compare with the firefighter's pick date
+        if leave_start <= ffighter.current_pick.date <= leave_end:
+            reason = f"Schedule Reassignment: ({exclusion.get('Reason', 'No reason provided')})"
+            deny_ffighter_pick(ffighter, rejected, reason)
+            return True
+    return False
+
 
 def has_reached_max_days(ffighter, rejected):
     """Checks if the firefighter has reached or would exceed their maximum allowed days off, considering fractional days."""
@@ -153,10 +175,14 @@ def has_reached_max_days(ffighter, rejected):
 
 def validate_pick_with_reasoning(ffighter, calendar, rejected):
 
-    # Immediate Failures for probationary limitations and max days off
-    if probationary_limitations(ffighter, rejected) or has_reached_max_days(ffighter, rejected):
+    # Immediate Failures for probationary limitations, max days off, and exclusions
+    if (
+        probationary_limitations(ffighter, rejected) or 
+        has_reached_max_days(ffighter, rejected) or
+        is_within_exclusion(ffighter, rejected)
+    ):
         return False
-
+    
     date = ffighter.current_pick.date
     if date not in calendar:
         calendar[date] = Day(date)
