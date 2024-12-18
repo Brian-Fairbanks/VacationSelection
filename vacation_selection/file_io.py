@@ -1,6 +1,7 @@
 # file_io.py
 import csv
 import json
+import os
 import pandas as pd
 from datetime import datetime, date
 import vacation_selection.setup_logging as setup_logging
@@ -313,6 +314,59 @@ def read_ffighters_from_json(file_path):
         logger.error(f"Failed to read from JSON: {e}")
 
     return ffighter_list
+
+def write_analysis_to_json(analysis, write_path, runtime):
+    """
+    Writes the analysis data to a JSON file in the specified output folder.
+    """
+    try:
+        # Ensure the write path exists
+        os.makedirs(write_path, exist_ok=True)
+
+        # Construct file name
+        file_name = f"{write_path}/{runtime}-analysis.json"
+        
+        # Write JSON data
+        with open(file_name, 'w') as json_file:
+            json.dump(analysis, json_file, indent=4, cls=CustomJSONEncoder)
+        logger.info(f"Analysis data saved to {file_name}")
+    except Exception as e:
+        logger.error(f"Failed to write analysis data to JSON: {e}")
+        raise
+
+def read_analysis_from_json(output_folder):
+    """
+    Loads the most recent analysis JSON file from the specified output folder.
+    Returns None if no valid analysis file is found.
+    """
+    try:
+        # Ensure the output folder exists
+        if not os.path.exists(output_folder):
+            logger.warning(f"Output folder '{output_folder}' does not exist.")
+            return None
+
+        # Get all analysis files
+        analyze_files = [
+            f for f in os.listdir(output_folder) if f.endswith("-analysis.json")
+        ]
+        
+        if not analyze_files:
+            logger.warning("No analysis files found.")
+            return None
+
+        # Sort files by modification time (newest first)
+        analyze_files.sort(key=lambda x: os.path.getmtime(os.path.join(output_folder, x)), reverse=True)
+        latest_file = os.path.join(output_folder, analyze_files[0])
+
+        # Read and return JSON data
+        with open(latest_file, 'r') as json_file:
+            analysis_data = json.load(json_file)
+        logger.info(f"Loaded analysis file: {latest_file}")
+        return analysis_data
+    except Exception as e:
+        logger.error(f"Failed to load analysis data: {e}")
+        return None
+
 
 def write_calendar_to_csv(calendar, suffix, write_path, runtime):
     """Writes the calendar data to a CSV file."""

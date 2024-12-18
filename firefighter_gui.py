@@ -11,7 +11,8 @@ from tkinter import filedialog, messagebox
 from tkinter import ttk
 import csv
 
-from vacation_selection.file_io import read_firefighter_data, write_ffighters_to_json, write_calendar_to_csv, write_picks_to_csv, print_final, read_hr_validation, read_exclusions_file
+from vacation_selection.file_io import read_firefighter_data, write_ffighters_to_json, write_calendar_to_csv, write_picks_to_csv, print_final, read_hr_validation, read_exclusions_file, write_analysis_to_json
+from vacation_selection.analyze import analyze_results
 from vacation_selection.main import validate_against_hr
 from vacation_selection.priority import set_priorities
 from vacation_selection.cal import make_calendar
@@ -362,6 +363,14 @@ class FirefighterApp:
                 write_calendar_to_csv(results['calendar'], shift, write_path, runtime)
                 write_picks_to_csv(shift_members, shift, write_path, runtime)
                 print_final(shift_members)
+
+            # Analyze Results once finished processing 
+            try:
+                analysis = analyze_results(prioritized_ffighters)
+                write_analysis_to_json(analysis, write_path, runtime)
+            except Exception as e:
+                logger.error(f"Error analyzing results: {e}")
+                messagebox.showerror("Error", "Failed to analyze results.")
 
             logger.info("Processing complete.")
             messagebox.showinfo("Success", "Processing complete.")
