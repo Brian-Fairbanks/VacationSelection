@@ -258,3 +258,30 @@ def make_calendar(ffighters, silent_mode=False):
             add_2_picks_for_ffighter(calendar, rejected, ffighter)
 
     return {"calendar": calendar, "rejected": rejected}
+
+def recreate_calendar_from_json(ffighters):
+    """Rebuilds the calendar structure from JSON firefighter data."""
+    calendar = {}
+    rejected = {}
+
+    for ffighter in ffighters:
+        for pick in ffighter.processed:
+            if pick.determination == "Approved":
+                date = pick.date
+
+                # Create day if it doesn't exist
+                if date not in calendar:
+                    calendar[date] = Day(date)
+
+                day = calendar[date]
+
+                # Set the current pick for proper increment tracking
+                ffighter.current_pick = pick
+
+                # Assign firefighter to the day
+                if day.can_add_ffighter(ffighter):
+                    day.add_ffighter(ffighter)
+                else:
+                    logger.warning(f"Could not reassign {ffighter.name} to {date}, possibly due to rank or count limits.")
+
+    return {"calendar": calendar, "rejected": rejected}  # ✅ Ensure this matches make_calendar()
