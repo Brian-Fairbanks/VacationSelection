@@ -132,7 +132,7 @@ def check_holiday(day: date) -> bool:
         (11, 11), # Veterans Day
         (12, 24), # Christmas Eve
         (12, 25), # Christmas Day
-        (12, 26)  # Boxing Day
+        # (12, 26)  # Boxing Day
     ]
 
     if (m, d) in fixed_holidays:
