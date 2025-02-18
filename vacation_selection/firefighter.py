@@ -20,7 +20,8 @@ class Pick:
         increment_mapping = {
             "AM": [1, 0],
             "PM": [0, 1],
-            "AMPM": [1, 1]
+            "AMPM": [1, 1],
+            "FULL": [1, 1]
         }
         if shift_selection in increment_mapping:
             return increment_mapping[shift_selection]
