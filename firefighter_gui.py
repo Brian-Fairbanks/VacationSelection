@@ -10,12 +10,14 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 from tkinter import ttk
 import csv
+import os
+import json
 
-from vacation_selection.file_io import read_firefighter_data, write_ffighters_to_json, write_calendar_to_csv, write_picks_to_csv, print_final, read_hr_validation, read_exclusions_file, write_analysis_to_json
+from vacation_selection.file_io import read_firefighter_data, write_ffighters_to_json, write_calendar_to_csv, write_picks_to_csv, print_final, read_hr_validation, read_exclusions_file, write_analysis_to_json, read_ffighters_from_json
 from vacation_selection.analyze import analyze_results, display_dashboard
 from vacation_selection.main import validate_against_hr
 from vacation_selection.priority import set_priorities
-from vacation_selection.cal import make_calendar
+from vacation_selection.cal import make_calendar, recreate_calendar_from_json
 from difflib import SequenceMatcher
 
 default_picks_filename="./2025 VACATION REQUEST FORM - Form Responses_final.csv"
@@ -34,6 +36,7 @@ class FirefighterApp:
         self.pick_filename = default_picks_filename
         self.exclusions_filename = default_exclusions_filename
         self.ffighters = []
+        self.shift_calendars = {}
 
         # UI Elements
         # ---------------------- File Selection Frame ----------------------
@@ -63,6 +66,15 @@ class FirefighterApp:
         # Load Firefighters Button (placed below file selection)
         self.load_button = tk.Button(self.file_selection_frame, text="Load Firefighters", command=self.load_firefighters)
         self.load_button.pack(pady=10)
+
+        # Button to read firefighter data from JSON
+        self.read_json_button = tk.Button(self.file_selection_frame, text="Read From JSON", command=self.read_firefighters_from_json)
+        self.read_json_button.pack(pady=10)
+
+
+        # Buttons for generating calendars
+        self.make_calendar_button = tk.Button(self.file_selection_frame, text="Make Calendar", command=self.make_calendar)
+        self.make_calendar_button.pack(pady=10)
 
 
         # ---------------------- End of File Selection Frame ----------------------
@@ -344,40 +356,115 @@ class FirefighterApp:
 
 
     def process_selections(self):
-        if not self.ffighters:
-            messagebox.showwarning("No Firefighters Loaded", "Please load firefighter data before processing.")
+        """Analyzes the stored calendar results and saves them to file."""
+        if not hasattr(self, "shift_calendars") or not self.shift_calendars:
+            messagebox.showwarning("No Calendar Found", "Please generate a calendar first.")
             return
-        
+
         try:
-            # Set priorities for firefighters
+            logger.info("Analyzing results and saving outputs.")
+
+            # Analyze results
+            all_ffighters = []
+            for shift, calendar_data in self.shift_calendars.items():
+                shift_ffighters = [ff for ff in self.ffighters if ff.shift == shift]
+                all_ffighters.extend(shift_ffighters)
+
+                # Write shift-based outputs
+                write_ffighters_to_json(shift_ffighters, f'{shift}_ffighters', write_path, runtime)
+                write_calendar_to_csv(calendar_data["calendar"], shift, write_path, runtime)
+                write_picks_to_csv(shift_ffighters, shift, write_path, runtime)
+                print_final(shift_ffighters)
+
+            # Run final analysis
+            analysis = analyze_results(all_ffighters)
+            write_analysis_to_json(analysis, write_path, runtime)
+            display_dashboard(analysis)
+
+            logger.info("Results analysis and saving complete.")
+            messagebox.showinfo("Success", "Results analyzed and saved.")
+
+        except Exception as e:
+            logger.error(f"Error analyzing and saving results: {e}")
+            messagebox.showerror("Error", "Failed to analyze and save results.")
+
+    def make_calendar(self):
+        """Processes firefighter selections and stores the resulting calendar in memory."""
+        if not self.ffighters:
+            messagebox.showwarning("No Firefighters Loaded", "Please load firefighter data before making a calendar.")
+            return
+
+        try:
+            # Prioritize firefighters before processing
             prioritized_ffighters = set_priorities(self.ffighters)
 
-            # Process selections for each shift
+            # Create calendar per shift
             for shift in ["A", "B", "C"]:
-                logger.info(f'\n\n=================================================================  \n Processing {shift} Shift\n=================================================================  \n\n')
                 shift_members = [ff for ff in prioritized_ffighters if ff.shift == shift]
-                results = make_calendar(shift_members)
+                self.shift_calendars[shift] = make_calendar(shift_members)
 
-                # Write outputs
-                write_ffighters_to_json(shift_members, f'{shift}_ffighters', write_path, runtime)
-                write_calendar_to_csv(results['calendar'], shift, write_path, runtime)
-                write_picks_to_csv(shift_members, shift, write_path, runtime)
-                print_final(shift_members)
+            messagebox.showinfo("Success", "Calendar successfully created in memory.")
 
-            # Analyze Results once finished processing 
-            try:
-                analysis = analyze_results(prioritized_ffighters)
-                write_analysis_to_json(analysis, write_path, runtime)
-                display_dashboard(analysis)
-            except Exception as e:
-                logger.error(f"Error analyzing results: {e}")
-                messagebox.showerror("Error", "Failed to analyze results.")
-
-            logger.info("Processing complete.")
-            messagebox.showinfo("Success", "Processing complete.")
         except Exception as e:
-            logger.error(f"Error processing selections: {e}")
-            messagebox.showerror("Error", "Failed to process selections.")
+            logger.error(f"Error creating calendar: {e}")
+            messagebox.showerror("Error", "Failed to create calendar.")
+
+    def make_calendar_from_json(self):
+        """Reconstructs the calendar using JSON-loaded firefighter data and stores in memory."""
+        if not self.ffighters:
+            messagebox.showwarning("No Firefighters Loaded", "Please load firefighter data from JSON before making a calendar.")
+            return
+
+        try:
+            # Recreate the calendar from JSON data
+            self.shift_calendars = {}
+            for shift in ["A", "B", "C"]:
+                shift_members = [ff for ff in self.ffighters if ff.shift == shift]
+                self.shift_calendars[shift] = recreate_calendar_from_json(shift_members)
+
+            messagebox.showinfo("Success", "Calendar reconstructed from JSON and stored in memory.")
+
+        except Exception as e:
+            logger.error(f"Error reconstructing calendar from JSON: {e}")
+            messagebox.showerror("Error", "Failed to reconstruct calendar from JSON.")
+
+    def read_firefighters_from_json(self):
+        """Loads JSON firefighter data and reconstructs calendar immediately."""
+        folder_selected = filedialog.askdirectory(initialdir="./output/2024 Run/", title="Select Folder Containing JSON Files")
+
+        if not folder_selected:
+            return  # User canceled selection
+
+        firefighter_data = []
+        json_files = [f for f in os.listdir(folder_selected) if f.endswith('.json')]
+
+        # **Filter out analysis files**
+        json_files = [f for f in json_files if "analysis" not in f.lower()]
+
+        if not json_files:
+            messagebox.showwarning("No JSON Files", "No valid firefighter JSON files found in the selected folder.")
+            return
+
+        for json_file in json_files:
+            file_path = os.path.join(folder_selected, json_file)
+            try:
+                ff_list = read_ffighters_from_json(file_path)
+                firefighter_data.extend(ff_list)
+                logger.info(f"Loaded {len(ff_list)} firefighters from {json_file}")
+            except Exception as e:
+                logger.error(f"Failed to read {json_file}: {e}")
+
+        if firefighter_data:
+            self.ffighters = firefighter_data  # Update internal list
+            self.make_calendar_from_json()
+            self.update_ffighters_tree(self.ffighters)  # Refresh GUI with loaded data
+
+            messagebox.showinfo("Success", f"Loaded {len(firefighter_data)} firefighters and recreated calendar.")
+        else:
+            messagebox.showwarning("No Data", "No valid firefighter data was loaded.")
+
+
+
 
 if __name__ == '__main__':
     root = tk.Tk()
