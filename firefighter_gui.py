@@ -23,6 +23,7 @@ from difflib import SequenceMatcher
 default_picks_filename="./2025 VACATION REQUEST FORM - Form Responses_final.csv"
 default_validation_filename="./HR_data_plus_ranks.xlsx"
 default_exclusions_filename="./exclusions.xlsx"
+json_dir = "./output/2024_JSON_Place/"
 
 class FirefighterApp:
     def __init__(self, root):
@@ -430,7 +431,7 @@ class FirefighterApp:
 
     def read_firefighters_from_json(self):
         """Loads JSON firefighter data and reconstructs calendar immediately."""
-        folder_selected = filedialog.askdirectory(initialdir="./output/2024 Run/", title="Select Folder Containing JSON Files")
+        folder_selected = filedialog.askdirectory(initialdir=json_dir, title="Select Folder Containing JSON Files")
 
         if not folder_selected:
             return  # User canceled selection
