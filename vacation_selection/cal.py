@@ -260,28 +260,75 @@ def make_calendar(ffighters, silent_mode=False):
     return {"calendar": calendar, "rejected": rejected}
 
 def recreate_calendar_from_json(ffighters):
-    """Rebuilds the calendar structure from JSON firefighter data."""
+    """Rebuilds the calendar structure while maintaining firefighter pick order."""
     calendar = {}
     rejected = {}
 
-    for ffighter in ffighters:
-        for pick in ffighter.processed:
-            if pick.determination == "Approved":
-                date = pick.date
+    # Sort all processed picks by date > place > firefighter name
+    sorted_picks = sorted(
+        [pick for ff in ffighters for pick in ff.processed if pick.determination == "Approved"],
+        key=lambda p: (p.date, p.place if p.place is not None else float('inf'), p.type)
+    )
 
-                # Create day if it doesn't exist
-                if date not in calendar:
-                    calendar[date] = Day(date)
+    for pick in sorted_picks:
+        date = pick.date
 
-                day = calendar[date]
+        # Create the day if it doesn't exist
+        if date not in calendar:
+            calendar[date] = Day(date)
 
-                # Set the current pick for proper increment tracking
-                ffighter.current_pick = pick
+        day = calendar[date]
 
-                # Assign firefighter to the day
-                if day.can_add_ffighter(ffighter):
-                    day.add_ffighter(ffighter)
-                else:
-                    logger.warning(f"Could not reassign {ffighter.name} to {date}, possibly due to rank or count limits.")
+        # Find firefighter who made this pick
+        ffighter = next((ff for ff in ffighters if pick in ff.processed), None)
+        if not ffighter:
+            logger.warning(f"Could not find firefighter for pick on {date}")
+            continue
 
-    return {"calendar": calendar, "rejected": rejected}  # ✅ Ensure this matches make_calendar()
+        # Set current pick for tracking
+        ffighter.current_pick = pick
+
+        # Ensure `place` from JSON is used correctly
+        increment = day.increments[0]  # Assuming a single-increment structure
+        if pick.place is not None:
+            while len(increment.picks) <= pick.place:
+                increment.picks.append(None)  # Extend the list to allow indexed insertion
+            increment.picks[pick.place] = ffighter.current_pick
+        else:
+            increment.picks.append(ffighter.current_pick)  # If no place, add to end
+
+        # Assign firefighter to the day
+        if day.can_add_ffighter(ffighter):
+            day.add_ffighter(ffighter)
+        else:
+            logger.warning(f"Could not reassign {ffighter.name} to {date}, possibly due to rank or count limits.")
+
+    return {"calendar": calendar, "rejected": rejected}
+
+
+# def recreate_calendar_from_json(ffighters):
+#     """Rebuilds the calendar structure from JSON firefighter data."""
+#     calendar = {}
+#     rejected = {}
+
+#     for ffighter in ffighters:
+#         for pick in ffighter.processed:
+#             if pick.determination == "Approved":
+#                 date = pick.date
+
+#                 # Create day if it doesn't exist
+#                 if date not in calendar:
+#                     calendar[date] = Day(date)
+
+#                 day = calendar[date]
+
+#                 # Set the current pick for proper increment tracking
+#                 ffighter.current_pick = pick
+
+#                 # Assign firefighter to the day
+#                 if day.can_add_ffighter(ffighter):
+#                     day.add_ffighter(ffighter)
+#                 else:
+#                     logger.warning(f"Could not reassign {ffighter.name} to {date}, possibly due to rank or count limits.")
+
+#     return {"calendar": calendar, "rejected": rejected}  # ✅ Ensure this matches make_calendar()

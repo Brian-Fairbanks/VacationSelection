@@ -102,6 +102,12 @@ class Increment:
         return check
     
     def add_ffighter(self, ffighter):
+        increment = self  # The current increment object
+        # Find the number of previously added firefighters
+        place_index = len(increment.picks)
+        # Assign place based on this position
+        ffighter.current_pick.place = place_index
+        
         self.ffighters.append(ffighter)
         # Update rank counts
         if ffighter.rank not in self.rank_counts:

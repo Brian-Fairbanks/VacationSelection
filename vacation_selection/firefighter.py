@@ -6,12 +6,13 @@ import vacation_selection.setup_logging as setup_logging
 logger = setup_logging.setup_logging("classes.log")
 
 class Pick:
-    def __init__(self, date, type="Untyped", determination="Unaddressed", increments='AMPM'):
+    def __init__(self, date, type="Untyped", determination="Unaddressed", increments='AMPM', reason=None, place=None):
         self.date = date
         self.type = type
         self.determination = determination
-        self.reason = None
+        self.reason = reason
         self.increments = self.process_increments(increments)
+        self.place = place
 
     def get_increments(self):
         return self.increments
@@ -50,22 +51,26 @@ class Pick:
             'type': self.type,
             'determination': self.determination,
             'reason': self.reason,
-            'increments': self.increments_plain_text(self.increments)
+            'increments': self.increments_plain_text(self.increments),
+            "place": self.place
         }
 
     @classmethod
     def from_dict(cls, pick_dict):
         """Creates a Pick object from a dictionary."""
-        date = datetime.strptime(pick_dict['date'], '%Y-%m-%d')
-        increments = pick_dict.get('increments', 'AMPM')
+        date = datetime.strptime(pick_dict['date'], '%Y-%m-%d').date()  # Ensure date is converted properly
+        increments = pick_dict.get('increments', [1, 1])  # Default to full day
+
         pick = cls(
             date=date,
             type=pick_dict.get('type', "Untyped"),
             determination=pick_dict.get('determination', "Unaddressed"),
-            increments=increments
+            increments=increments,
+            place=pick_dict.get('place')  # Restores the order position
         )
         pick.reason = pick_dict.get('reason')
         return pick
+
     
     # Pick print
     def __str__(self):
