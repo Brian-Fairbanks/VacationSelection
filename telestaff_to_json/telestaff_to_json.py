@@ -1,7 +1,8 @@
 import os
 import json
 from read_telestaff_export import read_telestaff_export
-from fuzzywuzzy import fuzz
+from fuzzywuzzy import fuzz, process
+
 
 def load_current_json(json_folder, shift_type):
     """
@@ -14,7 +15,8 @@ def load_current_json(json_folder, shift_type):
     if not json_files:
         print(f"No JSON file found for shift type {shift_type} in {json_folder}")
         return None
-
+    
+    # Assuming the most recent file (by lexicographic order) is the current one.
     json_files.sort(reverse=True)
     json_path = os.path.join(json_folder, json_files[0])
     with open(json_path, 'r') as jf:
@@ -22,74 +24,129 @@ def load_current_json(json_folder, shift_type):
     print(f"Loaded current JSON file: {json_path}")
     return data
 
-def normalize_text(text):
-    """Normalizes text by stripping whitespace and converting to uppercase."""
-    return text.strip().upper()
 
-def match_ffighters(new_record, current_data, threshold=80):
+def create_lookup(data_list):
     """
-    Attempts to match the new_record against current_data.
-    First, if an idnum exists, it checks for an exact id match.
-    If that fails, it checks for an exact name match.
-    Finally, it uses fuzzy matching on the full name (first and last) with the given threshold.
-    
-    Returns the matching record from current_data if found, otherwise None.
+    Creates a lookup dictionary keyed by (shift, fname, lname).
+    Stores all names for fuzzy matching.
     """
-    shift_new = normalize_text(new_record.get("shift", ""))
-    new_fname = normalize_text(new_record.get("fname", ""))
-    new_lname = normalize_text(new_record.get("lname", ""))
-    new_id = str(new_record.get("idnum", "")).strip()
+    lookup = {}
+    all_names = set()  # Store unique name pairs for fuzzy matching
 
-    # Filter candidates by shift.
-    candidates = [rec for rec in current_data if normalize_text(rec.get("shift", "")) == shift_new]
+    for entry in data_list:
+        if not isinstance(entry, dict):
+            continue
 
-    # Primary: If new record has an ID, try to match based on ID.
-    if new_id:
-        for rec in candidates:
-            current_id = str(rec.get("idnum", "")).strip()
-            if new_id == current_id and new_id != "":
-                print(f"ID match found for ID {new_id} in shift {shift_new}")
-                return rec
+        shift = str(entry.get("shift", "")).strip().upper()
+        first_name = str(entry.get("fname", "")).strip().upper()
+        last_name = str(entry.get("lname", "")).strip().upper()
 
-    # Secondary: Exact name match.
-    for rec in candidates:
-        cur_fname = normalize_text(rec.get("fname", ""))
-        cur_lname = normalize_text(rec.get("lname", ""))
-        if new_fname == cur_fname and new_lname == cur_lname:
-            print(f"Exact name match found: {new_fname} {new_lname}")
-            return rec
+        # Skip entries with missing names
+        if not first_name or not last_name:
+            print(f"⚠️ Skipping entry with missing name: {entry}")  # Debugging
+            continue  
 
-    # Tertiary: Fuzzy matching on full names.
-    best_match = None
-    best_score = 0
-    full_name_new = f"{new_fname} {new_lname}"
-    for rec in candidates:
-        cur_fname = normalize_text(rec.get("fname", ""))
-        cur_lname = normalize_text(rec.get("lname", ""))
-        full_name_current = f"{cur_fname} {cur_lname}"
-        score = fuzz.token_sort_ratio(full_name_new, full_name_current)
-        if score > best_score:
-            best_score = score
-            best_match = rec
-    if best_score >= threshold:
-        print(f"Fuzzy match: {full_name_new} matched with {normalize_text(best_match.get('fname',''))} {normalize_text(best_match.get('lname',''))} (Score: {best_score})")
-        return best_match
-    print(f"No match found for {full_name_new} (Best fuzzy score: {best_score})")
+        all_names.add((first_name, last_name))  # Collect valid names
+        key = (shift, first_name, last_name)
+        lookup[key] = entry
+
+    print(f"\n📋 Lookup created with {len(all_names)} unique names:")
+    print(all_names)  # Debugging
+
+    return lookup, all_names  # Return both lookup and name set for fuzzy matching
+
+
+def find_best_match(name_tuple, name_list, threshold=80):
+    """
+    Uses fuzzy matching to find the closest fname/lname pair in `name_list`.
+    Converts all names to uppercase before comparison.
+    Returns the best match if confidence is above `threshold`, otherwise None.
+    """
+    first_name, last_name = name_tuple
+    query = f"{first_name} {last_name}".upper()
+
+    # Convert all names in the list to uppercase for consistency
+    name_list_str = [" ".join(name).upper() for name in name_list]  
+
+    print(f"\n🔍 Searching for match: {query}")  # Debugging
+
+    # Perform fuzzy matching
+    best_match = process.extractOne(query, name_list_str, scorer=fuzz.token_sort_ratio)
+
+    if best_match:
+        print(f"✅ Best fuzzy match found: {best_match[0]} (Score: {best_match[1]})")  # Debugging
+    else:
+        print(f"❌ No fuzzy match found for: {query}")
+
+    if best_match and best_match[1] >= threshold:  # Confidence score check
+        matched_name = best_match[0].split()
+        print(f"🎯 Match Accepted: {matched_name[0]} {matched_name[1]} (Score: {best_match[1]})\n")
+        return (matched_name[0], matched_name[1]) if len(matched_name) == 2 else None
+
+    print(f"🚨 Match Rejected: {best_match[0]} (Score: {best_match[1]})\n") if best_match else None
     return None
 
+
+def match_ffighters(shift, first_name, last_name, current_lookup, current_names):
+    """
+    Finds the best match for a given shift, first name, and last name.
+    First attempts an exact match, then falls back to fuzzy matching.
+    
+    Returns:
+        (json_key, matched_entry) if a match is found, or (None, None) if no match.
+    """
+    match_key = (shift, first_name, last_name)
+
+    # First, try an exact match
+    if match_key in current_lookup:
+        print(f"🔹 Exact match found for {first_name} {last_name} in shift {shift}")
+        return match_key, current_lookup[match_key]
+
+    # Fallback: Try fuzzy matching
+    print(f"🔎 No exact match for {first_name} {last_name} → Trying fuzzy matching...")
+    fuzzy_match = find_best_match((first_name, last_name), current_names)
+
+    if fuzzy_match:
+        fuzzy_key = (shift, fuzzy_match[0], fuzzy_match[1])
+        matched_entry = current_lookup.get(fuzzy_key, None)
+
+        if matched_entry:
+            print(f"✅ Fuzzy match success! Matched with {fuzzy_match[0]} {fuzzy_match[1]}")
+            return fuzzy_key, matched_entry
+        else:
+            print(f"❌ Fuzzy match found ({fuzzy_match[0]} {fuzzy_match[1]}) but no corresponding JSON entry exists.")
+    else:
+        print(f"❌ No fuzzy match found for {first_name} {last_name}")
+
+    return None, None
+
+
 def dict_list_to_tuples(dict_list):
-    """Converts a list of dictionaries into a sorted list of tuples for comparison."""
+    """ Converts a list of dictionaries into a sorted list of tuples for comparison. """
     return sorted([tuple(sorted(d.items())) for d in dict_list])
 
+
 def extract_processed_set(processed_list):
-    """Extracts a set of (date, type, determination) tuples for comparison (ignores increments)."""
+    """ Extracts a set of (date, type, determination) tuples for easy comparison (ignores increments). """
     return {(entry["date"], entry["type"], entry["determination"]) for entry in processed_list}
+
 
 def update_availability(firefighter_entry, operation, day_type, increments, logs, log_message):
     """
     Updates the firefighter's availability based on the operation.
-    Computes change (1 for FULL, 0.5 for HALF) and adjusts used days and approved count.
-    Logs a warning if used days exceed awarded days.
+    
+    Parameters:
+      firefighter_entry: The JSON record for the firefighter.
+      operation: 'addition' for a new Telestaff pick, or 'removal' for a pick removed.
+      day_type: The type of day (e.g., "Vacation" or "Holiday").
+      increments: The increment value (e.g., "FULL" or "HALF").
+      logs: The central log list to append log messages.
+      log_message: A message describing the change.
+    
+    The function computes the change amount (1 for FULL, 0.5 for HALF) and adjusts:
+      - used_vacation_days or used_holiday_days (depending on day_type)
+      - approved_days_count
+    It also checks against awarded days and logs a warning if the used count exceeds the awarded limit.
     """
     change = 1 if increments.upper() == "FULL" else 0.5
 
@@ -108,6 +165,7 @@ def update_availability(firefighter_entry, operation, day_type, increments, logs
         firefighter_entry["approved_days_count"] = (firefighter_entry.get("approved_days_count") or 0) - change
         logs.append(log_message + " [Removal]")
 
+    # Check awarded vs used days (if awarded info is available)
     if day_type == "Vacation":
         awarded = firefighter_entry.get("awarded_vacation_days")
         if awarded is not None and (firefighter_entry.get("used_vacation_days") or 0) > awarded:
@@ -117,76 +175,85 @@ def update_availability(firefighter_entry, operation, day_type, increments, logs
         if awarded is not None and (firefighter_entry.get("used_holiday_days") or 0) > awarded:
             logs.append(f"⚠️ {firefighter_entry['fname']} {firefighter_entry['lname']} exceeded awarded holiday days: used {(firefighter_entry.get('used_holiday_days') or 0)} vs awarded {awarded}.")
 
+
+# In compare_and_update, update the tuple comparisons to ignore increments:
 def compare_and_update(current_data, new_data):
     """
     Compares and updates JSON firefighter data using new Telestaff exports.
-    For each new record, attempts to match using ID (if available) or fuzzy name matching.
-    Compares picks by (date, type, determination), ignoring increments.
-    
-    For JSON firefighters not found in the Telestaff export, their "processed" picks are cleared
-    and summary fields are reset to zero.
+    (Now compares picks by date, type, and determination only, ignoring increments.)
     
     Returns:
-        updated_data: Updated JSON firefighter list (with cleared picks for firefighters not in Telestaff)
-        logs: List of log messages
+       updated_data: Updated JSON firefighter list
+       logs: List of log messages
     """
     logs = []
-    matched_indices = set()
+    matched_keys = set()
+    
+    # Construct lookup tables for JSON and Telestaff data
+    current_lookup, current_names = create_lookup(current_data)
+    new_lookup, new_names = create_lookup(new_data)
 
-    # Process each new record: update matching record or add as new.
-    for new_record in new_data:
-        match_record = match_ffighters(new_record, current_data)
-        if match_record:
-            # Found a match; update its processed picks.
-            index = current_data.index(match_record)
-            matched_indices.add(index)
-            json_processed = match_record.get("processed", [])
-            telestaff_processed = new_record.get("processed", [])
+    print(f"\n📋 Total Names in Current JSON: {len(current_names)}")
+    print(f"📋 Total Names in New Export: {len(new_names)}")
+
+    for key, new_entry in new_lookup.items():
+        shift, fname, lname = key
+
+        json_key, matched_entry = match_ffighters(shift, fname, lname, current_lookup, current_names)
+
+        if matched_entry:
+            matched_keys.add(json_key)
+
+            # Use the updated processed set without increments.
+            json_processed = matched_entry.get("processed", [])
+            telestaff_processed = new_entry.get("processed", [])
+
             json_processed_set = {(entry["date"], entry["type"], entry["determination"]) for entry in json_processed}
             telestaff_processed_set = {(entry["date"], entry["type"], entry["determination"]) for entry in telestaff_processed}
 
             updated_processed = []
 
-            # Retain picks in JSON that match Telestaff, or are marked as Rejected.
+            # First pass: Process existing JSON picks.
             for entry in json_processed:
                 entry_key = (entry["date"], entry["type"], entry["determination"])
                 if entry["determination"] == "Rejected":
                     updated_processed.append(entry)
-                    logs.append(f"[{new_record['fname']} {new_record['lname']}] {entry['date']} ({entry['type']}) was REJECTED and remains in JSON.")
+                    logs.append(f"[{fname} {lname}] {entry['date']} ({entry['type']}) was REJECTED and remains in JSON.")
                 elif entry_key in telestaff_processed_set:
                     updated_processed.append(entry)
-                    logs.append(f"[{new_record['fname']} {new_record['lname']}] {entry['date']} ({entry['type']}) MATCHED Telestaff data.")
+                    logs.append(f"[{fname} {lname}] {entry['date']} ({entry['type']}) MATCHED Telestaff data.")
                 else:
+                    # Pick removed from Telestaff: update availability and do not add it.
                     update_availability(
-                        match_record,
+                        matched_entry,
                         "removal",
                         entry["type"],
                         entry["increments"],
                         logs,
-                        f"[{new_record['fname']} {new_record['lname']}] {entry['date']} ({entry['type']}) was REMOVED (not found in Telestaff)."
+                        f"[{fname} {lname}] {entry['date']} ({entry['type']}) was REMOVED (not found in Telestaff)."
                     )
 
-            # Add new picks from Telestaff not already in JSON.
+            # Second pass: Add new picks from Telestaff that are not in JSON.
             for entry in telestaff_processed:
                 entry_key = (entry["date"], entry["type"], entry["determination"])
                 if entry_key not in json_processed_set:
                     updated_processed.append(entry)
                     update_availability(
-                        match_record,
+                        matched_entry,
                         "addition",
                         entry["type"],
                         entry["increments"],
                         logs,
-                        f"[{new_record['fname']} {new_record['lname']}] {entry['date']} ({entry['type']}) was ADDED from Telestaff."
+                        f"[{fname} {lname}] {entry['date']} ({entry['type']}) was ADDED from Telestaff."
                     )
 
-            match_record["processed"] = sorted(updated_processed, key=lambda x: x["date"])
+            matched_entry["processed"] = sorted(updated_processed, key=lambda x: x["date"])
 
-            # Recalculate summary fields.
+            # Final recalculation of summary fields.
             approved = 0
             used_vacation = 0
             used_holiday = 0
-            for entry in match_record["processed"]:
+            for entry in matched_entry["processed"]:
                 if entry["determination"] == "Approved":
                     inc = 1 if entry["increments"].upper() == "FULL" else 0.5
                     approved += inc
@@ -195,73 +262,71 @@ def compare_and_update(current_data, new_data):
                     elif entry["type"] == "Holiday":
                         used_holiday += inc
 
-            match_record["approved_days_count"] = approved
-            match_record["used_vacation_days"] = used_vacation
-            match_record["used_holiday_days"] = used_holiday
-        else:
-            logs.append(f"New entry found in Excel for {new_record['fname']} {new_record['lname']} (ID: {new_record.get('idnum', 'N/A')}); adding to JSON.")
-            current_data.append(new_record)
+            matched_entry["approved_days_count"] = approved
+            matched_entry["used_vacation_days"] = used_vacation
+            matched_entry["used_holiday_days"] = used_holiday
 
-    # Instead of removing entire firefighter entries not found in Telestaff,
-    # clear all their picks and reset summary fields.
-    for idx, rec in enumerate(current_data):
-        if idx not in matched_indices:
-            rec["processed"] = []
-            rec["approved_days_count"] = 0
-            rec["used_vacation_days"] = 0
-            rec["used_holiday_days"] = 0
-            logs.append(f"Cleared all picks for {rec.get('fname','')} {rec.get('lname','')} (ID: {rec.get('idnum','')}) as they were not found in Telestaff export.")
+            if not matched_entry["processed"]:
+                matched_entry["processed"] = json_processed
+                logs.append(f"[{fname} {lname}] WARNING: Processed list was empty; restored original JSON picks.")
+
+        else:
+            logs.append(f"New entry found in Excel for {key}; adding to JSON.")
+            current_data.append(new_entry)
+
+    for key, current_entry in current_lookup.items():
+        if key not in matched_keys:
+            logs.append(f"Entry in JSON for {key} not found in Excel export.")
 
     return current_data, logs
 
 
 def main():
+    # Define folder paths.
     json_folder = "./telestaff_to_json/2024_JSON_Place"
     excel_folder = "./telestaff_to_json/raw_telestaff_exports"
     output_folder = "./telestaff_to_json/Output"
+    
+    # Set the shift type and roster date for naming.
+    shift_type = "C"  # Options: "A", "B", or "C"
+    roster_date = "20250228"  # New naming convention date portion
+    
+    # Build Excel file path using the new naming convention.
+    excel_filename = f"{roster_date} - Multiday Roster Report - {shift_type} Shift.xlsx"
+    excel_file_path = os.path.join(excel_folder, excel_filename)
+    
+    # Read the new Telestaff export.
+    try:
+        new_data = read_telestaff_export(excel_file_path)
+        print(f"Processed {len(new_data)} entries from Excel export.")
+    except Exception as e:
+        print("Error processing Excel file:", e)
+        return
+    
+    # Load the current JSON data.
+    current_data = load_current_json(json_folder, shift_type)
+    if current_data is None:
+        return
+    
+    # Compare and update the current JSON data based on the Excel export.
+    updated_data, logs = compare_and_update(current_data, new_data)
+    
+    # Ensure output directory exists.
+    os.makedirs(output_folder, exist_ok=True)
+    
+    # Write updated JSON file.
+    updated_json_path = os.path.join(output_folder, "updated.json")
+    with open(updated_json_path, 'w') as outf:
+        json.dump(updated_data, outf, indent=4)
+    print(f"Updated JSON file written to {updated_json_path}")
 
-    # Input file uses this date (unchanged)
-    input_date = "20250228"
-    # Output file will use this date in the filename.
-    output_date = "2025.03.04"
+    # Write conversion log.
+    log_path = os.path.join(output_folder, "conversion.log")
+    with open(log_path, 'w', encoding='utf-8') as logf:
+        for line in logs:
+            logf.write(line + "\n")
+    print(f"Conversion log written to {log_path}")
 
-    shifts = ["A", "B", "C"]
-
-    for shift_type in shifts:
-        # Input file name remains unchanged.
-        excel_filename = f"{input_date} - Multiday Roster Report - {shift_type} Shift.xlsx"
-        excel_file_path = os.path.join(excel_folder, excel_filename)
-        print(f"\nProcessing shift {shift_type} using Excel file: {excel_file_path}")
-
-        try:
-            new_data = read_telestaff_export(excel_file_path)
-            print(f"Processed {len(new_data)} entries from Excel export for shift {shift_type}.")
-        except Exception as e:
-            print(f"Error processing Excel file for shift {shift_type}: {e}")
-            continue
-
-        current_data = load_current_json(json_folder, shift_type)
-        if current_data is None:
-            continue
-
-        updated_data, logs = compare_and_update(current_data, new_data)
-
-        os.makedirs(output_folder, exist_ok=True)
-
-        # Output JSON file named with the new date.
-        updated_json_filename = f"{output_date}-FFighters-{shift_type}_ffighters.json"
-        updated_json_path = os.path.join(output_folder, updated_json_filename)
-        with open(updated_json_path, 'w') as outf:
-            json.dump(updated_data, outf, indent=4)
-        print(f"Updated JSON file for shift {shift_type} written to {updated_json_path}")
-
-        # Write corresponding log file.
-        log_filename = f"{output_date}-ConversionLog-{shift_type}.log"
-        log_path = os.path.join(output_folder, log_filename)
-        with open(log_path, 'w', encoding='utf-8') as logf:
-            for line in logs:
-                logf.write(line + "\n")
-        print(f"Conversion log for shift {shift_type} written to {log_path}")
 
 if __name__ == "__main__":
     main()
