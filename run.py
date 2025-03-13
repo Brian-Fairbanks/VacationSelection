@@ -1,5 +1,17 @@
-from vacation_selection.main import main
+# main.py
+from datetime import datetime
+import tkinter as tk
+from vacation_selection.setup_logging import setup_logging
+from gui.firefighter_gui import FirefighterApp
+
+def main():
+    runtime = datetime.now().strftime("%Y.%m.%d %H.%M")
+    write_path = ".//output"
+    logger = setup_logging(f"RunLog-{runtime}.log", base=write_path, debug=False)
+    
+    root = tk.Tk()
+    app = FirefighterApp(root, logger)
+    root.mainloop()
 
 if __name__ == "__main__":
-    # main('.//Old Files//2024 VACATION REQUEST FORM - Form Responses Final.csv', 2024)
-    main('./random_vacation_requests.csv', './HR_validations.xlsx', 2025)
+    main()
