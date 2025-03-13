@@ -1,55 +1,32 @@
+import os
+import json
 import pandas as pd
 import datetime
 from fuzzywuzzy import fuzz, process
 
+# --- HR Functions (shared) ---
 def load_hr_data(hr_excel_path):
-    """
-    Loads HR data from the given Excel file.
-    Expected columns (adjust names as necessary):
-      - Employee Number
-      - Employee Name (formatted as "[Lastname, First Middle]")
-      - Hire Date
-      - Years of Service
-      - # of Vacation Leave Hours awarded(as days)
-      - # of Holiday Leave Hours awarded(as days)
-      - Rank
-    This function splits the "Employee Name" column into first and last names (ignoring middle names),
-    then creates a 'full_name' column in the format "FIRST LAST" for matching.
-    """
     hr_df = pd.read_excel(hr_excel_path)
-    
-    # Ensure the "Employee Name" column is string type.
     hr_df["Employee Name"] = hr_df["Employee Name"].astype(str)
-    
-    # Split "Employee Name" into Last Name and First Name (ignoring any middle names)
     hr_df["Last Name"] = hr_df["Employee Name"].apply(lambda x: x.split(',')[0].strip().upper())
     hr_df["First Name"] = hr_df["Employee Name"].apply(
         lambda x: x.split(',')[1].split()[0].strip().upper() if ',' in x and len(x.split(',')) > 1 else ""
     )
-    
-    # Create a full_name column for matching (first and last only, separated by a space)
     hr_df["full_name"] = hr_df["First Name"] + " " + hr_df["Last Name"]
-    
     return hr_df
 
-
-
-# --- New Function: Fuzzy Match HR Entry ---
 def match_hr_entry(first_name, last_name, hr_df, threshold=80):
     target_name = f"{first_name} {last_name}".upper()
     choices = hr_df["full_name"].tolist()
     best_match = process.extractOne(target_name, choices, scorer=fuzz.token_sort_ratio)
-    print(f"Target: {target_name}, Best Match: {best_match}")  # Debug print
+    print(f"HR Matching: Target: {target_name}, Best Match: {best_match}")
     if best_match and best_match[1] >= threshold:
         hr_match = hr_df[hr_df["full_name"] == best_match[0]].iloc[0]
         return hr_match
     return None
 
-
+# --- Telestaff Import ---
 def convert_to_processed_format(vacation_dates, holiday_dates):
-    """
-    Converts separate vacation and holiday date lists into the JSON 'processed' format.
-    """
     processed_entries = []
     for date in vacation_dates:
         processed_entries.append({
@@ -71,14 +48,7 @@ def convert_to_processed_format(vacation_dates, holiday_dates):
         })
     return processed_entries
 
-
 def read_telestaff_export(excel_path, hr_excel_path="./HR_data_plus_ranks.xlsx"):
-    """
-    Reads a Telestaff export file and converts it into a structured JSON format.
-    It also cross-references against HR data to fill in employee details.
-    Returns a list of firefighter dictionaries.
-    """
-    # Load HR data first.
     try:
         hr_df = load_hr_data(hr_excel_path)
         print(f"Loaded HR data with {len(hr_df)} records from {hr_excel_path}")
@@ -87,8 +57,6 @@ def read_telestaff_export(excel_path, hr_excel_path="./HR_data_plus_ranks.xlsx")
         hr_df = None
 
     df_full = pd.read_excel(excel_path, header=None)
-
-    # --- Extract the date range from row 3 (index 2) ---
     date_range_str = str(df_full.iloc[2, 0]).strip()
     if date_range_str.startswith('[') and date_range_str.endswith(']'):
         date_range_str = date_range_str[1:-1].strip()
@@ -99,7 +67,6 @@ def read_telestaff_export(excel_path, hr_excel_path="./HR_data_plus_ranks.xlsx")
     start_date = pd.to_datetime(start_date_str.strip(), format='%m/%d/%Y')
     end_date = pd.to_datetime(end_date_str.strip(), format='%m/%d/%Y')
 
-    # --- Extract day headers from row 5 (index 4) for columns E onward ---
     data_header = df_full.iloc[4, :]
     raw_day_headers = data_header.iloc[4:].tolist()
     full_day_headers = []
@@ -120,7 +87,6 @@ def read_telestaff_export(excel_path, hr_excel_path="./HR_data_plus_ranks.xlsx")
                 parsed = parsed.replace(year=start_date.year + 1)
             full_day_headers.append(parsed.strftime('%Y-%m-%d'))
 
-    # --- Data rows start from row 6 (index 5) ---
     df_data = df_full.iloc[5:, :].copy()
     fixed_columns = ['Shift', 'Unused', 'Rank', 'Name']
     all_columns = fixed_columns + full_day_headers
@@ -150,7 +116,6 @@ def read_telestaff_export(excel_path, hr_excel_path="./HR_data_plus_ranks.xlsx")
             cell = row[col]
             if isinstance(cell, str):
                 code = cell.strip().upper()
-                # Skip pending requests
                 if code.startswith("*"):
                     continue
                 if code in ["V", ".V"]:
@@ -159,17 +124,13 @@ def read_telestaff_export(excel_path, hr_excel_path="./HR_data_plus_ranks.xlsx")
                     holidays.append(col)
         processed_data = convert_to_processed_format(vacations, holidays)
         
-        # Default HR info (if no match found, these remain None or the original)
         emp_id = None
         hire_date = None
         years_of_service = None
-        vacation_leave_days = None
-        holiday_leave_days = None
         awarded_vacation_days = None
         awarded_holiday_days = None
-        hr_rank = str(rank).strip()  # fallback to Telestaff rank
+        hr_rank = str(rank).strip()
         
-        # Attempt to match against HR data if available.
         if hr_df is not None:
             hr_entry = match_hr_entry(first_name, last_name, hr_df)
             if hr_entry is not None:
@@ -177,7 +138,6 @@ def read_telestaff_export(excel_path, hr_excel_path="./HR_data_plus_ranks.xlsx")
                 if emp_id is not None:
                     emp_id = str(emp_id)
                 hire_date = hr_entry.get("Hire Date")
-                # Convert hire_date to date-only string if it is a datetime.
                 if pd.notna(hire_date):
                     try:
                         hire_date = pd.to_datetime(hire_date).strftime('%Y-%m-%d')
@@ -188,7 +148,6 @@ def read_telestaff_export(excel_path, hr_excel_path="./HR_data_plus_ranks.xlsx")
                 if years_of_service is not None:
                     years_of_service = str(years_of_service)
                 
-                # Retrieve awarded leave values and cast to float if possible.
                 vacation_leave_hours = hr_entry.get("# of Vacation Leave Hours awarded(as days)")
                 holiday_leave_hours = hr_entry.get("# of Holiday Leave Hours awarded(as days)")
                 try:
@@ -200,9 +159,8 @@ def read_telestaff_export(excel_path, hr_excel_path="./HR_data_plus_ranks.xlsx")
                 except Exception as e:
                     awarded_holiday_days = None
                 
-                # Optionally update rank based on HR.
                 hr_rank = hr_entry.get("Rank")
-
+        
         firefighter_entry = {
             "idnum": emp_id,
             "fname": first_name.capitalize(),
@@ -212,40 +170,203 @@ def read_telestaff_export(excel_path, hr_excel_path="./HR_data_plus_ranks.xlsx")
             "shift": shift,
             "hireDate": str(hire_date) if pd.notna(hire_date) else None,
             "years_of_service": years_of_service,
-            "awarded_vacation_days": awarded_vacation_days,  # HR awarded vacation days
-            "awarded_holiday_days": awarded_holiday_days,      # HR awarded holiday days
-            "max_days_off": (awarded_vacation_days + awarded_holiday_days)
-                        if awarded_vacation_days is not None and awarded_holiday_days is not None else None,
-            "used_vacation_days": 0,       # Initialize used days to zero; update based on processed picks
-            "used_holiday_days": 0,        # Initialize used days to zero; update based on processed picks
-            "approved_days_count": 0,      # Initialize approved days to zero
+            "awarded_vacation_days": awarded_vacation_days,
+            "awarded_holiday_days": awarded_holiday_days,
+            "max_days_off": (awarded_vacation_days + awarded_holiday_days) if awarded_vacation_days is not None and awarded_holiday_days is not None else None,
+            "used_vacation_days": 0,
+            "used_holiday_days": 0,
+            "approved_days_count": 0,
             "picks": [],
             "processed": processed_data,
-            "hr_validations": {},        # For additional HR validation info if needed
+            "hr_validations": {},
             "exclusions": []
         }
-
         results.append(firefighter_entry)
-
     return results
 
+# --- Supplemental Import (with HR matching) ---
+def convert_to_pick_format_supp(day_date, selection_value):
+    if not selection_value or selection_value.strip() == "":
+        return None
+    return {
+        "date": day_date,
+        "type": "Untyped",
+        "source": "supplemental",
+        "determination": "Unaddressed",
+        "reason": None,
+        "increments": selection_value.strip(),
+        "place": None
+    }
 
-# Example usage:
-if __name__ == "__main__":
-    import os
-    # Define folder paths.
-    json_folder = "./telestaff_to_json/2024_JSON_Place"
-    excel_folder = "./telestaff_to_json/raw_telestaff_exports"
+def read_supplemental_export(excel_path, hr_excel_path=None):
+    if excel_path.lower().endswith('.csv'):
+        df = pd.read_csv(excel_path)
+    else:
+        df = pd.read_excel(excel_path)
+    df.columns = [str(col).strip() for col in df.columns]
+    
+    fixed_columns = [
+        "Submission Date", "First Name", "Last Name", "Email", 
+        "Employee ID #", "Rank", "Shift", "Employee Hire Date", 
+        "Acknowledgment of Form Completion", "Years of Service", 
+        "Today", "Vacation Days Allowed", 
+        "Probational Period:                   Holiday", 
+        "Probational Period:                 Vacation"
+    ]
+    
+    missing = [col for col in fixed_columns if col not in df.columns]
+    if missing:
+        raise ValueError(f"Missing expected columns: {missing}")
+    
+    total_cols = list(df.columns)
+    group_start = len(fixed_columns)
+    trailing_count = 5
+    group_end = len(total_cols) - trailing_count
+    
+    groups = []
+    for i in range(group_start, group_end, 3):
+        group = total_cols[i:i+3]
+        if len(group) < 2:
+            continue
+        groups.append({
+            "day_col": group[0],
+            "selection_col": group[1]
+        })
+    print("Supplemental Detected groups:", groups)
+    
+    hr_df = load_hr_data(hr_excel_path) if hr_excel_path else None
+    
+    results = []
+    for idx, row in df.iterrows():
+        first_name = str(row["First Name"]).strip()
+        last_name = str(row["Last Name"]).strip()
+        email = row["Email"]
+        emp_id = row["Employee ID #"]
+        rank = row["Rank"]
+        shift = str(row["Shift"]).strip()
+        hire_date = row["Employee Hire Date"]
+        
+        firefighter_entry = {
+            "idnum": str(emp_id) if pd.notna(emp_id) else None,
+            "fname": first_name.capitalize(),
+            "lname": last_name.capitalize(),
+            "name": f"{first_name}, {last_name[0] if last_name else ''} (ID: '{emp_id}')",
+            "rank": rank,
+            "shift": shift,
+            "hireDate": pd.to_datetime(hire_date).strftime('%Y-%m-%d') if pd.notna(hire_date) else None,
+            "years_of_service": row["Years of Service"],
+            "email": email,
+            "awarded_vacation_days": row["Vacation Days Allowed"],
+            "max_days_off": None,
+            "picks": [],
+            "processed": [],
+            "hr_validations": {},
+            "exclusions": []
+        }
+        
+        if hr_df is not None:
+            hr_entry = match_hr_entry(first_name, last_name, hr_df)
+            if hr_entry is not None:
+                firefighter_entry["idnum"] = str(hr_entry.get("Employee Number", firefighter_entry["idnum"]))
+                hr_hire_date = hr_entry.get("Hire Date")
+                if pd.notna(hr_hire_date):
+                    try:
+                        firefighter_entry["hireDate"] = pd.to_datetime(hr_hire_date).strftime('%Y-%m-%d')
+                    except Exception as e:
+                        print("Error converting HR Hire Date:", e)
+                # You may update awarded days similarly if desired.
+        
+        for group in groups:
+            day_val = row.get(group["day_col"])
+            selection_val = row.get(group["selection_col"])
+            if pd.isna(day_val) or pd.isna(selection_val):
+                continue
+            try:
+                if isinstance(day_val, (datetime.datetime, pd.Timestamp)):
+                    day_str = day_val.strftime('%Y-%m-%d')
+                else:
+                    day_str = pd.to_datetime(str(day_val)).strftime('%Y-%m-%d')
+            except Exception:
+                continue
+            pick = convert_to_pick_format_supp(day_str, str(selection_val))
+            if pick:
+                firefighter_entry["picks"].append(pick)
+        
+        results.append(firefighter_entry)
+    return results
+
+# --- Merge Function ---
+def merge_exports(telestaff_data, supplemental_data):
+    """
+    Merges telestaff and supplemental firefighter records.
+    For each supplemental record, try to match based on shift, fname, and lname.
+    If a match is found, extend its "picks" list with supplemental picks.
+    Otherwise, add the supplemental record as new.
+    """
+    # Build lookup from telestaff data using key = (shift, fname, lname)
+    lookup = {}
+    for rec in telestaff_data:
+        key = (rec.get("shift", "").strip().upper(),
+               rec.get("fname", "").strip().upper(),
+               rec.get("lname", "").strip().upper())
+        lookup[key] = rec
+
+    for s_rec in supplemental_data:
+        key = (s_rec.get("shift", "").strip().upper(),
+               s_rec.get("fname", "").strip().upper(),
+               s_rec.get("lname", "").strip().upper())
+        if key in lookup:
+            # Merge supplemental picks into existing record.
+            lookup[key]["picks"].extend(s_rec.get("picks", []))
+        else:
+            telestaff_data.append(s_rec)
+    return telestaff_data
+
+# --- Unified Processing and Output ---
+def main():
+    # Set file paths.
+    telestaff_folder = "./telestaff_to_json/raw_telestaff_exports"
+    supplemental_file = "./telestaff_to_json/supplemental_exports/2025 SUPPLEMENTAL VACATION REQUEST FORM - Form Responses.csv"
+    hr_excel_path = "./HR_data_plus_ranks.xlsx"
     output_folder = "./telestaff_to_json/Output"
-    
-    # Set the shift type and roster date for naming.
-    shift_type = "C"  # Options: "A", "B", or "C"
-    roster_date = "20250228"  # New naming convention date portion
-    
-    # Build Excel file path using the new naming convention.
-    excel_filename = f"{roster_date} - Multiday Roster Report - {shift_type} Shift.xlsx"
-    excel_file_path = os.path.join(excel_folder, excel_filename)
+    os.makedirs(output_folder, exist_ok=True)
 
-    data = read_telestaff_export(excel_file_path)
-    for entry in data:
-        print(entry)
+    # For telestaff, if you have separate files per shift, you can loop over them.
+    shifts = ["A", "B", "C"]
+    telestaff_data_all = []
+    for shift in shifts:
+        # Construct filename based on your naming convention.
+        roster_date = "20250228"
+        excel_filename = f"{roster_date} - Multiday Roster Report - {shift} Shift.xlsx"
+        excel_file_path = os.path.join(telestaff_folder, excel_filename)
+        print(f"Processing Telestaff file for shift {shift}: {excel_file_path}")
+        try:
+            data = read_telestaff_export(excel_file_path, hr_excel_path=hr_excel_path)
+            print(f"Read {len(data)} records for shift {shift}.")
+            telestaff_data_all.extend(data)
+        except Exception as e:
+            print(f"Error processing Telestaff file for shift {shift}: {e}")
+
+    print(f"Total Telestaff records: {len(telestaff_data_all)}")
+    
+    # Read supplemental records.
+    try:
+        supplemental_data = read_supplemental_export(supplemental_file, hr_excel_path=hr_excel_path)
+        print(f"Read {len(supplemental_data)} supplemental records.")
+    except Exception as e:
+        print(f"Error reading supplemental file: {e}")
+        supplemental_data = []
+
+    # Merge telestaff and supplemental data.
+    unified_data = merge_exports(telestaff_data_all, supplemental_data)
+    print(f"Unified record count after merging: {len(unified_data)}")
+
+    # Write unified JSON file.
+    output_filename = "Unified_FFighters.json"
+    output_path = os.path.join(output_folder, output_filename)
+    with open(output_path, "w") as f:
+        json.dump(unified_data, f, indent=4)
+    print(f"Unified JSON written to {output_path}")
+
+if __name__ == "__main__":
+    main()
