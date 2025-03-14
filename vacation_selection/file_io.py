@@ -303,17 +303,100 @@ def write_ffighters_to_json(ffighters, suffix, write_path, runtime):
         # Use the custom encoder to handle `date` serialization
         json.dump(ffighter_data, json_file, indent=4, cls=CustomJSONEncoder)
 
+def sanitize_ff_dict(ff_dict):
+    from datetime import datetime
+    
+    # Ensure hireDate is valid:
+    raw_hire_date = ff_dict.get('hireDate')
+    if not raw_hire_date or not isinstance(raw_hire_date, str):
+        # Use current date if missing
+        ff_dict['hireDate'] = datetime.now().strftime('%Y-%m-%d')
+    else:
+        try:
+            parsed_date = datetime.strptime(raw_hire_date, '%Y-%m-%d')
+            ff_dict['hireDate'] = parsed_date.strftime('%Y-%m-%d')
+        except Exception as e:
+            logger.error(
+                f"sanitize_ff_dict: Failed to parse hireDate '{raw_hire_date}'. "
+                f"Exception: {e}. Using current date."
+            )
+            ff_dict['hireDate'] = datetime.now().strftime('%Y-%m-%d')
+
+    # Ensure idnum is present. If it's missing, set a default like 0 or log a warning.
+    if not ff_dict.get('idnum'):
+        logger.warning(
+            f"sanitize_ff_dict: Missing idnum in entry {ff_dict}. Defaulting idnum to 0."
+        )
+        ff_dict['idnum'] = 0
+
+    # Ensure max_days_off is a valid integer
+    raw_max_days_off = ff_dict.get('max_days_off')
+    if raw_max_days_off is None:
+        ff_dict['max_days_off'] = 0
+    else:
+        try:
+            ff_dict['max_days_off'] = int(raw_max_days_off)
+        except (ValueError, TypeError):
+            logger.warning(
+                f"sanitize_ff_dict: Invalid max_days_off '{raw_max_days_off}' in {ff_dict}. "
+                "Defaulting to 0."
+            )
+            ff_dict['max_days_off'] = 0
+
+    # Ensure hr_validations exists. Since HR hasn't run yet, set it to an empty dict if missing.
+    if 'hr_validations' not in ff_dict or ff_dict['hr_validations'] is None:
+        ff_dict['hr_validations'] = {}
+
+    # Ensure approved_days_count is valid; default to 0 if missing or None.
+    if 'approved_days_count' not in ff_dict or ff_dict['approved_days_count'] is None:
+        ff_dict['approved_days_count'] = 0
+
+    # Sanitize picks: Ensure each pick has a 'place' key.
+    picks = ff_dict.get('picks', [])
+    for pick in picks:
+        if 'place' not in pick:
+            logger.info(
+                f"sanitize_ff_dict: Missing 'place' in pick {pick} for FFighter id {ff_dict.get('idnum')}. "
+                "Setting 'place' to None."
+            )
+            pick['place'] = None
+    ff_dict['picks'] = picks
+
+    # Sanitize exclusions: Convert "Leave Start" and "Leave End" to datetime.date objects.
+    exclusions = ff_dict.get('exclusions', [])
+    for exclusion in exclusions:
+        for key in ['Leave Start', 'Leave End']:
+            if key in exclusion and isinstance(exclusion[key], str):
+                try:
+                    date_str = exclusion[key].split('T')[0]
+                    exclusion[key] = datetime.strptime(date_str, '%Y-%m-%d').date()
+                except Exception as e:
+                    logger.error(
+                        f"sanitize_ff_dict: Failed to parse {key} '{exclusion.get(key)}' for FFighter id {ff_dict.get('idnum')}. "
+                        f"Exception: {e}. Using current date."
+                    )
+                    exclusion[key] = datetime.now().date()
+    ff_dict['exclusions'] = exclusions
+
+    return ff_dict
+
+
 def read_ffighters_from_json(file_path):
     """Reads firefighter data from a JSON file and returns a list of FFighter objects."""
+    from datetime import datetime
     ffighter_list = []
     try:
         with open(file_path, 'r') as json_file:
             ffighter_dicts = json.load(json_file)
-            ffighter_list = [FFighter.from_dict(ff_dict) for ff_dict in ffighter_dicts]
+            logger.debug(f"Read {len(ffighter_dicts)} entries from {file_path}")
+            # Sanitize each dictionary before converting to an FFighter object.
+            sanitized_dicts = [sanitize_ff_dict(ff_dict) for ff_dict in ffighter_dicts]
+            ffighter_list = [FFighter.from_dict(ff_dict) for ff_dict in sanitized_dicts]
     except Exception as e:
         logger.error(f"Failed to read from JSON: {e}")
-
+    logger.info(f"Loaded {len(ffighter_list)} firefighters from {file_path}")
     return ffighter_list
+
 
 def write_analysis_to_json(analysis, write_path, runtime):
     """

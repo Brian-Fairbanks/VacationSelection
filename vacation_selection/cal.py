@@ -42,6 +42,29 @@ class Day:
         for increment in self.increments.values():
             increment.write_to_row(writer)
 
+    def __str__(self):
+        # Build a list of increment strings in the same format as write_to_row
+        increments_data = []
+        for key, inc in self.increments.items():
+            if inc.only_increment:
+                # For only_increment, use both the firefighter name and idnum
+                ffighters_str = ', '.join([
+                    f"{ff.name} - {ff.idnum} ({pick.increments_plain_text()})"
+                    for ff, pick in zip(inc.ffighters, inc.picks)
+                ])
+                inc_str = f"{inc.date}: {ffighters_str}"
+            else:
+                # Otherwise, include the increment name along with the firefighter names
+                ffighters_str = ', '.join([
+                    f"{ff.name} ({pick.increments_plain_text()})"
+                    for ff, pick in zip(inc.ffighters, inc.picks)
+                ])
+                inc_str = f"{inc.date} ({inc.name}): {ffighters_str}"
+            increments_data.append(inc_str)
+        
+        # Combine the day's date and all increment strings into one line.
+        return f"{self.date}, " + " | ".join(increments_data)
+
 
     def _check_increments(self, ffighter, method_name, *args):
         """
@@ -139,6 +162,7 @@ def is_within_exclusion(ffighter, rejected):
             leave_end = leave_end.date()
 
         # Compare with the firefighter's pick date
+        # print(f"{leave_start}({type(leave_start)}) <= {ffighter.current_pick.date}({type(ffighter.current_pick.date)}) <= {leave_end}({type(leave_end)})")
         if leave_start <= ffighter.current_pick.date <= leave_end:
             reason = f"Schedule Reassignment: ({exclusion.get('Reason', 'No reason provided')})"
             deny_ffighter_pick(ffighter, rejected, reason)
@@ -173,10 +197,10 @@ def has_reached_max_days(ffighter, rejected):
 
 
 
-def validate_pick_with_reasoning(ffighter, calendar, rejected):
+def validate_pick_with_reasoning(ffighter, calendar, rejected, bypass_movement=False):
 
     # Immediate Failures for probationary limitations, max days off, and exclusions
-    if (
+    if not bypass_movement and(
         probationary_limitations(ffighter, rejected) or 
         has_reached_max_days(ffighter, rejected) or
         is_within_exclusion(ffighter, rejected)
@@ -191,12 +215,15 @@ def validate_pick_with_reasoning(ffighter, calendar, rejected):
     # Validate other conditions before proceeding with the pick
     if not day.can_add_ffighter(ffighter):
         reason = getattr(day, 'denial_reason', "Pick Rejected, but not sure why")
+        if bypass_movement:
+            return reason
         deny_ffighter_pick(ffighter, rejected, reason)
         return False
 
     # All checks passed, add firefighter to the day
     if day.add_ffighter(ffighter):
-        ffighter.approve_current_pick()
+        if not bypass_movement:
+            ffighter.approve_current_pick()
     return True
 
 
@@ -260,7 +287,9 @@ def make_calendar(ffighters, silent_mode=False):
     return {"calendar": calendar, "rejected": rejected}
 
 def recreate_calendar_from_json(ffighters):
-    """Rebuilds the calendar structure while maintaining firefighter pick order."""
+    """Rebuilds the calendar structure while maintaining firefighter pick order.
+       Uses validate_pick_with_reasoning to check each pick and prints a reason for any failure.
+    """
     calendar = {}
     rejected = {}
 
@@ -273,62 +302,43 @@ def recreate_calendar_from_json(ffighters):
     for pick in sorted_picks:
         date = pick.date
 
-        # Create the day if it doesn't exist
-        if date not in calendar:
-            calendar[date] = Day(date)
-
-        day = calendar[date]
-
-        # Find firefighter who made this pick
+        # Find the firefighter who made this pick
         ffighter = next((ff for ff in ffighters if pick in ff.processed), None)
         if not ffighter:
-            logger.warning(f"Could not find firefighter for pick on {date}")
+            day_info = calendar.get(date, "Day not created")
+            logger.warning(
+                f"Could not find firefighter for pick on {date}\n"
+                f"Current day info: {day_info}\n"
+                f"Pick info: {pick}\n"
+            )
             continue
 
         # Set current pick for tracking
         ffighter.current_pick = pick
 
-        # Ensure `place` from JSON is used correctly
-        increment = day.increments[0]  # Assuming a single-increment structure
-        if pick.place is not None:
-            while len(increment.picks) <= pick.place:
-                increment.picks.append(None)  # Extend the list to allow indexed insertion
-            increment.picks[pick.place] = ffighter.current_pick
+        # Validate the pick using the reasoning function.
+        # bypass_movement=True makes the function return the denial reason (as a string)
+        # instead of denying the pick.
+        result = validate_pick_with_reasoning(ffighter, calendar, rejected, bypass_movement=True)
+        if result is True:
+            # If approved, assign the pick to the day's increments.
+            day = calendar[date]
+            increment = day.increments[0]  # Assuming a single-increment structure
+            if pick.place is not None:
+                # Place the pick at the given index, extending the list if necessary.
+                while len(increment.picks) <= pick.place:
+                    increment.picks.append(None)
+                increment.picks[pick.place] = ffighter.current_pick
+            else:
+                increment.picks.append(ffighter.current_pick)
+            # logger.info(f"Added {ffighter.name} to {date}: {result}\n")
         else:
-            increment.picks.append(ffighter.current_pick)  # If no place, add to end
-
-        # Assign firefighter to the day
-        if day.can_add_ffighter(ffighter):
-            day.add_ffighter(ffighter)
-        else:
-            logger.warning(f"Could not reassign {ffighter.name} to {date}, possibly due to rank or count limits.")
+            day_info = calendar.get(date, "Day not created")
+            logger.warning(
+                f"Could not reassign {ffighter.name} to {date}: {result}\n"
+                f"{ffighter}\n"
+                f"Current day info: {day_info}\n"
+                f"Pick info: {pick}\n"
+            )
 
     return {"calendar": calendar, "rejected": rejected}
-
-
-# def recreate_calendar_from_json(ffighters):
-#     """Rebuilds the calendar structure from JSON firefighter data."""
-#     calendar = {}
-#     rejected = {}
-
-#     for ffighter in ffighters:
-#         for pick in ffighter.processed:
-#             if pick.determination == "Approved":
-#                 date = pick.date
-
-#                 # Create day if it doesn't exist
-#                 if date not in calendar:
-#                     calendar[date] = Day(date)
-
-#                 day = calendar[date]
-
-#                 # Set the current pick for proper increment tracking
-#                 ffighter.current_pick = pick
-
-#                 # Assign firefighter to the day
-#                 if day.can_add_ffighter(ffighter):
-#                     day.add_ffighter(ffighter)
-#                 else:
-#                     logger.warning(f"Could not reassign {ffighter.name} to {date}, possibly due to rank or count limits.")
-
-#     return {"calendar": calendar, "rejected": rejected}  # ✅ Ensure this matches make_calendar()
