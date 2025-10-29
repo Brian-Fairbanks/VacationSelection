@@ -264,8 +264,10 @@ def print_final(ffighters):
             print(key)
 
 
-def write_picks_to_csv(ffighters, suffix, write_path, runtime):
-    """Writes the picks and status of each firefighter to a CSV file."""
+def write_picks_to_csv(ffighters, suffix, write_path, runtime, pick_filter=None):
+    """Writes the picks and status of each firefighter to a CSV file.
+       Optionally, only writes picks that satisfy pick_filter (a function that takes a pick and returns True/False).
+    """
     file_name = f'{write_path}/{runtime}-FFighters-{suffix}.csv'
     with open(file_name, 'w', newline='') as f:
         writer = csv.writer(f)
@@ -273,14 +275,17 @@ def write_picks_to_csv(ffighters, suffix, write_path, runtime):
         writer.writerow(header)
 
         for ffighter in ffighters:
-            # Include ID in the name for clarity
             writer.writerow([f'{ffighter.name} (ID: {ffighter.idnum})', ffighter.rank])
-            for key in ffighter.processed:
+            for pick in ffighter.processed:
+                # If a pick_filter is provided, skip picks that don't match
+                if pick_filter and not pick_filter(pick):
+                    continue
                 writer.writerow([
-                    '', '', key.date, key.type,
-                    key.increments_plain_text(), key.determination, key.reason
+                    '', '', pick.date, pick.type,
+                    pick.increments_plain_text(), pick.determination, pick.reason
                 ])
             writer.writerow([])
+
 
 # ==========    JSON    ==============================================================
 

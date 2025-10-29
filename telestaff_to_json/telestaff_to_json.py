@@ -248,9 +248,9 @@ def main():
     output_folder = "./telestaff_to_json/Output"
 
     # Input file uses this date (unchanged)
-    input_date = "20250228"
+    input_date = "20250318"
     # Output file will use this date in the filename.
-    output_date = "2025.03.04"
+    output_date = "2025.03.18"
 
     shifts = ["A", "B", "C"]
 

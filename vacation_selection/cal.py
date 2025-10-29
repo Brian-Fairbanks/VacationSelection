@@ -11,7 +11,7 @@ class Day:
     # Class-level configurations remain the same...
     single_day_increment = True
     if single_day_increment:
-        max_total_ffighters_allowed = 5
+        max_total_ffighters_allowed = 6
     else:
         max_total_ffighters_allowed = 10
 
@@ -33,9 +33,9 @@ class Day:
     @staticmethod
     def get_header():
         if Day.single_day_increment:
-            header = ['Date', 'First', 'Second', 'Third', 'Fourth', 'Fifth']
+            header = ['Date', 'First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth']
         else:
-            header = ['Date', 'First', 'Second', 'Third', 'Fourth', 'Fifth']
+            header = ['Date', 'First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth']
         return header
     
     def write_to_row(self, writer):
@@ -262,19 +262,23 @@ def printPriority(arr):
 # Calendar Formation
 # ================================================================================================
 
-def add_2_picks_for_ffighter(calendar, rejected, ffighter):
+def add_2_picks_for_ffighter(calendar, rejected, ffighter, count=2):
     """Attempts to add up to 2 picks for the firefighter."""
     dates_added = 0
     # While a firefighter has valid picks remaining, keep trying until 2 are approved
-    while dates_added < 2 and len(ffighter.picks) > 0:
+    while dates_added < count and len(ffighter.picks) > 0:
         dates_added += process_ffighter_pick(ffighter, calendar, rejected)
 
-def make_calendar(ffighters, silent_mode=False):
+def make_calendar(ffighters, existing_calendar_data=None, rejected=None, silent_mode=False, count=2):
     """Analyzes firefighters' picks and fully creates the calendar."""
-
-    calendar = {}
-    rejected = {}
-
+    if existing_calendar_data is None:
+        calendar = {}
+        rejected = {}
+    else:
+        # Extract the two dictionaries from the passed-in dictionary.
+        calendar = existing_calendar_data.get("calendar", {})
+        rejected = existing_calendar_data.get("rejected", {})
+    
     # Until all firefighters have a determination for all picks...
     while any(filter(lambda x: len(x.picks), ffighters)):
         randomize_sub_priority(ffighters)
@@ -282,8 +286,8 @@ def make_calendar(ffighters, silent_mode=False):
             printPriority(ffighters)
         # Grant no more than 2 picks per person per round
         for ffighter in ffighters:
-            add_2_picks_for_ffighter(calendar, rejected, ffighter)
-
+            add_2_picks_for_ffighter(calendar, rejected, ffighter, count=2)
+    
     return {"calendar": calendar, "rejected": rejected}
 
 def recreate_calendar_from_json(ffighters):

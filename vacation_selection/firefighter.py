@@ -6,13 +6,14 @@ import vacation_selection.setup_logging as setup_logging
 logger = setup_logging.setup_logging("classes.log")
 
 class Pick:
-    def __init__(self, date, type="Untyped", determination="Unaddressed", increments='AMPM', reason=None, place=None):
+    def __init__(self, date, type="Untyped", determination="Unaddressed", increments='AMPM', reason=None, place=None, source=None):
         self.date = date
         self.type = type
         self.determination = determination
         self.reason = reason
         self.increments = self.process_increments(increments)
         self.place = place
+        self.source = source
 
     def get_increments(self):
         return self.increments
@@ -52,7 +53,8 @@ class Pick:
             'determination': self.determination,
             'reason': self.reason,
             'increments': self.increments_plain_text(self.increments),
-            "place": self.place
+            "place": self.place,
+            "source": self.source
         }
 
     @classmethod
@@ -66,7 +68,8 @@ class Pick:
             type=pick_dict.get('type', "Untyped"),
             determination=pick_dict.get('determination', "Unaddressed"),
             increments=increments,
-            place=pick_dict.get('place')  # Restores the order position
+            place=pick_dict.get('place'),  # Restores the order position
+            source=pick_dict.get('source')
         )
         pick.reason = pick_dict.get('reason')
         return pick

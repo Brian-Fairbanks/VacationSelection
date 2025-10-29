@@ -7,7 +7,7 @@ from datetime import date, timedelta
 # ================================================================================================
 class Increment:
     # Class-level configurations remain the same...
-    max_total_ffighters_allowed = 5
+    max_total_ffighters_allowed = 6
 
     def __init__(self, date, name, only_increment=False ):
         self.date = date
@@ -30,11 +30,11 @@ class Increment:
         if self.only_increment:
             # Include only the firefighter names with increments_plain_text()
             all_ffighters = [f"{ff.name} - {ff.idnum} ({pick.increments_plain_text()})" for ff, pick in zip(self.ffighters, self.picks)]
-            row = [self.date] + (all_ffighters + [""] * 5)[:5]
+            row = [self.date] + (all_ffighters + [""] * self.max_total_ffighters_allowed)[:self.max_total_ffighters_allowed]
         else:
             # Include firefighter names with increment names
             all_ffighters = [f"{ff.name} ({pick.increments_plain_text()})" for ff, pick in zip(self.ffighters, self.picks)]
-            row = [f"{self.date} ({self.name})"] + (all_ffighters + [""] * 5)[:5]
+            row = [f"{self.date} ({self.name})"] + (all_ffighters + [""] * self.max_total_ffighters_allowed)[:self.max_total_ffighters_allowed]
 
         writer.writerow(row)
 
@@ -56,8 +56,8 @@ class Increment:
         num_battalion_chiefs = self.rank_counts['Battalion Chief']
 
         # Calculate maximums
-        max_firefighters_off = 5  # No dependencies
-        max_apparatus_specialists_off = 5  # No dependencies
+        max_firefighters_off = self.max_total_ffighters_allowed  # No dependencies
+        max_apparatus_specialists_off = self.max_total_ffighters_allowed  # No dependencies
         max_lieutenants_off = 5 - num_captains
         max_captains_off = 3 - num_battalion_chiefs
         max_battalion_chiefs_off = min(2, 3 - num_captains)

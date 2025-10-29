@@ -1,4 +1,3 @@
-# gui/firefighter_app.py
 import os
 import csv
 import json
@@ -25,7 +24,7 @@ from gui.tree_views import create_treeview, update_treeview_data, format_exclusi
 default_picks_filename = "./2025 VACATION REQUEST FORM - Form Responses_final.csv"
 default_validation_filename = "./HR_data_plus_ranks.xlsx"
 default_exclusions_filename = "./exclusions.xlsx"
-json_dir = "./output/Telestaff-Merged/"
+json_dir = "./output/telestaff+suplemental_merged/"
 
 class FirefighterApp:
     def __init__(self, root, logger):
@@ -34,7 +33,7 @@ class FirefighterApp:
         self.root.title("Firefighter Vacation Selection")
         self.root.geometry("1024x768")
         self.root.columnconfigure(0, weight=1)
-        self.root.rowconfigure(1, weight=1)
+        self.root.rowconfigure(3, weight=1)
         
         # Initialize filenames and data containers
         self.hr_filename = default_validation_filename
@@ -42,51 +41,72 @@ class FirefighterApp:
         self.exclusions_filename = default_exclusions_filename
         self.ffighters = []
         self.shift_calendars = {}
-        
-        # Setup UI components
-        self.create_file_selection_frame()
-        self.create_action_buttons()
-        self.setup_ffighter_tree_view()
-        self.setup_pick_tree_view()
 
-    def create_file_selection_frame(self):
-        self.file_selection_frame = tk.Frame(self.root)
-        self.file_selection_frame.pack(side=tk.TOP, pady=10, fill=tk.X)
-        self.file_frame = tk.Frame(self.file_selection_frame)
-        self.file_frame.pack(fill=tk.X)
+        # Set up the UI in separate frames
+        self.setup_ui()
+
+    def setup_ui(self):
+        # ---------------------- Frame 1: Legacy Data Import ----------------------
+        self.legacy_frame = tk.LabelFrame(self.root, text="Legacy Data Import (New Run)", padx=10, pady=10)
+        self.legacy_frame.pack(fill="x", padx=10, pady=5)
 
         # HR File Selection
-        self.hr_button = tk.Button(self.file_frame, text="Select HR Validation File", command=self.select_hr_file)
+        self.hr_button = tk.Button(self.legacy_frame, text="Select HR Validation File", command=self.select_hr_file)
         self.hr_button.grid(row=0, column=0, padx=5, sticky='w')
-        self.hr_label = tk.Label(self.file_frame, text=self.hr_filename, fg="black")
+        self.hr_label = tk.Label(self.legacy_frame, text=self.hr_filename, fg="black")
         self.hr_label.grid(row=0, column=1, padx=5, sticky='w')
 
-        # Pick File Selection
-        self.pick_button = tk.Button(self.file_frame, text="Select Firefighter Pick File", command=self.select_pick_file)
+        # Firefighter Pick File Selection
+        self.pick_button = tk.Button(self.legacy_frame, text="Select Firefighter Pick File", command=self.select_pick_file)
         self.pick_button.grid(row=1, column=0, padx=5, sticky='w')
-        self.pick_label = tk.Label(self.file_frame, text=self.pick_filename, fg="black")
+        self.pick_label = tk.Label(self.legacy_frame, text=self.pick_filename, fg="black")
         self.pick_label.grid(row=1, column=1, padx=5, sticky='w')
 
-        # Exclusions File Selection
-        self.exclusions_button = tk.Button(self.file_frame, text="Select Exclusions File (Optional)", command=self.select_exclusions_file)
+        # Exclusions File Selection (Optional)
+        self.exclusions_button = tk.Button(self.legacy_frame, text="Select Exclusions File (Optional)", command=self.select_exclusions_file)
         self.exclusions_button.grid(row=2, column=0, padx=5, sticky='w')
-        self.exclusions_label = tk.Label(self.file_frame, text=self.exclusions_filename, fg="black")
+        self.exclusions_label = tk.Label(self.legacy_frame, text=self.exclusions_filename, fg="black")
         self.exclusions_label.grid(row=2, column=1, padx=5, sticky='w')
 
-        # Additional Buttons
-        self.load_button = tk.Button(self.file_selection_frame, text="Load Firefighters", command=self.load_firefighters)
-        self.load_button.pack(pady=10)
-        self.read_json_button = tk.Button(self.file_selection_frame, text="Read From JSON", command=self.read_firefighters_from_json)
-        self.read_json_button.pack(pady=10)
-        self.make_calendar_button = tk.Button(self.file_selection_frame, text="Make Calendar", command=self.make_calendar)
-        self.make_calendar_button.pack(pady=10)
+        # Load Firefighters Button for Legacy Import
+        self.load_button = tk.Button(self.legacy_frame, text="Load Firefighters", command=self.load_firefighters)
+        self.load_button.grid(row=3, column=0, columnspan=2, pady=10)
 
-    def create_action_buttons(self):
-        self.validate_button = tk.Button(self.root, text="Validate Firefighters", command=self.validate_firefighters)
-        self.validate_button.pack(pady=10)
-        self.process_button = tk.Button(self.root, text="Process Selections", command=self.process_selections)
-        self.process_button.pack(pady=10)
+        # ---------------------- Frame 2 & 3 Combined Horizontally ----------------------
+        # Container frame for Expanded Data Import and Actions side-by-side
+        self.horizontal_container = tk.Frame(self.root)
+        self.horizontal_container.pack(fill="x", padx=10, pady=5)
 
+        # Frame 2: Expanded Data Import
+        self.expanded_frame = tk.LabelFrame(self.horizontal_container, text="Expand Existing Data (Load Previous Run JSON)", padx=10, pady=10)
+        self.expanded_frame.pack(side=tk.LEFT, fill="both", expand=True, padx=5, pady=5)
+        # Button to select folder and read JSON files
+        self.read_json_button = tk.Button(self.expanded_frame, text="Read From JSON", command=self.read_firefighters_from_json)
+        self.read_json_button.pack(pady=10, anchor='w')
+
+        # Frame 3: Actions (now placed horizontally next to Expanded Data Import)
+        self.action_frame = tk.LabelFrame(self.horizontal_container, text="Actions", padx=10, pady=10)
+        self.action_frame.pack(side=tk.LEFT, fill="both", expand=True, padx=5, pady=5)
+        # Validate Firefighters Button
+        self.validate_button = tk.Button(self.action_frame, text="Validate Firefighters", command=self.validate_firefighters)
+        self.validate_button.grid(row=0, column=0, padx=5, pady=5)
+        # Generate Schedule Button (renamed from Make Calendar)
+        self.generate_schedule_button = tk.Button(self.action_frame, text="Generate Schedule", command=self.make_calendar)
+        self.generate_schedule_button.grid(row=0, column=1, padx=5, pady=5)
+        # Finalize and Export Button (renamed from Process Selections)
+        self.export_button = tk.Button(self.action_frame, text="Finalize and Export", command=self.process_selections)
+        self.export_button.grid(row=0, column=2, padx=5, pady=5)
+
+        # ---------------------- Frame 4: Data Display ----------------------
+        self.data_frame = tk.LabelFrame(self.root, text="Data Display", padx=10, pady=10)
+        self.data_frame.pack(fill="both", expand=True, padx=10, pady=5)
+
+        # Firefighter Treeview Setup
+        self.setup_ffighter_tree_view(self.data_frame)
+        # Pick Treeview Setup
+        self.setup_pick_tree_view(self.data_frame)
+
+    # ---------------------- Legacy File Selection Functions ----------------------
     def select_hr_file(self):
         self.hr_filename = filedialog.askopenfilename(title="Select HR Validation File", filetypes=[("Excel files", "*.xlsx")])
         if self.hr_filename:
@@ -148,16 +168,152 @@ class FirefighterApp:
             messagebox.showwarning("Unmatched Exclusions",
                                    f"The following exclusions did not match any firefighter:\n{unmatched_str}")
 
+    # ---------------------- Expanded Data Import Function ----------------------
+    def read_firefighters_from_json(self):
+        folder_selected = filedialog.askdirectory(initialdir=json_dir, title="Select Folder Containing JSON Files")
+        if not folder_selected:
+            return  # User canceled selection
+
+        firefighter_data = []
+        json_files = [f for f in os.listdir(folder_selected) if f.endswith('.json')]
+        # Filter out analysis files
+        json_files = [f for f in json_files if "analysis" not in f.lower()]
+
+        if not json_files:
+            messagebox.showwarning("No JSON Files", "No valid firefighter JSON files found in the selected folder.")
+            return
+
+        for json_file in json_files:
+            file_path = os.path.join(folder_selected, json_file)
+            try:
+                ff_list = read_ffighters_from_json(file_path)
+                firefighter_data.extend(ff_list)
+                self.logger.info(f"Loaded {len(ff_list)} firefighters from {json_file}")
+            except Exception as e:
+                self.logger.error(f"Failed to read {json_file}: {e}")
+
+        if firefighter_data:
+            # Validate imported JSON data immediately using HR data
+            try:
+                hr_data = read_hr_validation(self.hr_filename)
+            except Exception as e:
+                self.logger.error(f"Failed to read HR file: {e}")
+                messagebox.showerror("Error", "Failed to load HR data for validation.")
+                return
+
+            validated_ffighters = validate_against_hr(firefighter_data, hr_data)
+            self.ffighters = validated_ffighters
+            self.make_calendar_from_json()
+            self.update_ffighters_tree(self.ffighters)
+            messagebox.showinfo("Success", f"Loaded {len(validated_ffighters)} firefighters, validated them, and recreated calendar.")
+        else:
+            messagebox.showwarning("No Data", "No valid firefighter data was loaded.")
+
+    def make_calendar_from_json(self):
+        try:
+            self.shift_calendars = {}
+            for shift in ["A", "B", "C"]:
+                shift_members = [ff for ff in self.ffighters if ff.shift == shift]
+                self.shift_calendars[shift] = recreate_calendar_from_json(shift_members)
+            messagebox.showinfo("Success", "Calendar reconstructed from JSON and stored in memory.")
+        except Exception as e:
+            self.logger.error(f"Error reconstructing calendar", exc_info=True)
+            messagebox.showerror("Error", "Failed to reconstruct calendar from JSON.")
+
+    # ---------------------- Common Actions ----------------------
+    def validate_firefighters(self):
+        if not self.ffighters:
+            messagebox.showwarning("No Firefighters Loaded", "Please load firefighter data before validating.")
+            return
+        try:
+            self.logger.debug(f"Reading HR validation data from file: {self.hr_filename}")
+            hr_data = read_hr_validation(self.hr_filename)
+            self.logger.debug(f"HR validation data loaded. Entries: {len(hr_data)}")
+            validated_ffighters = validate_against_hr(self.ffighters, hr_data)
+            self.ffighters = validated_ffighters
+            self.update_ffighters_tree(validated_ffighters)
+            verified_filename = f"{self.pick_filename.split('.')[0]}-Verified.csv"
+            self.logger.debug(f"Writing validated data to: {verified_filename}")
+            with open(verified_filename, 'w', newline='') as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(["ID", "Name", "Hire Date", "Rank", "Shift", "Max Days Off", "Approved Days Count"])
+                for ff in validated_ffighters:
+                    writer.writerow([ff.idnum, ff.name, ff.hireDate, ff.rank, ff.shift, ff.max_days_off, ff.approved_days_count])
+            self.logger.info(f"Validated data written to {verified_filename}")
+        except Exception as e:
+            self.logger.error(f"Error validating firefighter data: {e}")
+            messagebox.showerror("Error", "Failed to validate firefighter data.")
+
+    def process_selections(self):
+        if not self.shift_calendars:
+            messagebox.showwarning("No Calendar Found", "Please generate a schedule first.")
+            return
+        try:
+            self.logger.info("Analyzing results and saving outputs.")
+            all_ffighters = []
+            runtime_str = datetime.now().strftime("%Y.%m.%d %H.%M")
+            for shift, calendar_data in self.shift_calendars.items():
+                shift_ffighters = [ff for ff in self.ffighters if ff.shift == shift]
+                all_ffighters.extend(shift_ffighters)
+                write_ffighters_to_json(shift_ffighters, f'{shift}_ffighters', ".//output", runtime_str)
+                write_calendar_to_csv(calendar_data["calendar"], shift, ".//output", runtime_str)
+                write_picks_to_csv(shift_ffighters, shift, ".//output", runtime_str)
+                # Write supplemental-only picks using a filter function:
+                write_picks_to_csv(shift_ffighters, f'{shift}_supplemental', ".//output", runtime_str,
+                                pick_filter=lambda pick: pick.source and pick.source.lower() == "supplemental")
+                print_final(shift_ffighters)
+            analysis = analyze_results(all_ffighters)
+            write_analysis_to_json(analysis, ".//output", runtime_str)
+            display_dashboard(analysis)
+            self.logger.info("Results analysis and saving complete.")
+            messagebox.showinfo("Success", "Results analyzed and saved.")
+        except Exception as e:
+            self.logger.exception("Error analyzing results")
+            messagebox.showerror("Error", "Failed to analyze and save results.")
+
+
+    def make_calendar(self):
+        if not self.ffighters:
+            messagebox.showwarning("No Firefighters Loaded", "Please load firefighter data before generating a schedule.")
+            return
+        try:
+            prioritized_ffighters = set_priorities(self.ffighters)
+            for shift in ["A", "B", "C"]:
+                if not self.shift_calendars[shift]:self.shift_calendars[shift]={}
+                shift_members = [ff for ff in prioritized_ffighters if ff.shift == shift]
+                self.shift_calendars[shift] = make_calendar(shift_members, existing_calendar_data=self.shift_calendars[shift], count=1)
+            messagebox.showinfo("Success", "Schedule successfully generated and stored in memory.")
+        except Exception as e:
+            self.logger.error(f"Error generating schedule: {e}")
+            messagebox.showerror("Error", "Failed to generate schedule.")
+
+    # ---------------------- Data Display ----------------------
+    def setup_ffighter_tree_view(self, parent):
+        self.ff_tree_frame = tk.Frame(parent)
+        self.ff_tree_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        columns = ["ID", "Name", "Rank", "Max Days Off", "Shift", "Number of Picks", "Exclusions"]
+        headings = columns
+        widths = [50, 120, 80, 100, 50, 80, 200]
+        self.ff_tree = create_treeview(self.ff_tree_frame, columns, headings, widths)
+        self.ff_tree.bind('<<TreeviewSelect>>', self.on_ffighter_select)
+
+    def setup_pick_tree_view(self, parent):
+        self.pick_tree_frame = tk.Frame(parent)
+        self.pick_tree_frame.pack(fill="both", expand=True, padx=5, pady=5)
+        # Added "Source" column
+        columns = ["Date", "Type", "Determination", "Reason", "Increments", "Source"]
+        headings = columns
+        widths = [100, 80, 120, 150, 100, 150]  # Adjust widths as needed
+        self.pick_tree = create_treeview(self.pick_tree_frame, columns, headings, widths)
+
     def update_ffighters_tree(self, ffighters):
         update_treeview_data(self.ff_tree, [], clear_first=True)
         for ff in ffighters:
             num_picks = len(ff.picks)
             exclusions_display = format_exclusions(getattr(ff, "exclusions", []))
-            # Prepare display values
             display_rank = self.get_display_value(ff, 'Rank')
             display_max_days_off = self.get_display_value(ff, 'Max Days Off')
             display_shift = self.get_display_value(ff, 'Shift')
-            # Insert a row into the treeview
             self.ff_tree.insert('', 'end', values=(
                 ff.idnum,
                 ff.name,
@@ -167,23 +323,6 @@ class FirefighterApp:
                 num_picks,
                 exclusions_display
             ))
-
-    def setup_ffighter_tree_view(self):
-        self.ff_tree_frame = tk.Frame(self.root)
-        self.ff_tree_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        columns = ["ID", "Name", "Rank", "Max Days Off", "Shift", "Number of Picks", "Exclusions"]
-        headings = columns
-        widths = [50, 120, 80, 100, 50, 80, 200]
-        self.ff_tree = create_treeview(self.ff_tree_frame, columns, headings, widths)
-        self.ff_tree.bind('<<TreeviewSelect>>', self.on_ffighter_select)
-
-    def setup_pick_tree_view(self):
-        self.pick_tree_frame = tk.Frame(self.root)
-        self.pick_tree_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        columns = ["Date", "Type", "Determination", "Reason", "Increments"]
-        headings = columns
-        widths = [100, 80, 120, 150, 100]
-        self.pick_tree = create_treeview(self.pick_tree_frame, columns, headings, widths)
 
     def on_ffighter_select(self, event):
         selected_item = self.ff_tree.selection()
@@ -210,7 +349,8 @@ class FirefighterApp:
                     pick.type,
                     determination_display,
                     pick.reason if pick.reason else "N/A",
-                    pick.increments_plain_text()
+                    pick.increments_plain_text(),
+                    pick.source
                 ))
 
     def get_display_value(self, ff, field_name):
@@ -221,120 +361,14 @@ class FirefighterApp:
             value = getattr(ff, field_name.replace(' ', '_').lower(), 'N/A')
             return f"⚪ {value}"
 
-    def validate_firefighters(self):
-        if not self.ffighters:
-            messagebox.showwarning("No Firefighters Loaded", "Please load firefighter data before validating.")
-            return
-        try:
-            self.logger.debug(f"Reading HR validation data from file: {self.hr_filename}")
-            hr_data = read_hr_validation(self.hr_filename)
-            self.logger.debug(f"HR validation data loaded. Entries: {len(hr_data)}")
-            validated_ffighters = validate_against_hr(self.ffighters, hr_data)
-            self.ffighters = validated_ffighters
-            self.update_ffighters_tree(validated_ffighters)
-            verified_filename = f"{self.pick_filename.split('.')[0]}-Verified.csv"
-            self.logger.debug(f"Writing validated data to: {verified_filename}")
-            with open(verified_filename, 'w', newline='') as csvfile:
-                writer = csv.writer(csvfile)
-                writer.writerow(["ID", "Name", "Hire Date", "Rank", "Shift", "Max Days Off", "Approved Days Count"])
-                for ff in validated_ffighters:
-                    writer.writerow([ff.idnum, ff.name, ff.hireDate, ff.rank, ff.shift, ff.max_days_off, ff.approved_days_count])
-            self.logger.info(f"Validated data written to {verified_filename}")
-        except Exception as e:
-            self.logger.error(f"Error validating firefighter data: {e}")
-            messagebox.showerror("Error", "Failed to validate firefighter data.")
+if __name__ == '__main__':
+    import logging
+    from vacation_selection.setup_logging import setup_logging
+    # Set up logging
+    runtime = datetime.now().strftime("%Y.%m.%d %H.%M")
+    write_path = ".//output"
+    logger = setup_logging(f"RunLog-{runtime}.log", base=write_path, debug=False)
 
-    def process_selections(self):
-        if not self.shift_calendars:
-            messagebox.showwarning("No Calendar Found", "Please generate a calendar first.")
-            return
-        try:
-            self.logger.info("Analyzing results and saving outputs.")
-            all_ffighters = []
-            for shift, calendar_data in self.shift_calendars.items():
-                shift_ffighters = [ff for ff in self.ffighters if ff.shift == shift]
-                all_ffighters.extend(shift_ffighters)
-                write_ffighters_to_json(shift_ffighters, f'{shift}_ffighters', ".//output", datetime.now().strftime("%Y.%m.%d %H.%M"))
-                write_calendar_to_csv(calendar_data["calendar"], shift, ".//output", datetime.now().strftime("%Y.%m.%d %H.%M"))
-                write_picks_to_csv(shift_ffighters, shift, ".//output", datetime.now().strftime("%Y.%m.%d %H.%M"))
-                print_final(shift_ffighters)
-            analysis = analyze_results(all_ffighters)
-            write_analysis_to_json(analysis, ".//output", datetime.now().strftime("%Y.%m.%d %H.%M"))
-            display_dashboard(analysis)
-            self.logger.info("Results analysis and saving complete.")
-            messagebox.showinfo("Success", "Results analyzed and saved.")
-        except Exception as e:
-            self.logger.error(f"Error analyzing results: {e}")
-            messagebox.showerror("Error", "Failed to analyze and save results.")
-
-    def make_calendar(self):
-        if not self.ffighters:
-            messagebox.showwarning("No Firefighters Loaded", "Please load firefighter data before making a calendar.")
-            return
-        try:
-            prioritized_ffighters = set_priorities(self.ffighters)
-            for shift in ["A", "B", "C"]:
-                shift_members = [ff for ff in prioritized_ffighters if ff.shift == shift]
-                self.shift_calendars[shift] = make_calendar(shift_members)
-            messagebox.showinfo("Success", "Calendar successfully created in memory.")
-        except Exception as e:
-            self.logger.error(f"Error creating calendar: {e}")
-            messagebox.showerror("Error", "Failed to create calendar.")
-
-    def make_calendar_from_json(self):
-        if not self.ffighters:
-            messagebox.showwarning("No Firefighters Loaded", "Please load firefighter data from JSON before making a calendar.")
-            return
-        try:
-            self.shift_calendars = {}
-            for shift in ["A", "B", "C"]:
-                shift_members = [ff for ff in self.ffighters if ff.shift == shift]
-                self.shift_calendars[shift] = recreate_calendar_from_json(shift_members)
-            messagebox.showinfo("Success", "Calendar reconstructed from JSON and stored in memory.")
-        except Exception as e:
-            self.logger.error("Error reconstructing calendar", exc_info=True)
-            messagebox.showerror("Error", "Failed to reconstruct calendar from JSON.")
-
-    def read_firefighters_from_json(self):
-        folder_selected = filedialog.askdirectory(initialdir=json_dir, title="Select Folder Containing JSON Files")
-        if not folder_selected:
-            return  # User canceled selection
-
-        firefighter_data = []
-        json_files = [f for f in os.listdir(folder_selected) if f.endswith('.json')]
-        # Filter out analysis files
-        json_files = [f for f in json_files if "analysis" not in f.lower()]
-
-        if not json_files:
-            messagebox.showwarning("No JSON Files", "No valid firefighter JSON files found in the selected folder.")
-            return
-
-        for json_file in json_files:
-            file_path = os.path.join(folder_selected, json_file)
-            try:
-                ff_list = read_ffighters_from_json(file_path)
-                firefighter_data.extend(ff_list)
-                self.logger.info(f"Loaded {len(ff_list)} firefighters from {json_file}")
-            except Exception as e:
-                self.logger.error(f"Failed to read {json_file}: {e}")
-
-        # so at this point firefighter_data has already been read in as a list of ffighter objects, right?
-        if firefighter_data:
-            # Run HR validation immediately after loading the JSON data.
-            try:
-                hr_data = read_hr_validation(self.hr_filename)  # so when it failes during this process right here, why would it be a dict?
-            except Exception as e:
-                self.logger.error(f"Failed to read HR file: {e}")
-                messagebox.showerror("Error", "Failed to load HR data for validation.")
-                return
-
-            validated_ffighters = validate_against_hr(firefighter_data, hr_data)
-            self.ffighters = validated_ffighters  # Update the internal list with validated entries
-
-            # Recreate calendar using validated data.
-            self.make_calendar_from_json()
-            self.update_ffighters_tree(self.ffighters)
-            messagebox.showinfo("Success", f"Loaded {len(validated_ffighters)} firefighters, validated them, and recreated calendar.")
-        else:
-            messagebox.showwarning("No Data", "No valid firefighter data was loaded.")
-
+    root = tk.Tk()
+    app = FirefighterApp(root, logger)
+    root.mainloop()
