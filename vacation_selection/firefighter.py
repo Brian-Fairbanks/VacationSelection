@@ -11,17 +11,23 @@ class Pick:
         self.type = type
         self.determination = determination
         self.reason = reason
-        self.increments = self.process_increments(increments)
+        self.increments = self.process_increments(increments)  # Requested increments
+        self.approved_increments = None  # Will be set when pick is approved (can differ from requested)
         self.place = place
         self.source = source
 
     def get_increments(self):
+        """Returns requested increments."""
         return self.increments
+
+    def get_approved_increments(self):
+        """Returns approved increments (or requested if not yet set)."""
+        return self.approved_increments if self.approved_increments is not None else self.increments
 
     def process_increments(self, shift_selection):
         """
         Process increment selection string into a list of increment flags.
-        Supports both legacy (AM/PM) and new (INCREMENT1/INCREMENT2) naming.
+        Supports both legacy (AM/PM) and new (day_1/day_2) naming.
         Can be extended to support 3+ increments.
         """
         increment_mapping = {
@@ -31,11 +37,16 @@ class Pick:
             "AMPM": [1, 1],
             "FULL": [1, 1],
             # New 48-hour shift names (2x24hr segments)
-            "INCREMENT1": [1, 0],
-            "INCREMENT2": [0, 1],
-            "INCREMENT1INCREMENT2": [1, 1],
+            "day_1": [1, 0],
+            "day_2": [0, 1],
+            "day_1day_2": [1, 1],
             # Future 3-increment support
+            "INCREMENT1": [1, 0, 0],
+            "INCREMENT2": [0, 1, 0],
+            "INCREMENT1INCREMENT2": [1, 1, 0],
             "INCREMENT3": [0, 0, 1],
+            "INCREMENT1INCREMENT3": [1, 0, 1],
+            "INCREMENT2INCREMENT3": [0, 1, 1],
             "INCREMENT1INCREMENT2INCREMENT3": [1, 1, 1],
         }
         if shift_selection in increment_mapping:
@@ -79,12 +90,19 @@ class Pick:
     # Json Read/Write
     def to_dict(self):
         """Converts the Pick object to a dictionary."""
+        # For approved picks, show what was actually approved
+        # For denied/unaddressed picks, show what was requested
+        if self.determination == "Approved" and self.approved_increments is not None:
+            increments_text = self.increments_plain_text(self.approved_increments)
+        else:
+            increments_text = self.increments_plain_text(self.increments)
+
         return {
             'date': self.date.strftime('%Y-%m-%d'),
             'type': self.type,
             'determination': self.determination,
             'reason': self.reason,
-            'increments': self.increments_plain_text(self.increments),
+            'increments': increments_text,
             "place": self.place,
             "source": self.source
         }
@@ -147,19 +165,30 @@ class FFighter:
         else:
             self.current_pick = None
 
-    def approve_current_pick(self):
-        """Approve the current pick and update the firefighter's data."""
+    def approve_current_pick(self, reason=None):
+        """
+        Approve the current pick and update the firefighter's data.
+        If reason is provided, it will be set (e.g., for partial grants).
+        """
         if self.current_pick:
             self.current_pick.determination = "Approved"
-            requested_hours = sum(self.current_pick.increments) * (1 / len(self.current_pick.increments))
-            if self.used_vacation_shifts+requested_hours <= self.awarded_vacation_shifts:
-                self.used_vacation_shifts += requested_hours
+
+            # Set reason if provided (e.g., "Partial grant - only day_1 available")
+            if reason:
+                self.current_pick.reason = reason
+
+            # Use approved_increments (which may differ from requested for partial grants)
+            approved_increments = self.current_pick.get_approved_increments()
+            approved_hours = sum(approved_increments) * (1 / len(approved_increments))
+
+            if self.used_vacation_shifts + approved_hours <= self.awarded_vacation_shifts:
+                self.used_vacation_shifts += approved_hours
                 self.current_pick.type = "Vacation"
             else:
-                self.used_holiday_shifts += requested_hours
+                self.used_holiday_shifts += approved_hours
                 self.current_pick.type = "Holiday"
             self.processed.append(self.current_pick)
-            self.approved_shifts_count += requested_hours
+            self.approved_shifts_count += approved_hours
             self.current_pick = None
 
     def deny_current_pick(self, reason):

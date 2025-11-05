@@ -23,6 +23,13 @@ class Day:
     shift_duration_hours = 48
     transition_date = datetime(2025, 2, 4).date()  # Date when 48-hour shifts begin
 
+    # Firefighter limit configuration
+    # If True: limit applies to the entire shift (all increments share the same 6-person limit)
+    # If False: limit applies per increment (each increment has its own 6-person limit)
+    # For 48-hour shifts with independent day_1/day_2: set to False
+    # For 24-hour shifts with single FULL increment: set to True
+    limit_max_firefighters_at_shift_instead_of_increment = False
+
     @classmethod
     def is_single_increment(cls):
         """Returns True if only one increment is configured."""
@@ -120,13 +127,86 @@ class Day:
         return self._check_increments(ffighter, "has_ffighter", ffighter)
     
     def can_add_ffighter(self, ffighter):
-        if self.is_full(ffighter) or self.has_ffighter(ffighter) or self.is_rank_full(ffighter):
-            return False
-        return True
-            
-    def add_ffighter(self, ffighter):
-        increments = ffighter.current_pick.get_increments()
-        for inc_index, value in enumerate(increments):
+        """
+        Check if firefighter can be added to this day.
+        Returns: (can_add, available_increments, reason)
+        - can_add: True if at least one increment is available
+        - available_increments: List of increment flags showing which are available
+        - reason: Denial reason if can_add is False, or partial grant reason if not all increments available
+        """
+        requested_increments = ffighter.current_pick.get_increments()
+        available_increments = list(requested_increments)  # Copy the requested increments
+
+        # Check if firefighter already has this day
+        if self.has_ffighter(ffighter):
+            return (False, None, getattr(self, 'denial_reason', "Already requested this day off"))
+
+        # Check each requested increment for availability
+        for inc_index, value in enumerate(requested_increments):
+            if value == 1:  # This increment is requested
+                increment = self.increments.get(inc_index)
+                if increment:
+                    # Check if this specific increment is full or rank-full
+                    if increment.is_full():
+                        available_increments[inc_index] = 0  # Mark as unavailable
+                    elif increment.is_rank_full(ffighter):
+                        available_increments[inc_index] = 0  # Mark as unavailable
+
+        # Now check if the available increments would exceed max_shifts_off
+        # Calculate how many shifts the available increments represent
+        num_available = sum(available_increments)
+        if num_available > 0:
+            increment_value = 1 / len(available_increments)
+            shifts_for_available = num_available * increment_value
+
+            # Check if this would exceed the firefighter's max
+            if ffighter.approved_shifts_count + shifts_for_available > ffighter.max_shifts_off:
+                # Reduce available increments to fit within max
+                remaining_capacity = ffighter.max_shifts_off - ffighter.approved_shifts_count
+                max_increments_that_fit = int(remaining_capacity / increment_value)
+
+                if max_increments_that_fit == 0:
+                    return (False, None, "No room for any increments - would exceed max shifts off")
+
+                # Reduce available_increments to only what fits
+                # Prioritize earlier increments (day_1 over day_2)
+                count = 0
+                for i in range(len(available_increments)):
+                    if available_increments[i] == 1:
+                        if count < max_increments_that_fit:
+                            count += 1
+                        else:
+                            available_increments[i] = 0
+
+        # Check if any increments are still available after all checks
+        if sum(available_increments) == 0:
+            # No increments available - full denial
+            return (False, None, "All requested increments are full or would exceed max")
+
+        # Check if we got all requested increments
+        if available_increments == requested_increments:
+            # Full grant - all requested increments available
+            return (True, available_increments, None)
+        else:
+            # Partial grant - some but not all increments available
+            granted_names = [Day.increment_names[i] for i, v in enumerate(available_increments) if v == 1]
+            reason = f"Partial grant - only {'+'.join(granted_names)} available"
+            return (True, available_increments, reason)
+
+    def add_ffighter(self, ffighter, approved_increments=None):
+        """
+        Add firefighter to the day.
+        If approved_increments is provided, use those instead of requested increments.
+        This allows for partial grants.
+        """
+        if approved_increments is None:
+            approved_increments = ffighter.current_pick.get_increments()
+
+        # Store the approved increments in the pick
+        ffighter.current_pick.approved_increments = approved_increments
+
+        # Add to each approved increment
+        for inc_index, value in enumerate(approved_increments):
             if value == 1:
                 increment = self.increments.get(inc_index)
                 if increment:
@@ -187,27 +267,30 @@ def is_within_exclusion(ffighter, rejected):
 
 
 def has_reached_max_shifts(ffighter, rejected):
-    """Checks if the firefighter has reached or would exceed their maximum allowed shifts off, considering fractional shifts."""
-    # Calculate the requested shifts for the current pick
-    increments = ffighter.current_pick.get_increments()  # Tuple like (1, 0), (1, 1), etc.
-    increment_sum = sum(increments)  # Number of increments requested (e.g., 1 for half-shift, 2 for full-shift)
-
-    # Determine fractional shifts requested
-    fractional_shifts_requested = increment_sum * (1 / len(increments))
-    
-    # Calculate the new total shifts if the current pick is approved
-    new_total_shifts = ffighter.approved_shifts_count + fractional_shifts_requested
-    
-    # Check if the firefighter has reached the max shifts off exactly
-    if ffighter.approved_shifts_count == ffighter.max_shifts_off:
+    """
+    Checks if the firefighter has reached or would exceed their maximum allowed shifts off.
+    This is a pre-check before availability checking - it only denies if NO increments can fit.
+    Partial grants will be handled by can_add_ffighter if some increments would fit.
+    """
+    # Check if already at max
+    if ffighter.approved_shifts_count >= ffighter.max_shifts_off:
         deny_ffighter_pick(ffighter, rejected, "Max shifts off already reached")
         return True
-    
-    # Check if the new total would exceed the max shifts off
-    if new_total_shifts > ffighter.max_shifts_off:
-        deny_ffighter_pick(ffighter, rejected, "Shift would result in overage of time off")
+
+    # Calculate the requested shifts for the current pick
+    increments = ffighter.current_pick.get_increments()  # Tuple like (1, 0), (1, 1), etc.
+
+    # Check if even a single increment would exceed the max
+    # (1 increment = 1/len(increments) of a shift)
+    single_increment_value = 1 / len(increments)
+
+    # If even one increment would exceed the max, deny
+    if ffighter.approved_shifts_count + single_increment_value > ffighter.max_shifts_off:
+        deny_ffighter_pick(ffighter, rejected, "No room for any increments - would exceed max shifts off")
         return True
 
+    # If we get here, at least one increment could fit
+    # The actual approval (full or partial) will be determined by availability in can_add_ffighter
     return False
 
 
@@ -216,29 +299,33 @@ def validate_pick_with_reasoning(ffighter, calendar, rejected, bypass_movement=F
 
     # Immediate Failures for probationary limitations, max shifts off, and exclusions
     if not bypass_movement and(
-        probationary_limitations(ffighter, rejected) or 
+        probationary_limitations(ffighter, rejected) or
         has_reached_max_shifts(ffighter, rejected) or
         is_within_exclusion(ffighter, rejected)
     ):
         return False
-    
+
     date = ffighter.current_pick.date
     if date not in calendar:
         calendar[date] = Day(date)
     day = calendar[date]
 
-    # Validate other conditions before proceeding with the pick
-    if not day.can_add_ffighter(ffighter):
-        reason = getattr(day, 'denial_reason', "Pick Rejected, but not sure why")
+    # Check if firefighter can be added (supports partial grants)
+    can_add, available_increments, reason = day.can_add_ffighter(ffighter)
+
+    if not can_add:
+        # Full denial - no increments available
         if bypass_movement:
             return reason
         deny_ffighter_pick(ffighter, rejected, reason)
         return False
 
-    # All checks passed, add firefighter to the day
-    if day.add_ffighter(ffighter):
+    # At least some increments are available
+    # Add firefighter with the available increments
+    if day.add_ffighter(ffighter, available_increments):
         if not bypass_movement:
-            ffighter.approve_current_pick()
+            # Approve the pick (potentially with partial grant reason)
+            ffighter.approve_current_pick(reason)
     return True
 
 
