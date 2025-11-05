@@ -334,27 +334,27 @@ def sanitize_ff_dict(ff_dict):
         )
         ff_dict['idnum'] = 0
 
-    # Ensure max_days_off is a valid integer
-    raw_max_days_off = ff_dict.get('max_days_off')
-    if raw_max_days_off is None:
-        ff_dict['max_days_off'] = 0
+    # Ensure max_shifts_off is a valid integer
+    raw_max_shifts_off = ff_dict.get('max_shifts_off')
+    if raw_max_shifts_off is None:
+        ff_dict['max_shifts_off'] = 0
     else:
         try:
-            ff_dict['max_days_off'] = int(raw_max_days_off)
+            ff_dict['max_shifts_off'] = int(raw_max_shifts_off)
         except (ValueError, TypeError):
             logger.warning(
-                f"sanitize_ff_dict: Invalid max_days_off '{raw_max_days_off}' in {ff_dict}. "
+                f"sanitize_ff_dict: Invalid max_shifts_off '{raw_max_shifts_off}' in {ff_dict}. "
                 "Defaulting to 0."
             )
-            ff_dict['max_days_off'] = 0
+            ff_dict['max_shifts_off'] = 0
 
     # Ensure hr_validations exists. Since HR hasn't run yet, set it to an empty dict if missing.
     if 'hr_validations' not in ff_dict or ff_dict['hr_validations'] is None:
         ff_dict['hr_validations'] = {}
 
-    # Ensure approved_days_count is valid; default to 0 if missing or None.
-    if 'approved_days_count' not in ff_dict or ff_dict['approved_days_count'] is None:
-        ff_dict['approved_days_count'] = 0
+    # Ensure approved_shifts_count is valid; default to 0 if missing or None.
+    if 'approved_shifts_count' not in ff_dict or ff_dict['approved_shifts_count'] is None:
+        ff_dict['approved_shifts_count'] = 0
 
     # Sanitize picks: Ensure each pick has a 'place' key.
     picks = ff_dict.get('picks', [])

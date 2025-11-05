@@ -5,6 +5,9 @@ import hashlib
 import openpyxl
 import math
 
+increment_names = ["day_1", "day_2", "day_1day_2"]
+
+
 # Predefined lists for random name generation
 FIRST_NAMES = [
     "Abigail", "Amelia", "Ava", "Benjamin", "Charlotte", "Daniel", 
@@ -41,13 +44,23 @@ HOLIDAYS = [
 ]
 
 # Precompute all eligible days and their shifts between 02/01/2025 and 01/31/2026
+# Starting Feb 4, 2025: shifts are 48 hours (every other day), cycling A->B->C
+# Before Feb 4: shifts are 24 hours (daily), cycling A->B->C
 start_date = datetime.datetime(2025, 2, 1)
 end_date = datetime.datetime(2026, 1, 31)
+transition_date = datetime.datetime(2025, 2, 4)  # Date when 48-hour shifts begin
 days_dict = {"A": [], "B": [], "C": []}
 
 current_date = start_date
 while current_date <= end_date:
-    shift_day_number = (current_date - start_date).days % 3
+    if current_date < transition_date:
+        # Before Feb 4: 24-hour shifts (daily rotation)
+        shift_day_number = (current_date - start_date).days % 3
+    else:
+        # After Feb 4: 48-hour shifts (every-other-day rotation)
+        # Use (days_diff % 6) // 2 to get 0, 1, or 2
+        shift_day_number = ((current_date - transition_date).days % 6) // 2
+
     formatted_date = current_date.strftime("%m/%d/%Y")
     if shift_day_number == 0:
         days_dict["A"].append(formatted_date)
@@ -126,7 +139,7 @@ def generate_person(used_ids, used_names, available_special_names):
         days = [day for day, _ in finalized_days]
 
         for _ in range(len(days)):
-            shifts.append(random.choices(["AM", "PM", "AMPM"], weights=[0.1, 0.1, 0.8], k=1)[0])
+            shifts.append(random.choices(increment_names, weights=[0.1, 0.1, 0.8], k=1)[0])
 
     # Create the person dictionary
     person = {

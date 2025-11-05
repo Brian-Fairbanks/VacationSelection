@@ -8,12 +8,25 @@ from datetime import datetime
 # Day Class
 # ================================================================================================
 class Day:
-    # Class-level configurations remain the same...
-    single_day_increment = True
-    if single_day_increment:
-        max_total_ffighters_allowed = 6
-    else:
-        max_total_ffighters_allowed = 10
+    # Class-level configurations for shift time structure
+    # Configuration: Define increment names for the shift structure
+    # For 24-hour shifts (1x24hr): ["FULL"]
+    # For 24-hour shifts (2x12hr): ["AM", "PM"]
+    # For 48-hour shifts (2x24hr): ["day_1", "day_2"]
+    # For future 3-increment shifts: ["day_1", "day_2", "INCREMENT3"]
+    increment_names = ["day_1", "day_2"]  # 48-hour shifts: 2x24hr segments
+    max_total_ffighters_allowed = 6
+
+    # Shift duration configuration (in hours)
+    # For 24-hour shifts: shift_duration_hours = 24
+    # For 48-hour shifts: shift_duration_hours = 48
+    shift_duration_hours = 48
+    transition_date = datetime(2025, 2, 4).date()  # Date when 48-hour shifts begin
+
+    @classmethod
+    def is_single_increment(cls):
+        """Returns True if only one increment is configured."""
+        return len(cls.increment_names) == 1
 
     def __init__(self, date):
         self.date = date
@@ -25,17 +38,18 @@ class Day:
             'Captain': 0,
             'Battalion Chief': 0
         }
-        if self.single_day_increment:
-            self.increments = {0: Increment(date, 'FULL', only_increment=True)}
+        # Create increments based on configuration
+        if Day.is_single_increment():
+            # Single increment mode (e.g., full 24-hour or 48-hour shift)
+            self.increments = {0: Increment(date, Day.increment_names[0], only_increment=True)}
         else:
-            self.increments = {0: Increment(date, 'AM'), 1:Increment(date, 'PM')}
+            # Multiple increment mode (e.g., AM/PM or day_1/day_2)
+            self.increments = {i: Increment(date, name) for i, name in enumerate(Day.increment_names)}
 
     @staticmethod
     def get_header():
-        if Day.single_day_increment:
-            header = ['Date', 'First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth']
-        else:
-            header = ['Date', 'First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth']
+        # Header is the same regardless of increment configuration
+        header = ['Date', 'First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth']
         return header
     
     def write_to_row(self, writer):
@@ -71,7 +85,7 @@ class Day:
         Helper function to iterate over increments and apply the given method.
 
         Args:
-        increments: The list of increment values.
+        increments: The list of increment values from the pick.
         method_name: The name of the method to call on each increment.
         *args: Additional arguments to pass to the method.
 
@@ -80,14 +94,16 @@ class Day:
         """
         increments = ffighter.current_pick.increments
 
-        if self.single_day_increment:
+        if Day.is_single_increment():
+            # Single increment mode - check the only increment
             increment = self.increments.get(0)
             if increment and getattr(increment, method_name)(*args):
                 self.denial_reason = increment.denial_reason
                 return True
         else:
+            # Multiple increment mode - check each requested increment
             for inc_index, value in enumerate(increments):
-                if value == 1:
+                if value == 1:  # This increment is requested
                     increment = self.increments.get(inc_index)
                     if increment and getattr(increment, method_name)(*args):
                         self.denial_reason = increment.denial_reason
@@ -170,27 +186,26 @@ def is_within_exclusion(ffighter, rejected):
     return False
 
 
-def has_reached_max_days(ffighter, rejected):
-    """Checks if the firefighter has reached or would exceed their maximum allowed days off, considering fractional days."""
-    
-    # Calculate the requested days for the current pick
+def has_reached_max_shifts(ffighter, rejected):
+    """Checks if the firefighter has reached or would exceed their maximum allowed shifts off, considering fractional shifts."""
+    # Calculate the requested shifts for the current pick
     increments = ffighter.current_pick.get_increments()  # Tuple like (1, 0), (1, 1), etc.
-    increment_sum = sum(increments)  # Number of increments requested (e.g., 1 for half-day, 2 for full-day)
+    increment_sum = sum(increments)  # Number of increments requested (e.g., 1 for half-shift, 2 for full-shift)
+
+    # Determine fractional shifts requested
+    fractional_shifts_requested = increment_sum * (1 / len(increments))
     
-    # Determine fractional days requested
-    fractional_days_requested = increment_sum * (1 / len(increments))
+    # Calculate the new total shifts if the current pick is approved
+    new_total_shifts = ffighter.approved_shifts_count + fractional_shifts_requested
     
-    # Calculate the new total days if the current pick is approved
-    new_total_days = ffighter.approved_days_count + fractional_days_requested
-    
-    # Check if the firefighter has reached the max days off exactly
-    if ffighter.approved_days_count == ffighter.max_days_off:
-        deny_ffighter_pick(ffighter, rejected, "Max days off already reached")
+    # Check if the firefighter has reached the max shifts off exactly
+    if ffighter.approved_shifts_count == ffighter.max_shifts_off:
+        deny_ffighter_pick(ffighter, rejected, "Max shifts off already reached")
         return True
     
-    # Check if the new total would exceed the max days off
-    if new_total_days > ffighter.max_days_off:
-        deny_ffighter_pick(ffighter, rejected, "Day would result in overage of time off")
+    # Check if the new total would exceed the max shifts off
+    if new_total_shifts > ffighter.max_shifts_off:
+        deny_ffighter_pick(ffighter, rejected, "Shift would result in overage of time off")
         return True
 
     return False
@@ -199,10 +214,10 @@ def has_reached_max_days(ffighter, rejected):
 
 def validate_pick_with_reasoning(ffighter, calendar, rejected, bypass_movement=False):
 
-    # Immediate Failures for probationary limitations, max days off, and exclusions
+    # Immediate Failures for probationary limitations, max shifts off, and exclusions
     if not bypass_movement and(
         probationary_limitations(ffighter, rejected) or 
-        has_reached_max_days(ffighter, rejected) or
+        has_reached_max_shifts(ffighter, rejected) or
         is_within_exclusion(ffighter, rejected)
     ):
         return False

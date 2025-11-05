@@ -19,29 +19,61 @@ class Pick:
         return self.increments
 
     def process_increments(self, shift_selection):
+        """
+        Process increment selection string into a list of increment flags.
+        Supports both legacy (AM/PM) and new (INCREMENT1/INCREMENT2) naming.
+        Can be extended to support 3+ increments.
+        """
         increment_mapping = {
+            # Legacy 24-hour shift names (2x12hr segments)
             "AM": [1, 0],
             "PM": [0, 1],
             "AMPM": [1, 1],
-            "FULL": [1, 1]
+            "FULL": [1, 1],
+            # New 48-hour shift names (2x24hr segments)
+            "INCREMENT1": [1, 0],
+            "INCREMENT2": [0, 1],
+            "INCREMENT1INCREMENT2": [1, 1],
+            # Future 3-increment support
+            "INCREMENT3": [0, 0, 1],
+            "INCREMENT1INCREMENT2INCREMENT3": [1, 1, 1],
         }
         if shift_selection in increment_mapping:
             return increment_mapping[shift_selection]
         else:
             # Log or raise an error if an unexpected value is passed
-            print(f"Warning: Unexpected shift selection '{shift_selection}', defaulting to 'AMPM'")
+            print(f"Warning: Unexpected shift selection '{shift_selection}', defaulting to 'FULL'")
             return [1, 1]
-    
+        
     def increments_plain_text(self, increment = None):
-        if increment == None: increment = self.increments
-        reverse_mapping = {
-            (1, 0): "AM",
-            (0, 1): "PM",
-            (1, 1): "FULL"
-        }
-        increment_tuple = tuple(increment)  # Convert the list to a tuple
-        if increment_tuple in reverse_mapping:
-            return reverse_mapping[increment_tuple]
+        """
+        Convert increment list back to plain text representation.
+        Uses the current Day.increment_names configuration to determine naming.
+        """
+        if increment == None:
+            increment = self.increments
+
+        # Import here to avoid circular dependency
+        from vacation_selection.cal import Day
+
+        increment_tuple = tuple(increment)
+        num_increments = len(Day.increment_names)
+
+        # Handle FULL (all increments selected)
+        if all(v == 1 for v in increment):
+            return "FULL"
+
+        # Handle single increment selections
+        for i, name in enumerate(Day.increment_names):
+            expected_pattern = [1 if j == i else 0 for j in range(num_increments)]
+            if increment_tuple == tuple(expected_pattern):
+                return name
+
+        # Handle combinations (for display purposes)
+        selected = [Day.increment_names[i] for i, v in enumerate(increment) if v == 1]
+        if selected:
+            return "+".join(selected)
+
         return "ERROR"
     
     # Json Read/Write
@@ -97,15 +129,15 @@ class FFighter:
         self.picks = picks
         self.exclusions = []
 
-        # Calculate max days off and unpack the dictionary
-        days_off_data = self.calculate_max_days_off()
-        self.awarded_holiday_days = days_off_data['total_holiday_days']
-        self.awarded_vacation_days = days_off_data['total_vacation_days']
-        self.max_days_off = days_off_data['max_days_off']
+        # Calculate max shifts off and unpack the dictionary
+        shifts_off_data = self.calculate_max_shifts_off()
+        self.awarded_holiday_shifts = shifts_off_data['total_holiday_shifts']
+        self.awarded_vacation_shifts = shifts_off_data['total_vacation_shifts']
+        self.max_shifts_off = shifts_off_data['max_shifts_off']
 
-        self.used_vacation_days = 0
-        self.used_holiday_days = 0
-        self.approved_days_count = 0
+        self.used_vacation_shifts = 0
+        self.used_holiday_shifts = 0
+        self.approved_shifts_count = 0
         self.current_pick = None  # A holding place for the pick being processed
 
     def process_next_pick(self):
@@ -120,14 +152,14 @@ class FFighter:
         if self.current_pick:
             self.current_pick.determination = "Approved"
             requested_hours = sum(self.current_pick.increments) * (1 / len(self.current_pick.increments))
-            if self.used_vacation_days+requested_hours <= self.awarded_vacation_days:
-                self.used_vacation_days += requested_hours
+            if self.used_vacation_shifts+requested_hours <= self.awarded_vacation_shifts:
+                self.used_vacation_shifts += requested_hours
                 self.current_pick.type = "Vacation"
             else:
-                self.used_holiday_days += requested_hours
+                self.used_holiday_shifts += requested_hours
                 self.current_pick.type = "Holiday"
             self.processed.append(self.current_pick)
-            self.approved_days_count += requested_hours
+            self.approved_shifts_count += requested_hours
             self.current_pick = None
 
     def deny_current_pick(self, reason):
@@ -138,23 +170,23 @@ class FFighter:
             self.processed.append(self.current_pick)
             self.current_pick = None
 
-    def calculate_max_days_off(self):
+    def calculate_max_shifts_off(self):
         # Calculate years of service rounded to the nearest full year
         years_of_service = (datetime.now().date() - self.hireDate).days // 365
 
-        # Base and additional days calculation
-        base_vacation_days = 8  # Base vacation days
-        base_holiday_days = 6   # Base holiday days
-        additional_days = min(years_of_service // 5, 6)  # Additional days based on years of service, capped at 20 total days
+        # Base and additional shifts calculation
+        base_vacation_shifts = 8  # Base vacation shifts
+        base_holiday_shifts = 6   # Base holiday shifts
+        additional_shifts = min(years_of_service // 5, 6)  # Additional shifts based on years of service, capped at 20 total shifts
 
-        # Total allowed days off
-        max_days_off = base_vacation_days + additional_days + base_holiday_days
+        # Total allowed shifts off
+        max_shifts_off = base_vacation_shifts + additional_shifts + base_holiday_shifts
 
-        # Return the breakdown of days in a dictionary
+        # Return the breakdown of shifts in a dictionary
         return {
-            'total_holiday_days': base_holiday_days,
-            'total_vacation_days': base_vacation_days + additional_days,
-            'max_days_off': max_days_off
+            'total_holiday_shifts': base_holiday_shifts,
+            'total_vacation_shifts': base_vacation_shifts + additional_shifts,
+            'max_shifts_off': max_shifts_off
         }
 
     def print_picks(self):
@@ -184,12 +216,12 @@ class FFighter:
             picks=[Pick.from_dict(pick) for pick in ff_dict.get('picks', [])]
         )
         ff.exclusions = ff_dict.get('exclusions', [])  # Load exclusions
-        ff.max_days_off = ff_dict.get('max_days_off', 0)
-        ff.awarded_vacation_days = ff_dict.get('awarded_vacation_days', 0)
-        ff.awarded_holiday_days = ff_dict.get('awarded_holiday_days', 0)
-        ff.used_vacation_days = ff_dict.get('used_vacation_days', 0)
-        ff.used_holiday_days = ff_dict.get('used_holiday_days', 0)
-        ff.approved_days_count = ff_dict.get('approved_days_count', 0)
+        ff.max_shifts_off = ff_dict.get('max_shifts_off', 0)
+        ff.awarded_vacation_shifts = ff_dict.get('awarded_vacation_shifts', 0)
+        ff.awarded_holiday_shifts = ff_dict.get('awarded_holiday_shifts', 0)
+        ff.used_vacation_shifts = ff_dict.get('used_vacation_shifts', 0)
+        ff.used_holiday_shifts = ff_dict.get('used_holiday_shifts', 0)
+        ff.approved_shifts_count = ff_dict.get('approved_shifts_count', 0)
         ff.processed = [Pick.from_dict(proc) for proc in ff_dict.get('processed', [])]
         ff.hr_validations = ff_dict.get('hr_validations', {})
         return ff
@@ -205,13 +237,12 @@ class FFighter:
             'rank': self.rank,
             'shift': self.shift,
             'hireDate': self.hireDate.strftime('%Y-%m-%d'),
-            'max_days_off': self.max_days_off,
-            'awarded_vacation_days': self.awarded_vacation_days,
-            'awarded_holiday_days': self.awarded_holiday_days,
-            'used_vacation_days': self.used_vacation_days,
-            'used_holiday_days': self.used_holiday_days,
-            'approved_days_count': self.approved_days_count,
-            'max_days_off': self.max_days_off,
+            'max_shifts_off': self.max_shifts_off,
+            'awarded_vacation_shifts': self.awarded_vacation_shifts,
+            'awarded_holiday_shifts': self.awarded_holiday_shifts,
+            'used_vacation_shifts': self.used_vacation_shifts,
+            'used_holiday_shifts': self.used_holiday_shifts,
+            'approved_shifts_count': self.approved_shifts_count,
             'picks': [pick.to_dict() for pick in self.picks],
             'processed': [pick.to_dict() for pick in self.processed],
             'hr_validations': self.hr_validations,

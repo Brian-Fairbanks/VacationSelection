@@ -23,18 +23,18 @@ print = logger.info
 # date format
 date_format = '%m-%d-%Y'
 
-def calculate_max_days_off(hire_date):
-    """Calculate the maximum number of days off allowed based on years of service."""
+def calculate_max_shifts_off(hire_date):
+    """Calculate the maximum number of shifts off allowed based on years of service."""
     years_of_service = (datetime.now().date() - hire_date).days // 365
 
     if years_of_service < 1:
-        return 7  # Example: 1 year or less gets 7 days off
+        return 7  # Example: 1 year or less gets 7 shifts off
     elif 1 <= years_of_service < 5:
-        return 14  # Example: 1-5 years get 14 days off
+        return 14  # Example: 1-5 years get 14 shifts off
     elif 5 <= years_of_service < 10:
-        return 21  # Example: 5-10 years get 21 days off
+        return 21  # Example: 5-10 years get 21 shifts off
     else:
-        return 28  # Example: 10+ years get 28 days off
+        return 28  # Example: 10+ years get 28 shifts off
     
 class Pick:
     def __init__(self, date, type="U", determination="Unaddressed"):
@@ -62,7 +62,7 @@ class FFighter:
         self.dice = random.random()
         self.processed = []
         self.picks = picks
-        self.max_days_off = calculate_max_days_off(hireDate)
+        self.max_shifts_off = calculate_max_shifts_off(hireDate)
 
     def printPicks(self):
         results = ""
@@ -194,7 +194,7 @@ def makeCalendar(ffighters, silent_mode=False):
         num_captains = count_rank_off(["Captain"])
         num_battalion_chiefs = count_rank_off(["Battalion Chief"])
 
-        # Specify max days off for each rank based on the specified rules
+        # Specify max shifts off for each rank based on the specified rules
         max_apparatus_specialists_off = 5
         max_lieutenants_off = 5 - num_captains
         max_captains_off = 3 - num_battalion_chiefs

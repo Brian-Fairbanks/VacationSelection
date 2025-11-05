@@ -23,18 +23,44 @@ class Increment:
             'Battalion Chief': 0
         }
         self.denial_reason=""
-    
+
+    def format_date_display(self):
+        """
+        Format the date for display based on shift duration.
+        For 48-hour shifts starting Feb 4, 2025, shows date range (e.g., "Oct 28-29").
+        For 24-hour shifts, shows single date.
+        """
+        from vacation_selection.cal import Day
+
+        # Check if this is after the transition date and using 48-hour shifts
+        if (Day.shift_duration_hours == 48 and
+            hasattr(Day, 'transition_date') and
+            self.date >= Day.transition_date):
+            # Calculate end date (48 hours = 2 days)
+            end_date = self.date + timedelta(days=1)
+
+            # Format as "Oct 28-29" or "Dec 31-Jan 1" for month transitions
+            if self.date.month == end_date.month:
+                return f"{self.date.strftime('%b %d')}-{end_date.day}"
+            else:
+                return f"{self.date.strftime('%b %d')}-{end_date.strftime('%b %d')}"
+        else:
+            # 24-hour shift or before transition - show single date
+            return self.date.strftime('%Y-%m-%d')
+
     def write_to_row(self, writer):
         """Write the increment details to the CSV row."""
+        date_display = self.format_date_display()
+
         # Prepare the list of firefighters with increment details
         if self.only_increment:
             # Include only the firefighter names with increments_plain_text()
             all_ffighters = [f"{ff.name} - {ff.idnum} ({pick.increments_plain_text()})" for ff, pick in zip(self.ffighters, self.picks)]
-            row = [self.date] + (all_ffighters + [""] * self.max_total_ffighters_allowed)[:self.max_total_ffighters_allowed]
+            row = [date_display] + (all_ffighters + [""] * self.max_total_ffighters_allowed)[:self.max_total_ffighters_allowed]
         else:
             # Include firefighter names with increment names
             all_ffighters = [f"{ff.name} ({pick.increments_plain_text()})" for ff, pick in zip(self.ffighters, self.picks)]
-            row = [f"{self.date} ({self.name})"] + (all_ffighters + [""] * self.max_total_ffighters_allowed)[:self.max_total_ffighters_allowed]
+            row = [f"{date_display} ({self.name})"] + (all_ffighters + [""] * self.max_total_ffighters_allowed)[:self.max_total_ffighters_allowed]
 
         writer.writerow(row)
 

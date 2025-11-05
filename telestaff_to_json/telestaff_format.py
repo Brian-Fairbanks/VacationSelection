@@ -35,13 +35,13 @@ def format_data(df, shift):
         # Determine Start Time and Duration based on "Increments" value
         if row["Increments"] == "FULL":
             start_time = "7:00:00"
-            duration = 24
-        elif row["Increments"] == "AM":
+            duration = 48  # 48-hour shift
+        elif row["Increments"] in ["AM", "day_1"]:
             start_time = "7:00:00"
-            duration = 12
-        elif row["Increments"] == "PM":
-            start_time = "19:00:00"
-            duration = 12
+            duration = 24  # First 24-hour segment
+        elif row["Increments"] in ["PM", "day_2"]:
+            start_time = "7:00:00"  # Start time for second day
+            duration = 24  # Second 24-hour segment
         else:
             continue  # Skip rows with unknown increments
         

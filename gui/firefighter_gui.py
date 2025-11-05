@@ -236,9 +236,9 @@ class FirefighterApp:
             self.logger.debug(f"Writing validated data to: {verified_filename}")
             with open(verified_filename, 'w', newline='') as csvfile:
                 writer = csv.writer(csvfile)
-                writer.writerow(["ID", "Name", "Hire Date", "Rank", "Shift", "Max Days Off", "Approved Days Count"])
+                writer.writerow(["ID", "Name", "Hire Date", "Rank", "Shift", "Max Shifts Off", "Approved Shifts Count"])
                 for ff in validated_ffighters:
-                    writer.writerow([ff.idnum, ff.name, ff.hireDate, ff.rank, ff.shift, ff.max_days_off, ff.approved_days_count])
+                    writer.writerow([ff.idnum, ff.name, ff.hireDate, ff.rank, ff.shift, ff.max_shifts_off, ff.approved_shifts_count])
             self.logger.info(f"Validated data written to {verified_filename}")
         except Exception as e:
             self.logger.error(f"Error validating firefighter data: {e}")
@@ -291,7 +291,7 @@ class FirefighterApp:
     def setup_ffighter_tree_view(self, parent):
         self.ff_tree_frame = tk.Frame(parent)
         self.ff_tree_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-        columns = ["ID", "Name", "Rank", "Max Days Off", "Shift", "Number of Picks", "Exclusions"]
+        columns = ["ID", "Name", "Rank", "Max Shifts Off", "Shift", "Number of Picks", "Exclusions"]
         headings = columns
         widths = [50, 120, 80, 100, 50, 80, 200]
         self.ff_tree = create_treeview(self.ff_tree_frame, columns, headings, widths)
@@ -312,13 +312,13 @@ class FirefighterApp:
             num_picks = len(ff.picks)
             exclusions_display = format_exclusions(getattr(ff, "exclusions", []))
             display_rank = self.get_display_value(ff, 'Rank')
-            display_max_days_off = self.get_display_value(ff, 'Max Days Off')
+            display_max_shifts_off = self.get_display_value(ff, 'Max Shifts Off')
             display_shift = self.get_display_value(ff, 'Shift')
             self.ff_tree.insert('', 'end', values=(
                 ff.idnum,
                 ff.name,
                 display_rank,
-                display_max_days_off,
+                display_max_shifts_off,
                 display_shift,
                 num_picks,
                 exclusions_display

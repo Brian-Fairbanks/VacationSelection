@@ -164,29 +164,29 @@ def validate_against_hr(ffighters, hr_data):
             # Validate Vacation and Holiday Hours
             hr_vacation_hours = int(hr_record.get('# of Vacation Leave Hours awarded', 0))
             hr_holiday_hours = int(hr_record.get('# of Holiday Leave Hours awarded', 0))
-            hr_vacation_days = hr_vacation_hours / 24
-            hr_holiday_days = hr_holiday_hours / 24
+            hr_vacation_shifts = hr_vacation_hours / 24
+            hr_holiday_shifts = hr_holiday_hours / 24
 
-            # Check awarded vacation days
-            if ff.awarded_vacation_days != hr_vacation_days:
-                logger.warning(f"Vacation days mismatch for {ff.name} (ID: {ff.idnum}):   {ff.awarded_vacation_days} - Overwriting with {hr_vacation_days} from HR data.")
-                ff.hr_validations['Vacation Days'] = (ff.awarded_vacation_days, hr_vacation_days)
-                ff.awarded_vacation_days = hr_vacation_days
+            # Check awarded vacation shifts
+            if ff.awarded_vacation_shifts != hr_vacation_shifts:
+                logger.warning(f"Vacation shifts mismatch for {ff.name} (ID: {ff.idnum}):   {ff.awarded_vacation_shifts} - Overwriting with {hr_vacation_shifts} from HR data.")
+                ff.hr_validations['Vacation Shifts'] = (ff.awarded_vacation_shifts, hr_vacation_shifts)
+                ff.awarded_vacation_shifts = hr_vacation_shifts
 
-            # Check awarded holiday days
-            if ff.awarded_holiday_days != hr_holiday_days:
-                logger.warning(f"Holiday days mismatch for {ff.name} (ID: {ff.idnum}):   {ff.awarded_holiday_days} - Overwriting with {hr_holiday_days} from HR data.")
-                ff.hr_validations['Holiday Days'] = (ff.awarded_holiday_days, hr_holiday_days)
-                ff.awarded_holiday_days = hr_holiday_days
+            # Check awarded holiday shifts
+            if ff.awarded_holiday_shifts != hr_holiday_shifts:
+                logger.warning(f"Holiday shifts mismatch for {ff.name} (ID: {ff.idnum}):   {ff.awarded_holiday_shifts} - Overwriting with {hr_holiday_shifts} from HR data.")
+                ff.hr_validations['Holiday Shifts'] = (ff.awarded_holiday_shifts, hr_holiday_shifts)
+                ff.awarded_holiday_shifts = hr_holiday_shifts
 
-            # Check Max Days Off
-            hr_total_allowed_day_count = int((hr_vacation_hours + hr_holiday_hours) / 24)
-            
+            # Check Max Shifts Off
+            hr_total_allowed_shift_count = int((hr_vacation_hours + hr_holiday_hours) / 24)
+
             # Convert both values to integers for a proper comparison
-            if int(ff.max_days_off) != hr_total_allowed_day_count:
-                logger.warning(f"Max Days Off mismatch for {ff.name} (ID: {ff.idnum}):   {ff.max_days_off} - Overwriting with {hr_total_allowed_day_count} from HR data.")
-                ff.hr_validations['Max Days Off'] = (ff.max_days_off, hr_total_allowed_day_count)
-                ff.max_days_off = hr_total_allowed_day_count
+            if int(ff.max_shifts_off) != hr_total_allowed_shift_count:
+                logger.warning(f"Max Shifts Off mismatch for {ff.name} (ID: {ff.idnum}):   {ff.max_shifts_off} - Overwriting with {hr_total_allowed_shift_count} from HR data.")
+                ff.hr_validations['Max Shifts Off'] = (ff.max_shifts_off, hr_total_allowed_shift_count)
+                ff.max_shifts_off = hr_total_allowed_shift_count
 
             # Validate Rank
             hr_rank = ensure_rank(hr_record.get('Rank', '').strip())
