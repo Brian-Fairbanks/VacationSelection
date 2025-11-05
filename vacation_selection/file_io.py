@@ -281,7 +281,7 @@ def write_picks_to_csv(ffighters, suffix, write_path, runtime, pick_filter=None)
                 if pick_filter and not pick_filter(pick):
                     continue
                 writer.writerow([
-                    '', '', pick.date, pick.type,
+                    '', '', pick.format_date_display(), pick.type,
                     pick.increments_plain_text(), pick.determination, pick.reason
                 ])
             writer.writerow([])

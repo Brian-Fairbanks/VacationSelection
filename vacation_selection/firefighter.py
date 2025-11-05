@@ -86,6 +86,54 @@ class Pick:
             return "+".join(selected)
 
         return "ERROR"
+
+    def format_date_display(self):
+        """
+        Format the date for display based on approved increments.
+        - Full shift (all increments): Shows date range (e.g., "10/2 - 10/3")
+        - Single increment: Shows single date (e.g., "10/2" or "10/3")
+        - Multiple non-consecutive increments: Shows combined dates
+        """
+        from vacation_selection.cal import Day
+        from datetime import timedelta
+
+        # Use approved increments if available, otherwise use requested
+        increments = self.get_approved_increments()
+
+        # Check if this is after the transition date and using 48-hour shifts
+        if (Day.shift_duration_hours == 48 and
+            hasattr(Day, 'transition_date') and
+            self.date >= Day.transition_date):
+
+            # Check if all increments are selected (full shift)
+            if all(v == 1 for v in increments):
+                # Full 48-hour shift - show date range
+                end_date = self.date + timedelta(days=1)
+                return f"{self.date.strftime('%m/%d')} - {end_date.strftime('%m/%d')}"
+
+            # Single or partial increment
+            num_increments = sum(increments)
+            if num_increments == 1:
+                # Find which increment is selected
+                increment_index = increments.index(1)
+                if increment_index == 0:
+                    # First increment (day_1)
+                    return self.date.strftime('%m/%d')
+                else:
+                    # Second or later increment (day_2, etc.)
+                    offset_date = self.date + timedelta(days=increment_index)
+                    return offset_date.strftime('%m/%d')
+            else:
+                # Multiple non-consecutive increments - show combined
+                dates = []
+                for i, v in enumerate(increments):
+                    if v == 1:
+                        offset_date = self.date + timedelta(days=i)
+                        dates.append(offset_date.strftime('%m/%d'))
+                return " + ".join(dates)
+        else:
+            # 24-hour shift or before transition - show single date
+            return self.date.strftime('%m/%d')
     
     # Json Read/Write
     def to_dict(self):
@@ -99,6 +147,7 @@ class Pick:
 
         return {
             'date': self.date.strftime('%Y-%m-%d'),
+            'date_display': self.format_date_display(),  # Formatted date for display
             'type': self.type,
             'determination': self.determination,
             'reason': self.reason,

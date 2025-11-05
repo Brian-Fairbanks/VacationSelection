@@ -413,7 +413,7 @@ def picksToCSV(ffighter: list, suffix):
                 writer.writerow([ffighter.name, ffighter.rank])
                 for key in ffighter.processed:
                     writer.writerow(
-                        ['', '', key.date, key.type, key.determination, key.reason])
+                        ['', '', key.format_date_display(), key.type, key.determination, key.reason])
                 writer.writerow([])
 
         except Exception as Argument:

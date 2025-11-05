@@ -345,7 +345,7 @@ class FirefighterApp:
                 else:
                     determination_display = pick.determination
                 self.pick_tree.insert('', 'end', values=(
-                    pick.date,
+                    pick.format_date_display(),
                     pick.type,
                     determination_display,
                     pick.reason if pick.reason else "N/A",
