@@ -1,13 +1,32 @@
 # increment.py
 from vacation_selection.setup_logging import setup_logging
 logger = setup_logging('Increment')
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 # Increment Class
 # ================================================================================================
 class Increment:
-    # Class-level configurations remain the same...
+    # Class-level configurations for increment structure
+    # Configuration: Define increment names for the shift structure
+    # For 24-hour shifts (1x24hr): ["FULL"]
+    # For 24-hour shifts (2x12hr): ["AM", "PM"]
+    # For 48-hour shifts (2x24hr): ["day_1", "day_2"]
+    # For future 3-increment shifts: ["day_1", "day_2", "INCREMENT3"]
+    increment_names = ["day_1", "day_2"]  # 48-hour shifts: 2x24hr segments
+
+    # Maximum firefighters allowed per increment
     max_total_ffighters_allowed = 6
+
+    # Shift duration configuration (in hours)
+    # For 24-hour shifts: shift_duration_hours = 24
+    # For 48-hour shifts: shift_duration_hours = 48
+    shift_duration_hours = 48
+    transition_date = datetime(2025, 2, 4).date()  # Date when 48-hour shifts begin
+
+    @classmethod
+    def is_single_increment(cls):
+        """Returns True if only one increment is configured."""
+        return len(cls.increment_names) == 1
 
     def __init__(self, date, name, only_increment=False ):
         self.date = date
@@ -31,12 +50,10 @@ class Increment:
         For 48-hour shifts starting Feb 4, 2025, shows date range (e.g., "Oct 28-29").
         For 24-hour shifts, shows single date.
         """
-        from vacation_selection.cal import Day
-
         # Check if this is after the transition date and using 48-hour shifts
-        if (Day.shift_duration_hours == 48 and
-            hasattr(Day, 'transition_date') and
-            self.date >= Day.transition_date):
+        if (Increment.shift_duration_hours == 48 and
+            hasattr(Increment, 'transition_date') and
+            self.date >= Increment.transition_date):
             # Calculate end date (48 hours = 2 days)
             end_date = self.date + timedelta(days=1)
 
@@ -159,6 +176,97 @@ class Increment:
             'reason': reason,
             'position': len(self.runner_ups) + 1  # 1-indexed position
         })
+
+    @staticmethod
+    def process_increments(shift_selection):
+        """
+        Process increment selection string into a list of increment flags.
+        Supports both legacy (AM/PM) and new (day_1/day_2) naming.
+        Can be extended to support 3+ increments.
+
+        Args:
+            shift_selection: String representing the increment selection (e.g., "day_1", "day_1day_2", "FULL")
+
+        Returns:
+            List of integers (0 or 1) representing which increments are selected
+
+        Examples:
+            >>> Increment.process_increments("day_1")
+            [1, 0]
+            >>> Increment.process_increments("day_1day_2")
+            [1, 1]
+            >>> Increment.process_increments("FULL")
+            [1, 1]
+        """
+        increment_mapping = {
+            # Legacy 24-hour shift names (2x12hr segments)
+            "AM": [1, 0],
+            "PM": [0, 1],
+            "AMPM": [1, 1],
+            "FULL": [1, 1],
+            # New 48-hour shift names (2x24hr segments)
+            "day_1": [1, 0],
+            "day_2": [0, 1],
+            "day_1day_2": [1, 1],
+            # Future 3-increment support
+            "INCREMENT1": [1, 0, 0],
+            "INCREMENT2": [0, 1, 0],
+            "INCREMENT1INCREMENT2": [1, 1, 0],
+            "INCREMENT3": [0, 0, 1],
+            "INCREMENT1INCREMENT3": [1, 0, 1],
+            "INCREMENT2INCREMENT3": [0, 1, 1],
+            "INCREMENT1INCREMENT2INCREMENT3": [1, 1, 1],
+        }
+        if shift_selection in increment_mapping:
+            return increment_mapping[shift_selection]
+        else:
+            # Log or raise an error if an unexpected value is passed
+            logger.warning(f"Unexpected shift selection '{shift_selection}', defaulting to 'FULL'")
+            return [1, 1]
+
+    @staticmethod
+    def increments_to_plain_text(increment_list, increment_names=None):
+        """
+        Convert increment list back to plain text representation.
+
+        Args:
+            increment_list: List of integers (0 or 1) representing which increments are selected
+            increment_names: Optional list of increment names. If None, uses Increment.increment_names
+
+        Returns:
+            String representation of the increment selection
+
+        Examples:
+            >>> Increment.increments_to_plain_text([1, 0], ["day_1", "day_2"])
+            'day_1'
+            >>> Increment.increments_to_plain_text([1, 1], ["day_1", "day_2"])
+            'FULL'
+            >>> Increment.increments_to_plain_text([1, 0, 1], ["day_1", "day_2", "day_3"])
+            'day_1+day_3'
+        """
+        # Use Increment's own class variable if not provided
+        if increment_names is None:
+            increment_names = Increment.increment_names
+
+        increment_tuple = tuple(increment_list)
+        num_increments = len(increment_names)
+
+        # Handle FULL (all increments selected)
+        if all(v == 1 for v in increment_list):
+            return "FULL"
+
+        # Handle single increment selections
+        for i, name in enumerate(increment_names):
+            expected_pattern = [1 if j == i else 0 for j in range(num_increments)]
+            if increment_tuple == tuple(expected_pattern):
+                return name
+
+        # Handle combinations (for display purposes)
+        selected = [increment_names[i] for i, v in enumerate(increment_list) if v == 1]
+        if selected:
+            return "+".join(selected)
+
+        return "ERROR"
 
 
 def check_holiday(day: date) -> bool:

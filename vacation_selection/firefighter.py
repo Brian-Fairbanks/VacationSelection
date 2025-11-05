@@ -7,11 +7,13 @@ logger = setup_logging.setup_logging("classes.log")
 
 class Pick:
     def __init__(self, date, type="Untyped", determination="Unaddressed", increments='AMPM', reason=None, place=None, source=None):
+        from vacation_selection.increment import Increment
+
         self.date = date
         self.type = type
         self.determination = determination
         self.reason = reason
-        self.increments = self.process_increments(increments)  # Requested increments
+        self.increments = Increment.process_increments(increments)  # Requested increments
         self.approved_increments = None  # Will be set when pick is approved (can differ from requested)
         self.place = place
         self.source = source
@@ -24,68 +26,23 @@ class Pick:
         """Returns approved increments (or requested if not yet set)."""
         return self.approved_increments if self.approved_increments is not None else self.increments
 
-    def process_increments(self, shift_selection):
-        """
-        Process increment selection string into a list of increment flags.
-        Supports both legacy (AM/PM) and new (day_1/day_2) naming.
-        Can be extended to support 3+ increments.
-        """
-        increment_mapping = {
-            # Legacy 24-hour shift names (2x12hr segments)
-            "AM": [1, 0],
-            "PM": [0, 1],
-            "AMPM": [1, 1],
-            "FULL": [1, 1],
-            # New 48-hour shift names (2x24hr segments)
-            "day_1": [1, 0],
-            "day_2": [0, 1],
-            "day_1day_2": [1, 1],
-            # Future 3-increment support
-            "INCREMENT1": [1, 0, 0],
-            "INCREMENT2": [0, 1, 0],
-            "INCREMENT1INCREMENT2": [1, 1, 0],
-            "INCREMENT3": [0, 0, 1],
-            "INCREMENT1INCREMENT3": [1, 0, 1],
-            "INCREMENT2INCREMENT3": [0, 1, 1],
-            "INCREMENT1INCREMENT2INCREMENT3": [1, 1, 1],
-        }
-        if shift_selection in increment_mapping:
-            return increment_mapping[shift_selection]
-        else:
-            # Log or raise an error if an unexpected value is passed
-            print(f"Warning: Unexpected shift selection '{shift_selection}', defaulting to 'FULL'")
-            return [1, 1]
-        
-    def increments_plain_text(self, increment = None):
+    def increments_plain_text(self, increment=None):
         """
         Convert increment list back to plain text representation.
-        Uses the current Day.increment_names configuration to determine naming.
+        Uses the static method from Increment class.
+
+        Args:
+            increment: Optional increment list. If None, uses self.increments
+
+        Returns:
+            String representation of the increment selection
         """
-        if increment == None:
+        from vacation_selection.increment import Increment
+
+        if increment is None:
             increment = self.increments
 
-        # Import here to avoid circular dependency
-        from vacation_selection.cal import Day
-
-        increment_tuple = tuple(increment)
-        num_increments = len(Day.increment_names)
-
-        # Handle FULL (all increments selected)
-        if all(v == 1 for v in increment):
-            return "FULL"
-
-        # Handle single increment selections
-        for i, name in enumerate(Day.increment_names):
-            expected_pattern = [1 if j == i else 0 for j in range(num_increments)]
-            if increment_tuple == tuple(expected_pattern):
-                return name
-
-        # Handle combinations (for display purposes)
-        selected = [Day.increment_names[i] for i, v in enumerate(increment) if v == 1]
-        if selected:
-            return "+".join(selected)
-
-        return "ERROR"
+        return Increment.increments_to_plain_text(increment)
 
     def format_date_display(self):
         """
@@ -94,16 +51,16 @@ class Pick:
         - Single increment: Shows single date (e.g., "10/2" or "10/3")
         - Multiple non-consecutive increments: Shows combined dates
         """
-        from vacation_selection.cal import Day
+        from vacation_selection.increment import Increment
         from datetime import timedelta
 
         # Use approved increments if available, otherwise use requested
         increments = self.get_approved_increments()
 
         # Check if this is after the transition date and using 48-hour shifts
-        if (Day.shift_duration_hours == 48 and
-            hasattr(Day, 'transition_date') and
-            self.date >= Day.transition_date):
+        if (Increment.shift_duration_hours == 48 and
+            hasattr(Increment, 'transition_date') and
+            self.date >= Increment.transition_date):
 
             # Check if all increments are selected (full shift)
             if all(v == 1 for v in increments):

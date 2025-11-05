@@ -8,21 +8,6 @@ from datetime import datetime
 # Day Class
 # ================================================================================================
 class Day:
-    # Class-level configurations for shift time structure
-    # Configuration: Define increment names for the shift structure
-    # For 24-hour shifts (1x24hr): ["FULL"]
-    # For 24-hour shifts (2x12hr): ["AM", "PM"]
-    # For 48-hour shifts (2x24hr): ["day_1", "day_2"]
-    # For future 3-increment shifts: ["day_1", "day_2", "INCREMENT3"]
-    increment_names = ["day_1", "day_2"]  # 48-hour shifts: 2x24hr segments
-    max_total_ffighters_allowed = 6
-
-    # Shift duration configuration (in hours)
-    # For 24-hour shifts: shift_duration_hours = 24
-    # For 48-hour shifts: shift_duration_hours = 48
-    shift_duration_hours = 48
-    transition_date = datetime(2025, 2, 4).date()  # Date when 48-hour shifts begin
-
     # Firefighter limit configuration
     # If True: limit applies to the entire shift (all increments share the same 6-person limit)
     # If False: limit applies per increment (each increment has its own 6-person limit)
@@ -30,10 +15,14 @@ class Day:
     # For 24-hour shifts with single FULL increment: set to True
     limit_max_firefighters_at_shift_instead_of_increment = False
 
+    # Note: Increment-related configurations (increment_names, shift_duration_hours,
+    # transition_date, max_total_ffighters_allowed) are now owned by the Increment class.
+    # Access them via Increment.increment_names, Increment.shift_duration_hours, etc.
+
     @classmethod
     def is_single_increment(cls):
         """Returns True if only one increment is configured."""
-        return len(cls.increment_names) == 1
+        return Increment.is_single_increment()
 
     def __init__(self, date):
         self.date = date
@@ -45,13 +34,13 @@ class Day:
             'Captain': 0,
             'Battalion Chief': 0
         }
-        # Create increments based on configuration
-        if Day.is_single_increment():
+        # Create increments based on configuration from Increment class
+        if Increment.is_single_increment():
             # Single increment mode (e.g., full 24-hour or 48-hour shift)
-            self.increments = {0: Increment(date, Day.increment_names[0], only_increment=True)}
+            self.increments = {0: Increment(date, Increment.increment_names[0], only_increment=True)}
         else:
             # Multiple increment mode (e.g., AM/PM or day_1/day_2)
-            self.increments = {i: Increment(date, name) for i, name in enumerate(Day.increment_names)}
+            self.increments = {i: Increment(date, name) for i, name in enumerate(Increment.increment_names)}
 
     @staticmethod
     def get_header():
@@ -189,7 +178,7 @@ class Day:
             return (True, available_increments, None)
         else:
             # Partial grant - some but not all increments available
-            granted_names = [Day.increment_names[i] for i, v in enumerate(available_increments) if v == 1]
+            granted_names = [Increment.increment_names[i] for i, v in enumerate(available_increments) if v == 1]
             reason = f"Partial grant - only {'+'.join(granted_names)} available"
             return (True, available_increments, reason)
 
