@@ -10,7 +10,7 @@ logger = setup_logging(f"RunLog-{runtime}.log", base=write_path, debug=False)
 print = logger.info
 
 from .file_io import (
-    read_firefighter_data, write_calendar_to_csv, 
+    read_firefighter_data, write_calendar_to_csv, write_runner_ups_to_csv,
     write_picks_to_csv, print_final, write_ffighters_to_json, read_hr_validation
 )
 from .firefighter import FFighter
@@ -235,6 +235,7 @@ def main(pick_filename, hr_filename, format):
         # Write outputs
         write_ffighters_to_json(shift_members, f'{shift}_ffighters', write_path, runtime)
         write_calendar_to_csv(results['calendar'], shift, write_path, runtime)
+        write_runner_ups_to_csv(results['calendar'], shift, write_path, runtime)
         write_picks_to_csv(shift_members, shift, write_path, runtime)
         print_final(shift_members)
 

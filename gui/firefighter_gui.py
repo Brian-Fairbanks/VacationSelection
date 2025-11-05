@@ -9,8 +9,8 @@ from difflib import SequenceMatcher
 
 from vacation_selection.file_io import (
     read_firefighter_data, write_ffighters_to_json, write_calendar_to_csv,
-    write_picks_to_csv, print_final, read_hr_validation, read_exclusions_file,
-    write_analysis_to_json, read_ffighters_from_json
+    write_runner_ups_to_csv, write_picks_to_csv, print_final, read_hr_validation,
+    read_exclusions_file, write_analysis_to_json, read_ffighters_from_json
 )
 from vacation_selection.analyze import analyze_results, display_dashboard
 from vacation_selection.main import validate_against_hr
@@ -257,6 +257,7 @@ class FirefighterApp:
                 all_ffighters.extend(shift_ffighters)
                 write_ffighters_to_json(shift_ffighters, f'{shift}_ffighters', ".//output", runtime_str)
                 write_calendar_to_csv(calendar_data["calendar"], shift, ".//output", runtime_str)
+                write_runner_ups_to_csv(calendar_data["calendar"], shift, ".//output", runtime_str)
                 write_picks_to_csv(shift_ffighters, shift, ".//output", runtime_str)
                 # Write supplemental-only picks using a filter function:
                 write_picks_to_csv(shift_ffighters, f'{shift}_supplemental', ".//output", runtime_str,

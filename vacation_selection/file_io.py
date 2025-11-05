@@ -466,3 +466,69 @@ def write_calendar_to_csv(calendar, suffix, write_path, runtime):
 
         for date in sorted(calendar.keys()):
             calendar[date].write_to_row(writer)
+
+
+def write_runner_ups_to_csv(calendar, suffix, write_path, runtime):
+    """
+    Writes runner-up data to a CSV file for Captains.
+    Runner-ups are firefighters whose picks were denied, listed in order of denial (seniority).
+    This helps Captains know who to contact if approved firefighters need to cancel.
+
+    Args:
+        calendar: Dictionary of Day objects containing increment data
+        suffix: Suffix for the filename (e.g., shift name)
+        write_path: Directory to write the file to
+        runtime: Timestamp string for the filename
+    """
+    file_name = f'{write_path}/{runtime}-runner-ups-{suffix}.csv'
+
+    try:
+        with open(file_name, 'w', newline='') as f:
+            writer = csv.writer(f)
+
+            # Write header
+            writer.writerow(['Date', 'Increment', 'Position', 'Firefighter', 'ID', 'Rank',
+                           'Type', 'Requested Increments', 'Denial Reason'])
+
+            # Sort dates
+            sorted_dates = sorted(calendar.keys())
+
+            # Track if we found any runner-ups
+            runner_up_count = 0
+
+            for date in sorted_dates:
+                day = calendar[date]
+
+                # Check each increment for runner-ups
+                for inc_index, increment in day.increments.items():
+                    if increment.runner_ups:
+                        # Write each runner-up
+                        for runner_up in increment.runner_ups:
+                            ffighter = runner_up['ffighter']
+                            pick = runner_up['pick']
+                            reason = runner_up['reason']
+                            position = runner_up['position']
+
+                            # Format the date display for this increment
+                            date_display = pick.format_date_display()
+
+                            writer.writerow([
+                                date_display,
+                                increment.name,
+                                position,
+                                ffighter.name,
+                                ffighter.idnum,
+                                ffighter.rank,
+                                pick.type,
+                                pick.increments_plain_text(),
+                                reason
+                            ])
+                            runner_up_count += 1
+
+            logger.info(f"Runner-ups file created: {file_name} ({runner_up_count} runner-ups)")
+
+    except Exception as e:
+        logger.error(f"Failed to write runner-ups to CSV: {e}")
+        raise
+
+    return file_name

@@ -16,6 +16,7 @@ class Increment:
         self.only_increment = only_increment
         self.ffighters = []
         self.picks=[]
+        self.runner_ups = []  # List of (ffighter, pick, reason) tuples for denied requests in order
         self.rank_counts = {
             'Apparatus Specialist': 0,
             'Lieutenant': 0,
@@ -133,7 +134,7 @@ class Increment:
         place_index = len(increment.picks)
         # Assign place based on this position
         ffighter.current_pick.place = place_index
-        
+
         self.ffighters.append(ffighter)
         # Update rank counts
         if ffighter.rank not in self.rank_counts:
@@ -141,6 +142,23 @@ class Increment:
         self.rank_counts[ffighter.rank] += 1
         self.picks.append(ffighter.current_pick)
         return True
+
+    def add_runner_up(self, ffighter, pick, reason):
+        """
+        Add a denied pick to the runner-up list for this increment.
+        Runner-ups are stored in order of denial (which corresponds to seniority order).
+
+        Args:
+            ffighter: The firefighter whose pick was denied
+            pick: The Pick object that was denied
+            reason: The reason for denial
+        """
+        self.runner_ups.append({
+            'ffighter': ffighter,
+            'pick': pick,
+            'reason': reason,
+            'position': len(self.runner_ups) + 1  # 1-indexed position
+        })
 
 
 def check_holiday(day: date) -> bool:

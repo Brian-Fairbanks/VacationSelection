@@ -217,14 +217,14 @@ class Day:
 # Pick Validation Helpers
 # ================================================================================================
 
-def probationary_limitations(ffighter, rejected):
+def probationary_limitations(ffighter, rejected, calendar=None):
     """Checks if probationary firefighters are restricted from taking the day off."""
 
     days_since_hire = (ffighter.current_pick.date - ffighter.hireDate).days
 
     # No days allowed within the first 182 days
     if days_since_hire < 182:
-        deny_ffighter_pick(ffighter, rejected, "No days off allowed within the first 182 days of hire")
+        deny_ffighter_pick(ffighter, rejected, "No days off allowed within the first 182 days of hire", calendar)
         return True
 
     # Between 182 and 365 days: Only holidays are allowed, up to 4 days
@@ -235,14 +235,14 @@ def probationary_limitations(ffighter, rejected):
             and pick.determination == "Approved"
         )
         if approved_in_period >= 4:
-            deny_ffighter_pick(ffighter, rejected, "Reached 4 holidays limit between 182 and 365 days")
+            deny_ffighter_pick(ffighter, rejected, "Reached 4 holidays limit between 182 and 365 days", calendar)
             return True
         ffighter.current_pick.type = "Holiday"
 
     # After 365 days, no probationary restrictions apply
     return False
 
-def is_within_exclusion(ffighter, rejected):
+def is_within_exclusion(ffighter, rejected, calendar=None):
     """
     Checks if the firefighter's current pick falls within an exclusion period.
     Handles both Pandas Timestamp and datetime.date types.
@@ -261,12 +261,12 @@ def is_within_exclusion(ffighter, rejected):
         # print(f"{leave_start}({type(leave_start)}) <= {ffighter.current_pick.date}({type(ffighter.current_pick.date)}) <= {leave_end}({type(leave_end)})")
         if leave_start <= ffighter.current_pick.date <= leave_end:
             reason = f"Schedule Reassignment: ({exclusion.get('Reason', 'No reason provided')})"
-            deny_ffighter_pick(ffighter, rejected, reason)
+            deny_ffighter_pick(ffighter, rejected, reason, calendar)
             return True
     return False
 
 
-def has_reached_max_shifts(ffighter, rejected):
+def has_reached_max_shifts(ffighter, rejected, calendar=None):
     """
     Checks if the firefighter has reached or would exceed their maximum allowed shifts off.
     This is a pre-check before availability checking - it only denies if NO increments can fit.
@@ -274,7 +274,7 @@ def has_reached_max_shifts(ffighter, rejected):
     """
     # Check if already at max
     if ffighter.approved_shifts_count >= ffighter.max_shifts_off:
-        deny_ffighter_pick(ffighter, rejected, "Max shifts off already reached")
+        deny_ffighter_pick(ffighter, rejected, "Max shifts off already reached", calendar)
         return True
 
     # Calculate the requested shifts for the current pick
@@ -286,7 +286,7 @@ def has_reached_max_shifts(ffighter, rejected):
 
     # If even one increment would exceed the max, deny
     if ffighter.approved_shifts_count + single_increment_value > ffighter.max_shifts_off:
-        deny_ffighter_pick(ffighter, rejected, "No room for any increments - would exceed max shifts off")
+        deny_ffighter_pick(ffighter, rejected, "No room for any increments - would exceed max shifts off", calendar)
         return True
 
     # If we get here, at least one increment could fit
@@ -299,9 +299,9 @@ def validate_pick_with_reasoning(ffighter, calendar, rejected, bypass_movement=F
 
     # Immediate Failures for probationary limitations, max shifts off, and exclusions
     if not bypass_movement and(
-        probationary_limitations(ffighter, rejected) or
-        has_reached_max_shifts(ffighter, rejected) or
-        is_within_exclusion(ffighter, rejected)
+        probationary_limitations(ffighter, rejected, calendar) or
+        has_reached_max_shifts(ffighter, rejected, calendar) or
+        is_within_exclusion(ffighter, rejected, calendar)
     ):
         return False
 
@@ -317,7 +317,7 @@ def validate_pick_with_reasoning(ffighter, calendar, rejected, bypass_movement=F
         # Full denial - no increments available
         if bypass_movement:
             return reason
-        deny_ffighter_pick(ffighter, rejected, reason)
+        deny_ffighter_pick(ffighter, rejected, reason, calendar)
         return False
 
     # At least some increments are available
@@ -329,10 +329,36 @@ def validate_pick_with_reasoning(ffighter, calendar, rejected, bypass_movement=F
     return True
 
 
-def deny_ffighter_pick(ffighter, rejected, reason):
-    """Denies the firefighter's current pick and adds it to the rejected list."""
+def deny_ffighter_pick(ffighter, rejected, reason, calendar=None):
+    """
+    Denies the firefighter's current pick and adds it to the rejected list.
+    Also records the firefighter as a runner-up for the requested increments.
+
+    Args:
+        ffighter: The firefighter whose pick is being denied
+        rejected: Dictionary tracking rejected picks
+        reason: The reason for denial
+        calendar: Optional calendar dict to record runner-ups in increments
+    """
     ffighter.deny_current_pick(reason)
     rejected.setdefault(ffighter.name, []).append(ffighter.processed[-1].date)
+
+    # Record as runner-up in the requested increments
+    if calendar is not None:
+        denied_pick = ffighter.processed[-1]  # The pick we just denied
+        date = denied_pick.date
+
+        # Get or create the day
+        if date in calendar:
+            day = calendar[date]
+            requested_increments = denied_pick.get_increments()
+
+            # Add to runner-ups for each requested increment
+            for inc_index, value in enumerate(requested_increments):
+                if value == 1:  # This increment was requested
+                    increment = day.increments.get(inc_index)
+                    if increment:
+                        increment.add_runner_up(ffighter, denied_pick, reason)
 
 
 def process_ffighter_pick(ffighter, calendar, rejected):
