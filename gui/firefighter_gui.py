@@ -21,9 +21,18 @@ from vacation_selection.cal import make_calendar, recreate_calendar_from_json
 from gui.tree_views import create_treeview, update_treeview_data, format_exclusions
 
 # Default filenames/paths
-default_picks_filename = "./2025 VACATION REQUEST FORM - Form Responses_final.csv"
-default_validation_filename = "./HR_data_plus_ranks.xlsx"
-default_exclusions_filename = "./exclusions.xlsx"
+testing_mode = True
+
+if testing_mode:
+    default_picks_filename = "./random_vacation_requests.csv"
+    default_validation_filename = "./HR_Validations.xlsx"
+    default_exclusions_filename = None
+
+else:
+    default_picks_filename = "./2025 VACATION REQUEST FORM - Form Responses_final.csv"
+    default_validation_filename = "./HR_data_plus_ranks.xlsx"
+    default_exclusions_filename = "./exclusions.xlsx"
+
 json_dir = "./output/telestaff+suplemental_merged/"
 
 class FirefighterApp:
@@ -280,13 +289,14 @@ class FirefighterApp:
         try:
             prioritized_ffighters = set_priorities(self.ffighters)
             for shift in ["A", "B", "C"]:
-                if not self.shift_calendars[shift]:self.shift_calendars[shift]={}
+                existing_data = self.shift_calendars.get(shift, {})
                 shift_members = [ff for ff in prioritized_ffighters if ff.shift == shift]
-                self.shift_calendars[shift] = make_calendar(shift_members, existing_calendar_data=self.shift_calendars[shift], count=1)
+                # Pass the safely retrieved existing_data
+                self.shift_calendars[shift] = make_calendar(shift_members, existing_calendar_data=existing_data, count=1)
             messagebox.showinfo("Success", "Schedule successfully generated and stored in memory.")
         except Exception as e:
-            self.logger.error(f"Error generating schedule: {e}")
-            messagebox.showerror("Error", "Failed to generate schedule.")
+            self.logger.exception("Error generating schedule") 
+            messagebox.showerror("Error", f"Failed to generate schedule.\n\nError: {e}\n\nSee logs for full details.")
 
     # ---------------------- Data Display ----------------------
     def setup_ffighter_tree_view(self, parent):
