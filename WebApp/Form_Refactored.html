@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vacation Selection Form</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                },
+            },
+        }
+    </script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.css">
+
+    <?!= include('Styles'); ?>
+</head>
+
+<body class="bg-gray-100 font-sans antialiased flex items-center justify-center min-h-screen py-12">
+
+    <div class="bg-white p-8 rounded-lg shadow-md max-w-xl w-full">
+        <h1 id="message" class="text-2xl font-semibold text-gray-500 text-center mb-6">
+            Loading...
+        </h1>
+
+        <div class="mb-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
+            <h2 class="text-lg font-semibold mb-2 text-gray-800">Shift Rotation Key (Starts Feb 4, 2026)</h2>
+            <div class="flex flex-wrap gap-4 text-sm font-medium">
+                <span class="px-2 py-0.5 rounded-full bg-red-200 text-red-800 border border-red-400">A Shift (Pale Red)</span>
+                <span class="px-2 py-0.5 rounded-full bg-blue-200 text-blue-800 border border-blue-400">B Shift (Blue)</span>
+                <span class="px-2 py-0.5 rounded-full bg-orange-200 text-orange-800 border border-orange-400">C Shift (Orange)</span>
+            </div>
+        </div>
+
+        <form id="request-form">
+            <fieldset class="mb-6">
+                <legend class="block text-lg font-semibold text-gray-900 mb-4">
+                    Acknowledgment of Form Completion
+                    <span class="text-red-500">*</span>
+                </legend>
+                <div class="space-y-4">
+                    <div class="flex items-center">
+                        <input id="continue" name="formCompletion" type="radio" value="continue" class="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500">
+                        <label for="continue" class="ml-3 block text-sm font-medium text-gray-700">
+                            I would like to continue with the selection process.
+                        </label>
+                    </div>
+                    <div class="flex items-center">
+                        <input id="skip" name="formCompletion" type="radio" value="skip" class="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500">
+                        <label for="skip" class="ml-3 block text-sm font-medium text-gray-700">
+                            I would prefer to skip the selection, and submit a blank request form.
+                        </label>
+                    </div>
+                </div>
+            </fieldset>
+
+            <div id="day-selection-container" class="mt-6 border border-gray-200 p-4 rounded-lg" style="display: none;">
+                <h3 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">Day Selection</h3>
+
+                <div id="day-1-selection" class="flex flex-col sm:flex-row gap-4 sm:gap-8 items-start sm:items-end py-4">
+
+                    <div class="flex-1 min-w-0">
+                        <label for="day1-date" class="block text-base font-medium text-gray-700 mb-1">Date</label>
+                        <div class="flex items-center space-x-2">
+                            <input type="text" id="day1-date" name="day1Date" class="datepicker w-full mt-1 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" placeholder="MM/DD/YYYY">
+
+                            <span id="day1-shift-feedback" class="text-xs px-2 py-1 rounded-full font-semibold border border-transparent transition-all duration-300 whitespace-nowrap"></span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">MM-DD-YYYY (Click input for calendar)</p>
+                    </div>
+
+                    <div class="shrink-0">
+                        <label class="block text-base font-medium text-gray-700 mb-1">Shift Selection 1</label>
+                        <div class="flex space-x-4">
+                            <div class="flex items-center">
+                                <input id="day1-shift-day1" name="day1Shift" type="checkbox" value="Day1" checked class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                <label for="day1-shift-day1" class="ml-2 text-sm font-medium text-gray-700">Day 1</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input id="day1-shift-day2" name="day1Shift" type="checkbox" value="Day2" checked class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                <label for="day1-shift-day2" class="ml-2 text-sm font-medium text-gray-700">Day 2</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-right pt-6">
+                <button type="submit" id="submit-button" disabled class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-gray-400 cursor-not-allowed">
+                    Submit
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div id="alert-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full flex items-center justify-center" style="display: none;">
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
+            <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Form Submission Data</h3>
+            <div class="bg-gray-50 p-4 rounded-md">
+                <pre id="modal-content" class="text-sm text-gray-800"></pre>
+            </div>
+            <div class="mt-6 text-right">
+                <button id="close-modal" type="button" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- External Libraries -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+
+    <!-- Test Data (for development) -->
+    <script>
+        const testData = {
+            "userInfo": {
+                "employeeName": "Fairbanks, Brian",
+                "hireDate": "Mon Jan 13 2025 00:00:00 GMT-0600 (Central Standard Time)",
+                "trackingLevel": "FF",
+                "yearsOfService": "0",
+                "vacationHours": 192,
+                "rank": "Probationary Firefighter",
+                "employeeId": 538,
+                "holidayHours": 144,
+                "shift": "A"
+            },
+            "previousPicks": null,
+            "logs": [
+                "Email found: bfairbanks@pflugervillefire.org",
+                "Search term: bfairbanks",
+                "Matches found: [{\"id\":538,\"name\":\"Fairbanks, Brian\",\"score\":1}]",
+                "is confident: true",
+                "Confident match found: {\"id\":538,\"name\":\"Fairbanks, Brian\",\"score\":1}",
+                "Now calling getEmployeeDataAndPicks..."
+            ]
+        };
+    </script>
+
+    <!-- Modular JavaScript Includes -->
+    <?!= include('ShiftLogic'); ?>
+    <?!= include('DatepickerInit'); ?>
+    <?!= include('FormLogic'); ?>
+
+    <!-- Main Initialization -->
+    <script>
+        $(document).ready(function () {
+            // Update message on load
+            $('#message')
+                .text('jQuery, UI Datepicker, & Test Data Loaded!')
+                .removeClass('text-gray-500')
+                .addClass('text-green-600');
+
+            console.log("Test Data Loaded:", testData);
+
+            // Initialize all components
+            initializeDatepicker();
+            initializeFormLogic();
+        });
+    </script>
+
+</body>
+
+</html>
+

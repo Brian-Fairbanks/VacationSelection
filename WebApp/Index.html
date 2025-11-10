@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+</head>
+
+<body>
+
+    <div style="background-color: #fffbe6; border: 1px solid #ffe58f; padding: 10px; font-family: monospace; display:none;" id="debug-panel">
+        <strong>DEBUG PANEL:</strong><br>
+        The email Google sees for you is: <strong>
+            <?!= debugEmail ?>
+        </strong>
+    </div>
+
+    <script>
+        // This 'rosterData' variable is injected by Code.gs (in doGet)
+        const allEmployees = <?!= rosterData ?>;
+    </script>
+
+
+    <div id="loading-screen">
+        <h2>Loading Your Information...</h2>
+        <p>Please wait.</p>
+    </div>
+
+    <?!= include('Form_Refactored'); ?>
+
+
+    <div id="manual-login" style="display:none;">
+        <h2>Could not find your user profile.</h2>
+        <p>Please enter your Employee ID or Name to search:</p>
+
+        <input type="text" id="manual-search-text" style="width: 100%;">
+
+        <div id="search-results" style="margin-top: 15px;">
+        </div>
+    </div>
+
+
+    <script>
+        // This runs as soon as the page is loaded
+        window.addEventListener("load", function () {
+            google.script.run
+                .withSuccessHandler(onInitialDataLoaded)
+                .withFailureHandler(onLoadError)
+                .getInitialUserInfo();
+        });
+
+        //
+        // --- THIS IS THE CRITICAL FUNCTION ---
+        //
+        function onInitialDataLoaded(data) {
+
+            console.log(data)
+            // 1. Check for logs and print them to the debug panel
+            if (data && data.hasOwnProperty('logs')) {
+                var debugPanel = document.getElementById("debug-panel");
+                var logContent = data.logs.join('<br>');
+                debugPanel.innerHTML += "<br>--- Auto-Login Log ---<br>" + logContent;
+                debugPanel.style.display = "block";
+            }
+
+            // 2. The original logic to check for success (this still works perfectly)
+            if (data && data.hasOwnProperty('userInfo') && data.userInfo) {
+                // SUCCESS!
+                fillUserInfo(data.userInfo);
+                if (data.hasOwnProperty('previousPicks') && data.previousPicks) {
+                    fillPreviousPicks(data.previousPicks);
+                }
+                document.getElementById("loading-screen").style.display = "none";
+                document.getElementById("form-content").style.display = "block";
+
+            } else {
+                // FAILURE!
+                document.getElementById("loading-screen").style.display = "none";
+                document.getElementById("manual-login").style.display = "block";
+            }
+        }
+
+        function onLoadError(err) {
+            // Hard script failure
+            document.getElementById("loading-screen").style.display = "none";
+            document.getElementById("manual-login").style.display = "block";
+            document.getElementById("debug-panel").style.display = "block";
+            alert("A script error occurred: " + err.message);
+        }
+
+
+        // --- ALL THE OTHER FUNCTIONS ARE CORRECT ---
+
+        document.getElementById("manual-search-text").addEventListener("input", function () {
+            var searchLower = String(this.value).toLowerCase().trim();
+            var localMatches = [];
+
+            if (searchLower.length > 0) {
+                for (var i = 0; i < allEmployees.length; i++) {
+                    var emp = allEmployees[i];
+                    var searchCorpus = emp.id + " " + emp.name + " " + emp.searchString + " " + emp.tokensCsv;
+                    if (searchCorpus.toLowerCase().includes(searchLower)) {
+                        localMatches.push(emp);
+                    }
+                }
+            }
+            onMatchesFound(localMatches);
+        });
+
+        function onMatchesFound(matches) {
+            var resultsDiv = document.getElementById("search-results");
+            if (!matches || matches.length === 0) {
+                resultsDiv.innerHTML = "<p style='color:red;'>No matches found.</p>";
+                return;
+            }
+            var maxResults = 10;
+            var truncated = matches.length > maxResults;
+            var displayMatches = matches.slice(0, maxResults);
+            var listHtml = "<p>" + matches.length + " people found. Please select your name:</p>";
+            listHtml += "<ul style='list-style: none; padding-left: 0;'>";
+            displayMatches.forEach(function (user) {
+                listHtml += "<li style='margin-bottom: 5px;'>" +
+                    "<a href='#' class='user-select' data-id='" + user.id + "' style='text-decoration: none; padding: 5px 10px; border: 1px solid #ccc; display: inline-block; border-radius: 4px;'>" +
+                    user.name + " (ID: " + user.id + ")" +
+                    "</a>" +
+                    "</li>";
+            });
+            if (truncated) {
+                listHtml += "<li>...and " + (matches.length - maxResults) + " more.</li>";
+            }
+            listHtml += "</ul>";
+            resultsDiv.innerHTML = listHtml;
+        }
+
+        document.getElementById("search-results").addEventListener("click", function (event) {
+            var clickedLink = event.target.closest('a.user-select');
+            if (clickedLink) {
+                event.preventDefault();
+                var selectedId = clickedLink.getAttribute("data-id");
+                document.getElementById("search-results").innerHTML = "<p>Loading data for ID " + selectedId + "...</p>";
+                loadFullData(selectedId);
+            }
+        });
+
+        function loadFullData(employeeId) {
+            google.script.run
+                .withSuccessHandler(onManualDataLoaded)
+                .withFailureHandler(onLoadError)
+                .getEmployeeDataAndPicks(employeeId);
+        }
+
+        function onManualDataLoaded(data) {
+            if (data && data.hasOwnProperty('userInfo') && data.userInfo) {
+                fillUserInfo(data.userInfo);
+                if (data.hasOwnProperty('previousPicks') && data.previousPicks) {
+                    fillPreviousPicks(data.previousPicks);
+                }
+                document.getElementById("manual-login").style.display = "none";
+                document.getElementById("form-content").style.display = "block";
+            } else {
+                document.getElementById("search-results").innerHTML = "<p style='color:red;'>Error loading data for that ID. Please try again.</p>";
+            }
+        }
+
+        function fillUserInfo(userInfo) {
+            document.getElementById("emp-name").innerText = userInfo.employeeName;
+            document.getElementById("emp-id").innerText = userInfo.employeeId;
+            document.getElementById("emp-rank").innerText = userInfo.rank;
+            document.getElementById("emp-hire-date").innerText = userInfo.hireDate;
+            document.getElementById("emp-years").innerText = userInfo.yearsOfService;
+            document.getElementById("emp-vac-hours").innerText = userInfo.vacationHours;
+            document.getElementById("emp-hol-hours").innerText = userInfo.holidayHours;
+        }
+
+        function fillPreviousPicks(picksRow) {
+            var container = document.getElementById("vacation-picks-container");
+            container.innerHTML = "";
+            var START_PICK_INDEX = 9;
+            for (var i = START_PICK_INDEX; i < picksRow.length; i += 2) {
+                var day = picksRow[i];
+                var shift = picksRow[i + 1];
+                if (day) {
+                    var pickHtml = "<div>" +
+                        "<input type='date' value='" + day + "'> " +
+                        "<input type='text' value='" + shift + "'>" +
+                        "</div>";
+                    container.innerHTML += pickHtml;
+                }
+            }
+        }
+    </script>
+</body>
+
+</html>

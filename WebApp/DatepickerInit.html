@@ -1,0 +1,107 @@
+<script>
+    /**
+     * Initialize the jQuery UI Datepicker with 2-day block selection
+     * Requires: ShiftLogic.html to be loaded first
+     */
+    function initializeDatepicker() {
+        $('#day1-date').datepicker({
+            dateFormat: 'mm/dd/yy',
+            defaultDate: new Date('2026-02-04'),
+
+            beforeShow: function () {
+                setTimeout(function () {
+                    $('.ui-datepicker-calendar a').off('mouseenter mouseleave')
+                        .on('mouseenter', function () {
+                            const tdElement = $(this).closest('td');
+                            const dayNum = parseInt($(this).text(), 10);
+                            const linkMonth = parseInt(tdElement.attr('data-month'), 10);
+                            const linkYear = parseInt(tdElement.attr('data-year'), 10);
+
+                            if (isNaN(dayNum) || isNaN(linkMonth) || isNaN(linkYear)) return;
+
+                            const linkDate = new Date(linkYear, linkMonth, dayNum);
+                            const { blockStartDate } = getShiftAndBlock(linkDate);
+                            toggleBlockHover(blockStartDate, 'add');
+                        })
+                        .on('mouseleave', function () {
+                            const tdElement = $(this).closest('td');
+                            const dayNum = parseInt($(this).text(), 10);
+                            const linkMonth = parseInt(tdElement.attr('data-month'), 10);
+                            const linkYear = parseInt(tdElement.attr('data-year'), 10);
+
+                            if (isNaN(dayNum) || isNaN(linkMonth) || isNaN(linkYear)) return;
+
+                            const linkDate = new Date(linkYear, linkMonth, dayNum);
+                            const { blockStartDate } = getShiftAndBlock(linkDate);
+                            toggleBlockHover(blockStartDate, 'remove');
+                        });
+                }, 0);
+            },
+
+            // Logic for 2-day block selection
+            onSelect: function (dateText, inst) {
+                const selectedDate = new Date(inst.selectedYear, inst.selectedMonth, inst.selectedDay);
+                const { blockStartDate } = getShiftAndBlock(selectedDate);
+
+                if (blockStartDate) {
+                    selectedBlockStartDate = blockStartDate;
+                    const formattedDate = formatDate(blockStartDate);
+                    $(this).val(formattedDate);
+                    $(this).datepicker('refresh'); // Refresh to apply highlights
+
+                    // Update the shift feedback badge
+                    updateShiftFeedback(formattedDate);
+                }
+            },
+
+            // Function to style individual days (for coloring and 2-day highlight)
+            beforeShowDay: function (date) {
+                const { class: shiftClass, blockStartDate } = getShiftAndBlock(date);
+                let extraClass = shiftClass;
+
+                if (blockStartDate) {
+                    const currentDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                    const secondDay = new Date(blockStartDate.getFullYear(), blockStartDate.getMonth(), blockStartDate.getDate());
+                    secondDay.setDate(secondDay.getDate() + 1);
+
+                    const isBlockStart = currentDate.getTime() === blockStartDate.getTime();
+                    const isBlockSecondDay = currentDate.getTime() === secondDay.getTime();
+
+                    const firstDayIsWeekend = blockStartDate.getDay() === 0 || blockStartDate.getDay() === 6;
+                    const secondDayIsWeekend = secondDay.getDay() === 0 || secondDay.getDay() === 6;
+                    const bothDaysWeekend = firstDayIsWeekend && secondDayIsWeekend;
+
+                    if (isBlockStart) {
+                        extraClass += ' shift-block-start';
+                        if (bothDaysWeekend) {
+                            extraClass += ' both-days-weekend';
+                        }
+                    }
+                    if (isBlockSecondDay) {
+                        extraClass += ' shift-block-end';
+                        if (bothDaysWeekend) {
+                            extraClass += ' both-days-weekend';
+                        }
+                    }
+                }
+
+                // Check if this date is part of the currently selected 2-day block
+                if (selectedBlockStartDate) {
+                    const currentDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                    const secondDay = new Date(selectedBlockStartDate.getFullYear(), selectedBlockStartDate.getMonth(), selectedBlockStartDate.getDate());
+                    secondDay.setDate(secondDay.getDate() + 1);
+
+                    const isBlockStart = currentDate.getTime() === selectedBlockStartDate.getTime();
+                    const isBlockSecondDay = currentDate.getTime() === secondDay.getTime();
+
+                    if (isBlockStart || isBlockSecondDay) {
+                        extraClass += ' ui-state-highlight ui-state-active selected-shift-day';
+                    }
+                }
+
+                return [true, extraClass, `Shift ${shiftClass.replace('shift-', '')}`];
+            }
+        });
+    }
+</script>
+

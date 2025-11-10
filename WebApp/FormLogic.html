@@ -1,0 +1,91 @@
+<script>
+    /**
+     * Form interaction logic
+     * Handles form submission, validation, and UI updates
+     */
+    function initializeFormLogic() {
+        // Toggle submit button based on form completion selection
+        const toggleSubmitButton = () => {
+            const selectedAction = $('input[name="formCompletion"]:checked').val();
+            const isContinuing = selectedAction === 'continue';
+            const isSelected = selectedAction !== undefined;
+            const $submitButton = $('#submit-button');
+            const $daySelectionContainer = $('#day-selection-container');
+
+            if (isContinuing) {
+                $daySelectionContainer.slideDown(200);
+            } else {
+                $('#day1-date').datepicker('hide');
+                $daySelectionContainer.slideUp(200);
+            }
+
+            if (isSelected) {
+                $submitButton.prop('disabled', false)
+                    .removeClass('bg-gray-400 cursor-not-allowed')
+                    .addClass('bg-blue-600 hover:bg-blue-700');
+            } else {
+                $submitButton.prop('disabled', true)
+                    .removeClass('bg-blue-600 hover:bg-blue-700')
+                    .addClass('bg-gray-400 cursor-not-allowed');
+            }
+        };
+
+        // Attach event listener to radio buttons
+        $('input[name="formCompletion"]').on('change', toggleSubmitButton);
+
+        // Handle form submission
+        $('#request-form').on('submit', function (event) {
+            event.preventDefault();
+
+            const selectedAction = $('input[name="formCompletion"]:checked').val();
+
+            if (!selectedAction) {
+                console.error("Form submitted without acknowledgment selection.");
+                return;
+            }
+
+            const formSubmissionData = {
+                acknowledgment: selectedAction,
+                submittedAt: new Date().toISOString()
+            };
+
+            if (selectedAction === 'continue') {
+                const dateText = $('#day1-date').val();
+
+                // Calculate assigned shift
+                let assignedShift = '';
+                if (dateText) {
+                    const dateParts = dateText.split('/');
+                    const dateForCalc = new Date(dateParts[2], dateParts[0] - 1, dateParts[1]);
+                    assignedShift = getShiftAndBlock(dateForCalc).shift;
+                }
+
+                const selectedShifts = [];
+                $('input[name="day1Shift"]:checked').each(function () {
+                    selectedShifts.push($(this).val());
+                });
+
+                formSubmissionData.daySelections = [
+                    {
+                        day: 1,
+                        date: dateText,
+                        shifts: selectedShifts,
+                        assignedShift: assignedShift
+                    }
+                ];
+            }
+
+            // Display the JSON in the modal
+            $('#modal-content').text(JSON.stringify(formSubmissionData, null, 2));
+
+            // Show the modal
+            $('#alert-modal').show();
+        });
+
+        // Handle closing the modal
+        $('#close-modal').on('click', function () {
+            $('#alert-modal').hide();
+        });
+    }
+</script>
+
