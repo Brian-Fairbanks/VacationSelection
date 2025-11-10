@@ -1,0 +1,136 @@
+<script>
+    // --- Shift Logic Configuration (2-Day Block Calendar) ---
+    let selectedBlockStartDate = null;
+
+    // Define the shift cycle configuration
+    const shiftCycle = [
+        { shift: 'A', class: 'shift-A' },
+        { shift: 'B', class: 'shift-B' },
+        { shift: 'C', class: 'shift-C' }
+    ];
+    const cycleLengthDays = shiftCycle.length * 2;
+    const refDate = new Date('2026-02-04T00:00:00'); // Reference start date
+
+    /**
+     * Calculates the shift and the start date of the 2-day shift block for a given date.
+     * @param {Date} date - The date to check.
+     * @returns {{shift: string, class: string, blockStartDate: Date|null}}
+     */
+    const getShiftAndBlock = (date) => {
+        if (!date || isNaN(date.getTime())) return { shift: '', class: '', blockStartDate: null };
+
+        // 💡 FIX: Use UTC for all date math to be DST-proof
+        const day_in_ms = 1000 * 60 * 60 * 24;
+
+        // Create UTC midnight reference date
+        const refDateUTC = Date.UTC(refDate.getFullYear(), refDate.getMonth(), refDate.getDate());
+
+        // Create UTC midnight selected date
+        const selectedDateUTC = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+
+        // Calculate the difference in UTC, which is DST-safe
+        const diffTime = selectedDateUTC - refDateUTC;
+        const diffDays = Math.round(diffTime / day_in_ms); // Use Math.round for safety
+
+        if (diffDays < 0) {
+            return { shift: 'Pre-Cycle', class: '', blockStartDate: null };
+        }
+
+        const cycleDayIndex = diffDays % cycleLengthDays;
+        const shiftIndex = Math.floor(cycleDayIndex / 2);
+        const daysIntoCycle = shiftIndex * 2;
+
+        const blockStartDaysOffset = diffDays - (cycleDayIndex - daysIntoCycle);
+
+        const blockStartDate = new Date(
+            refDate.getFullYear(),
+            refDate.getMonth(),
+            refDate.getDate() + blockStartDaysOffset
+        );
+        blockStartDate.setHours(0, 0, 0, 0);
+
+        return {
+            shift: shiftCycle[shiftIndex].shift,
+            class: shiftCycle[shiftIndex].class,
+            blockStartDate: blockStartDate
+        };
+    };
+
+    // Helper function to format Date to MM/DD/YYYY
+    const formatDate = (date) => {
+        let month = (date.getMonth() + 1).toString().padStart(2, '0');
+        let day = date.getDate().toString().padStart(2, '0');
+        let year = date.getFullYear();
+        return `${month}/${day}/${year}`;
+    };
+
+    /**
+     * Applies or removes the shift-hover class to the 2-day block starting at blockStartDate.
+     * @param {Date} blockStartDate - The start date of the 2-day block.
+     * @param {string} action - 'add' or 'remove'.
+     */
+    const toggleBlockHover = (blockStartDate, action) => {
+        if (!blockStartDate) return;
+
+        const secondDay = new Date(blockStartDate.getFullYear(), blockStartDate.getMonth(), blockStartDate.getDate());
+        secondDay.setDate(secondDay.getDate() + 1);
+
+        $('.ui-datepicker-calendar a').each(function () {
+            const dayLink = $(this);
+            const tdElement = dayLink.closest('td');
+
+            const dayNum = parseInt(dayLink.text(), 10);
+            const linkMonth = parseInt(tdElement.attr('data-month'), 10); // 0-indexed
+            const linkYear = parseInt(tdElement.attr('data-year'), 10);
+
+            if (isNaN(dayNum) || isNaN(linkMonth) || isNaN(linkYear)) return;
+
+            const currentDate = new Date(linkYear, linkMonth, dayNum);
+
+            const isBlockStart = currentDate.getTime() === blockStartDate.getTime();
+            const isBlockSecondDay = currentDate.getTime() === secondDay.getTime();
+
+            if (isBlockStart || isBlockSecondDay) {
+                if (action === 'add') {
+                    dayLink.addClass('shift-hover');
+                } else {
+                    dayLink.removeClass('shift-hover');
+                }
+            }
+        });
+    };
+
+    /**
+     * Updates the shift feedback badge next to the date input
+     * @param {string} dateText - The date in MM/DD/YYYY format
+     */
+    const updateShiftFeedback = (dateText) => {
+        const feedbackElement = $('#day1-shift-feedback');
+
+        if (!dateText) {
+            feedbackElement.text('').removeClass('shift-A shift-B shift-C bg-gray-100 text-gray-500 border-gray-300 border');
+            return;
+        }
+
+        const dateParts = dateText.split('/');
+        const dateForCalc = new Date(dateParts[2], dateParts[0] - 1, dateParts[1]);
+
+        // Use the shift logic
+        const { shift, class: shiftClass } = getShiftAndBlock(dateForCalc);
+
+        // Remove previous classes
+        feedbackElement.removeClass('shift-A shift-B shift-C bg-gray-100 text-gray-500 border-gray-300');
+
+        if (shift && shift !== 'Pre-Cycle') {
+            feedbackElement.text(`Shift: ${shift}`);
+            feedbackElement.addClass(shiftClass + ' border');
+        } else {
+            feedbackElement.text('');
+            if (shift === 'Pre-Cycle') {
+                feedbackElement.text(`Shift: ${shift}`);
+                feedbackElement.addClass('bg-gray-100 text-gray-500 border-gray-300 border');
+            }
+        }
+    };
+</script>
+

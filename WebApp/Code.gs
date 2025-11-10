@@ -34,7 +34,7 @@ function doGet() {
  * A helper function to include other HTML files in our main template.
  */
 function include(filename) {
-  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+  return HtmlService.createTemplateFromFile(filename).evaluate().getContent();
 }
 
 // --- INITIAL PAGE LOAD ---
@@ -219,6 +219,7 @@ function findUserById(employeeId) {
           yearsOfService: data[i][6].toString(), // <-- CONVERTED
           holidayHours: data[i][7],
           vacationHours: data[i][8],
+          shift: data[i][9],
         };
         // --- END FIX ---
       }

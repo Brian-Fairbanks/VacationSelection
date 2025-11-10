@@ -1,18 +1,38 @@
+<!-- Index.HTML -->
 <!DOCTYPE html>
 <html>
 
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vacation Selection Form</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                },
+            },
+        }
+    </script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.css">
+
+    <?!= include('Styles'); ?>
     <base target="_top">
 </head>
 
-<body>
+<body class="bg-gray-100 font-sans antialiased flex items-center justify-center min-h-screen py-12">
 
-    <div style="background-color: #fffbe6; border: 1px solid #ffe58f; padding: 10px; font-family: monospace; display:none;" id="debug-panel">
+    <!-- <div style="background-color: #fffbe6; border: 1px solid #ffe58f; padding: 10px; font-family: monospace; display:none;" id="debug-panel">
         <strong>DEBUG PANEL:</strong><br>
         The email Google sees for you is: <strong>
             <?!= debugEmail ?>
         </strong>
-    </div>
+    </div> -->
 
     <script>
         // This 'rosterData' variable is injected by Code.gs (in doGet)
@@ -25,7 +45,55 @@
         <p>Please wait.</p>
     </div>
 
-    <?!= include('Form_Refactored'); ?>
+    <div id="form-content" style="display:none;">
+        <div class="bg-white p-8 rounded-lg shadow-md max-w-xl w-full">
+            <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 24px; background-color: #f8fafc;">
+
+                <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 12px;">
+                    <h3 style="font-size: 1.25rem; font-weight: 600; color: #1e293b; margin: 0;">
+                        Welcome, <span id="emp-name"></span>
+                    </h3>
+                    <span id="emp-rank" style="font-size: 0.9rem; font-weight: 500; color: #475569; background-color: #e2e8f0; padding: 4px 8px; border-radius: 6px;"></span>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; font-size: 0.9rem;">
+
+                    <div>
+                        <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Employee ID</span>
+                        <strong id="emp-id" style="color: #334155;"></strong>
+                    </div>
+
+                    <div>
+                        <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Hire Date</span>
+                        <strong id="emp-hire-date" style="color: #334155;"></strong>
+                    </div>
+
+                    <div>
+                        <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Years of Service</span>
+                        <strong id="emp-years" style="color: #334155;"></strong>
+                    </div>
+
+                    <div>
+                        <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Vacation Hours</span>
+                        <strong id="emp-vac-hours" style="color: #334155;"></strong>
+                    </div>
+
+                    <div>
+                        <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Holiday Hours</span>
+                        <strong id="emp-hol-hours" style="color: #334155;"></strong>
+                    </div>
+
+                    <div>
+                        <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Shift</span>
+                        <strong id="emp-shift" style="color: #334155;"></strong>
+                    </div>
+
+                </div>
+            </div>
+
+            <?!= include('Form_Refactored'); ?>
+        </div>
+    </div>
 
 
     <div id="manual-login" style="display:none;">
@@ -54,13 +122,14 @@
         function onInitialDataLoaded(data) {
 
             console.log(data)
-            // 1. Check for logs and print them to the debug panel
-            if (data && data.hasOwnProperty('logs')) {
-                var debugPanel = document.getElementById("debug-panel");
-                var logContent = data.logs.join('<br>');
-                debugPanel.innerHTML += "<br>--- Auto-Login Log ---<br>" + logContent;
-                debugPanel.style.display = "block";
-            }
+            // // 1. Check for logs and print them to the debug panel
+            // if (data && data.hasOwnProperty('logs')) {
+            //     var debugPanel = document.getElementById("debug-panel");
+            //     var logContent = data.logs.join('<br>');
+            //     debugPanel.innerHTML += "<br>--- Auto-Login Log ---<br>" + logContent;
+            //     debugPanel.style.display = "block";
+            // }
+
 
             // 2. The original logic to check for success (this still works perfectly)
             if (data && data.hasOwnProperty('userInfo') && data.userInfo) {
@@ -83,7 +152,7 @@
             // Hard script failure
             document.getElementById("loading-screen").style.display = "none";
             document.getElementById("manual-login").style.display = "block";
-            document.getElementById("debug-panel").style.display = "block";
+            // document.getElementById("debug-panel").style.display = "block";
             alert("A script error occurred: " + err.message);
         }
 
@@ -169,6 +238,7 @@
             document.getElementById("emp-years").innerText = userInfo.yearsOfService;
             document.getElementById("emp-vac-hours").innerText = userInfo.vacationHours;
             document.getElementById("emp-hol-hours").innerText = userInfo.holidayHours;
+            document.getElementById("emp-shift").innerText = userInfo.shift;
         }
 
         function fillPreviousPicks(picksRow) {
