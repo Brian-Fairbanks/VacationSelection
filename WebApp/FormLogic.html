@@ -15,6 +15,7 @@
             if (isContinuing) {
                 $daySelectionContainer.slideDown(200);
             } else {
+                // Hides the datepicker widget if open
                 $('#day1-date').datepicker('hide');
                 $daySelectionContainer.slideUp(200);
             }
@@ -50,29 +51,54 @@
             };
 
             if (selectedAction === 'continue') {
-                const dateText = $('#day1-date').val();
 
-                // Calculate assigned shift
-                let assignedShift = '';
-                if (dateText) {
-                    const dateParts = dateText.split('/');
-                    const dateForCalc = new Date(dateParts[2], dateParts[0] - 1, dateParts[1]);
-                    assignedShift = getShiftAndBlock(dateForCalc).shift;
-                }
+                // Initialize an empty array to hold all selections
+                const allDaySelections = [];
 
-                const selectedShifts = [];
-                $('input[name="day1Shift"]:checked').each(function () {
-                    selectedShifts.push($(this).val());
+                // Loop through all date inputs that are not empty
+                // Selector 'input[id$="-date"]' finds all inputs whose ID ends with '-date' (e.g., day1-date, day2-date)
+                $('input[id$="-date"]').each(function (index) {
+                    const $dateInput = $(this);
+                    const dateText = $dateInput.val();
+
+                    // Only process days where a date has been selected
+                    if (dateText) {
+                        // Extract the numerical day index (e.g., 1 from 'day1-date')
+                        const dayIdMatch = this.id.match(/^day(\d+)-date$/);
+                        if (!dayIdMatch) return;
+                        const dayIndex = parseInt(dayIdMatch[1]);
+
+                        // --- 1. Calculate assigned shift ---
+                        let assignedShift = '';
+                        try {
+                            const dateParts = dateText.split('/');
+                            // Months in Date object are 0-indexed (Jan=0), so dateParts[0] - 1 is correct.
+                            const dateForCalc = new Date(dateParts[2], dateParts[0] - 1, dateParts[1]);
+                            // Assumes getShiftAndBlock is available from ShiftLogic
+                            assignedShift = getShiftAndBlock(dateForCalc).shift;
+                        } catch (e) {
+                            console.error(`Error calculating shift for day ${dayIndex}:`, dateText, e);
+                        }
+
+                        // --- 2. Get shift checkboxes for this specific day ---
+                        const selectedShifts = [];
+                        // Targets input names like 'day1Shift', 'day2Shift', etc.
+                        $(`input[name="day${dayIndex}Shift"]:checked`).each(function () {
+                            selectedShifts.push($(this).val());
+                        });
+
+                        // --- 3. Add to the collection ---
+                        allDaySelections.push({
+                            day: dayIndex,
+                            date: dateText,
+                            shifts: selectedShifts,
+                            assignedShift: assignedShift
+                        });
+                    }
                 });
 
-                formSubmissionData.daySelections = [
-                    {
-                        day: 1,
-                        date: dateText,
-                        shifts: selectedShifts,
-                        assignedShift: assignedShift
-                    }
-                ];
+                // Assign the collected data to the payload
+                formSubmissionData.daySelections = allDaySelections;
             }
 
             // Display the JSON in the modal
@@ -88,4 +114,3 @@
         });
     }
 </script>
-

@@ -46,53 +46,53 @@
     </div>
 
     <div id="form-content" style="display:none;">
-        <div class="bg-white p-8 rounded-lg shadow-md max-w-xl w-full">
-            <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 24px; background-color: #f8fafc;">
-
-                <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 12px;">
-                    <h3 style="font-size: 1.25rem; font-weight: 600; color: #1e293b; margin: 0;">
-                        Welcome, <span id="emp-name"></span>
-                    </h3>
-                    <span id="emp-rank" style="font-size: 0.9rem; font-weight: 500; color: #475569; background-color: #e2e8f0; padding: 4px 8px; border-radius: 6px;"></span>
-                </div>
-
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; font-size: 0.9rem;">
-
-                    <div>
-                        <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Employee ID</span>
-                        <strong id="emp-id" style="color: #334155;"></strong>
-                    </div>
-
-                    <div>
-                        <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Hire Date</span>
-                        <strong id="emp-hire-date" style="color: #334155;"></strong>
-                    </div>
-
-                    <div>
-                        <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Years of Service</span>
-                        <strong id="emp-years" style="color: #334155;"></strong>
-                    </div>
-
-                    <div>
-                        <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Vacation Hours</span>
-                        <strong id="emp-vac-hours" style="color: #334155;"></strong>
-                    </div>
-
-                    <div>
-                        <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Holiday Hours</span>
-                        <strong id="emp-hol-hours" style="color: #334155;"></strong>
-                    </div>
-
-                    <div>
-                        <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Shift</span>
-                        <strong id="emp-shift" style="color: #334155;"></strong>
-                    </div>
-
-                </div>
+      <div class="bg-white p-8 rounded-lg shadow-md max-w-xl w-full">
+        <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 24px; background-color: #f8fafc;">
+          
+          <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 12px;">
+            <h3 style="font-size: 1.25rem; font-weight: 600; color: #1e293b; margin: 0;">
+              Welcome, <span id="emp-name"></span>
+            </h3>
+            <span id="emp-rank" style="font-size: 0.9rem; font-weight: 500; color: #475569; background-color: #e2e8f0; padding: 4px 8px; border-radius: 6px;"></span>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; font-size: 0.9rem;">
+            
+            <div>
+              <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Employee ID</span>
+              <strong id="emp-id" style="color: #334155;"></strong>
+            </div>
+            
+            <div>
+              <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Hire Date</span>
+              <strong id="emp-hire-date" style="color: #334155;"></strong>
             </div>
 
-            <?!= include('Form_Refactored'); ?>
+            <div>
+              <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Years of Service</span>
+              <strong id="emp-years" style="color: #334155;"></strong>
+            </div>
+            
+            <div>
+              <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Vacation Hours</span>
+              <strong id="emp-vac-hours" style="color: #334155;"></strong>
+            </div>
+
+            <div>
+              <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Holiday Hours</span>
+              <strong id="emp-hol-hours" style="color: #334155;"></strong>
+            </div>
+
+            <div>
+              <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Shift</span>
+              <strong id="emp-shift" style="color: #334155;"></strong>
+            </div>
+
+          </div>
         </div>
+
+          <?!= include('Form_Refactored'); ?>
+      </div>
     </div>
 
 
@@ -129,7 +129,7 @@
             //     debugPanel.innerHTML += "<br>--- Auto-Login Log ---<br>" + logContent;
             //     debugPanel.style.display = "block";
             // }
-
+            
 
             // 2. The original logic to check for success (this still works perfectly)
             if (data && data.hasOwnProperty('userInfo') && data.userInfo) {
