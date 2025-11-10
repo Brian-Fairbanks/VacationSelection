@@ -2,6 +2,11 @@ import pandas as pd
 import random
 import datetime
 import hashlib
+import openpyxl
+import math
+
+increment_names = ["day_1", "day_2", "day_1day_2"]
+
 
 # Predefined lists for random name generation
 FIRST_NAMES = [
@@ -39,13 +44,23 @@ HOLIDAYS = [
 ]
 
 # Precompute all eligible days and their shifts between 02/01/2025 and 01/31/2026
+# Starting Feb 4, 2025: shifts are 48 hours (every other day), cycling A->B->C
+# Before Feb 4: shifts are 24 hours (daily), cycling A->B->C
 start_date = datetime.datetime(2025, 2, 1)
 end_date = datetime.datetime(2026, 1, 31)
+transition_date = datetime.datetime(2025, 2, 4)  # Date when 48-hour shifts begin
 days_dict = {"A": [], "B": [], "C": []}
 
 current_date = start_date
 while current_date <= end_date:
-    shift_day_number = (current_date - start_date).days % 3
+    if current_date < transition_date:
+        # Before Feb 4: 24-hour shifts (daily rotation)
+        shift_day_number = (current_date - start_date).days % 3
+    else:
+        # After Feb 4: 48-hour shifts (every-other-day rotation)
+        # Use (days_diff % 6) // 2 to get 0, 1, or 2
+        shift_day_number = ((current_date - transition_date).days % 6) // 2
+
     formatted_date = current_date.strftime("%m/%d/%Y")
     if shift_day_number == 0:
         days_dict["A"].append(formatted_date)
@@ -113,18 +128,18 @@ def generate_person(used_ids, used_names, available_special_names):
         available_days = days_dict[shift]
 
         # Weight holidays more heavily and allow duplicates
-        weighted_days = [day for day in available_days if day in HOLIDAYS] * 5 + available_days
+        weighted_days = [day for day in available_days if day in HOLIDAYS] * 2 + available_days
         selected_days = random.choices(weighted_days, k=num_days)
 
         # Create weighted selection for finalization
-        finalized_days = [(day, random.random() * 3 if day in HOLIDAYS else random.random()) for day in selected_days]
+        finalized_days = [(day, random.random() * 2.5 if day in HOLIDAYS else random.random()) for day in selected_days]
 
         # Sort the finalized_days by weight
         finalized_days.sort(key=lambda x: x[1], reverse=True)
         days = [day for day, _ in finalized_days]
 
         for _ in range(len(days)):
-            shifts.append(random.choices(["AM", "PM", "AMPM"], weights=[0.1, 0.1, 0.8], k=1)[0])
+            shifts.append(random.choices(increment_names, weights=[0.1, 0.1, 0.8], k=1)[0])
 
     # Create the person dictionary
     person = {
@@ -154,16 +169,36 @@ def generate_person(used_ids, used_names, available_special_names):
     for i in range(num_days + 1, next_multiple_of_10 + 1):
         person[f"Day {i}"] = ""
 
-    return person
+    floored_years = years_of_service//1
+    hr_validation_data = {
+        "Department Code": "0400",
+        "Employee Number": employee_id,
+        "Employee Name": f"{last_name}, {first_name} {random.choice(FIRST_NAMES)} ",
+        "Hire Date": hire_date.strftime("%m/%d/%Y"),
+        "Years of Service": floored_years,
+        "# of Vacation Leave Hours awarded": 192.0 + (24 * (floored_years // 5)),
+        "# of Holiday Leave Hours awarded": 144.0
+    }
+
+    return person, hr_validation_data  # Return both dictionaries
 
 # Function to generate a file with a specified number of rows
 def generate_file(row_count):
     used_ids = set()
     used_names = set()
     available_special_names = SPECIAL_NAMES.copy()
-    people = [generate_person(used_ids, used_names, available_special_names) for _ in range(row_count)]
+    people = []
+    hr_validations = [] 
+
+    for _ in range(row_count):
+        person_data, hr_data = generate_person(used_ids, used_names, available_special_names)
+        people.append(person_data)
+        hr_validations.append(hr_data)
+
     df = pd.DataFrame(people)
-    return df
+    df_hr = pd.DataFrame(hr_validations)  # Create DataFrame for HR validations
+    return df, df_hr
+
 
 # Function to export the DataFrame to a CSV file
 def export_to_CSV(df, filename=None):
@@ -172,6 +207,17 @@ def export_to_CSV(df, filename=None):
         filename = f"2025 VACATION REQUEST FORM - Form Responses{timestamp}.csv"
     df.to_csv(filename, index=False)
 
+def export_to_excel(df, filename=None):
+    timestamp = datetime.datetime.now().strftime("%m.%d-%H.%M")
+    if filename is None:
+        filename = f"HR_validations{timestamp}.xlsx"
+    
+    # Sort the DataFrame before exporting
+    df = df.sort_values(by=['Years of Service', 'Employee Name'], ascending=[False, True])
+    
+    df.to_excel(filename, index=False)
+
 # Example usage
-df = generate_file(200)
+df, df_hr = generate_file(200)  # Generate both DataFrames
 export_to_CSV(df, 'random_vacation_requests.csv')
+export_to_excel(df_hr, 'HR_validations.xlsx')  # Export HR validations to Excel

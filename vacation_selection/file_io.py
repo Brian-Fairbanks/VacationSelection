@@ -1,43 +1,40 @@
 # file_io.py
 import csv
-import vacation_selection.setup_logging as setup_logging
-from vacation_selection.validation import ensure_rank  # Import validation function
-from datetime import datetime
-
-from vacation_selection.firefighter import FFighter, Pick  # Import classes as needed
-from vacation_selection.cal import Day
-from datetime import datetime
-
 import json
+import os
+import pandas as pd
+from datetime import datetime, date
+import vacation_selection.setup_logging as setup_logging
+from vacation_selection.firefighter import FFighter, Pick
+from vacation_selection.cal import Day
+from vacation_selection.validation import ensure_rank  # Import validation function
 
 logger = setup_logging.setup_logging()
 
 # ================================================================================
-# Reading
+# Reading from CSV
 # ================================================================================
 
 def read_firefighter_data(filename, date_format, file_format):
-
+    """Reads firefighter data from a CSV file and processes it based on the specified file format."""
     ffdata = []
     try:
-        # Step 1: Attempt to open the file
         with open(filename, mode="r", encoding="utf-8-sig") as csvfile:
             logger.debug(f"Successfully opened file: {filename}")
 
-            # Step 2: Create the CSV reader and read the headers
+            # Create the CSV reader and read the headers
             reader = csv.DictReader(csvfile)
             headers = reader.fieldnames
             logger.debug(f"File headers: {headers}")
 
             logger.debug(f"Processing data for File Format: {file_format}")
-            # Step 3: Read each row from the CSV based on file format
+            # Read each row based on the specified file format
             if file_format == 2024:
                 ffdata = process_firefighter_data_2024(reader, date_format)
             elif file_format == 2025:
                 ffdata = process_firefighter_data_2025(reader, date_format)
             else:
                 raise ValueError("Unsupported file format year.")
-
             logger.debug("Finished reading firefighter data.")
 
     except Exception as e:
@@ -45,15 +42,69 @@ def read_firefighter_data(filename, date_format, file_format):
 
     return ffdata
 
-# Reading Sub Modules
-# ========================
+# ================================================================================
+# Reading Exclusions File
+# ================================================================================
+
+def read_exclusions_file(file_path):
+    """
+    Reads exclusions data from an Excel file, processes combined 'LName,FName' column,
+    and returns a list of dictionaries with standardized fields.
+    """
+    exclusions = []
+    try:
+        logger.info(f"Reading exclusions file: {file_path}")
+        exclusions_df = pd.read_excel(file_path, parse_dates=['Leave Start', 'Leave End'])
+
+        # Log column names for debugging
+        logger.debug(f"Exclusions file columns: {exclusions_df.columns.tolist()}")
+
+        # Check if the problematic 'LName,FName' column exists
+        if 'LName,FName' in exclusions_df.columns:
+            logger.info("Splitting combined 'LName,FName' column into 'LName' and 'FName'")
+            exclusions_df[['LName', 'FName']] = exclusions_df['LName,FName'].str.split(',', expand=True)
+            
+            # Strip whitespace from the new columns
+            exclusions_df['LName'] = exclusions_df['LName'].str.strip()
+            exclusions_df['FName'] = exclusions_df['FName'].str.strip()
+
+            # Drop the original combined column
+            exclusions_df.drop(columns=['LName,FName'], inplace=True)
+        
+        # Standardize column names
+        exclusions_df.columns = exclusions_df.columns.str.strip()
+
+        # Validate required columns
+        required_columns = ['LName', 'FName', 'Leave Start', 'Reason']
+        for col in required_columns:
+            if col not in exclusions_df.columns:
+                raise ValueError(f"Missing required column '{col}' in exclusions file.")
+
+        # Handle optional 'Leave End' column
+        if 'Leave End' not in exclusions_df.columns:
+            logger.warning("Column 'Leave End' not found. Setting to None for all rows.")
+            exclusions_df['Leave End'] = None
+
+        # Replace NaT in 'Leave End' with None
+        exclusions_df['Leave End'] = exclusions_df['Leave End'].where(pd.notna(exclusions_df['Leave End']), None)
+
+        # Convert to dictionary records
+        exclusions = exclusions_df.to_dict(orient='records')
+        logger.info(f"Loaded {len(exclusions)} exclusions from {file_path}")
+    except Exception as e:
+        logger.error(f"Failed to read exclusions file: {e}")
+        raise Exception(f"Error reading exclusions file: {e}")
+    return exclusions
+
+
+# Helper functions to process CSV data
+# ================================================================================
 def process_firefighter_data_2024(reader, date_format):
-    logger.debug("starting: 2024")
+    """Processes firefighter data in the 2024 format."""
+    logger.debug("Starting 2024 data processing")
     ffdata = []
     for index, row in enumerate(reader):
         try:
-            logger.debug(f"Processing row {index + 1}: {row}")
-
             fname = row['First Name']
             lname = row['Last Name']
             rank = ensure_rank(row["Rank"])
@@ -75,62 +126,120 @@ def process_firefighter_data_2024(reader, date_format):
                         continue
 
             ffdata.append(FFighter(idnum, fname, lname, startDate, rank, shift, pick_dates))
-        
+
         except Exception as e:
             logger.error(f"Failed to process row {index + 1}: {e}")
 
     return ffdata
 
 def process_firefighter_data_2025(reader, date_format):
-    logger.debug("starting: 2025")
+    """Processes firefighter data in the 2025 format."""
+    logger.debug("Starting 2025 data processing")
     ffdata = []
     for index, row in enumerate(reader):
         try:
             logger.debug(f"Processing row {index + 1}: {row}")
 
-            fname = row['First Name']
-            lname = row['Last Name']
-            rank = ensure_rank(row["Rank"])
-            idnum = row['Employee ID #']
-            startDate = parse_date(row['Employee Hire Date'])
-            shift = row["Shift"]
+            # Parse basic firefighter data
+            try:
+                fname = row['First Name']
+                lname = row['Last Name']
+                rank = ensure_rank(row["Rank"])
+                idnum = row['Employee ID #']
+                startDate = parse_date(row['Employee Hire Date'])
+                shift = row["Shift"]
+                logger.debug(f"Parsed data - Name: {fname} {lname}, Rank: {rank}, ID: {idnum}, Start Date: {startDate}, Shift: {shift}")
+            except KeyError as ke:
+                logger.error(f"Missing key in row {index + 1}: {ke}. Row: {row}")
+                continue
+            except ValueError as ve:
+                logger.error(f"Invalid value in row {index + 1}: {ve}. Row: {row}")
+                continue
 
-            pick_dates = []
-            for x in range(1, 41):
-                day_key = f"Day {x}"
-                shift_key = f"Shift Selection {x}"
-                if day_key in row and row[day_key]:
-                    try:
-                        pick_date = parse_date(row[day_key])
-                        pick_dates.append(Pick(pick_date, increments=row.get(shift_key)))
-                    except Exception as e:
-                        logger.error(f"Failed to parse pick date '{row[day_key]}' in row {index + 1}: {e}")
-                        continue
+            # Check acknowledgment of form completion
+            acknowledgment = row.get('Acknowledgment of Form Completion', '').strip()
+            
+            # If the user prefers to skip the selection, do not add any picks
+            if acknowledgment == "I would prefer to skip the selection, and submit a blank request form.":
+                logger.info(f"Skipping pick selection for {fname} {lname} (ID: {idnum}) as per acknowledgment.")
+                pick_dates = []  # No picks are added
+            else:
+                # Parse pick dates and shifts if the user continues with the selection
+                pick_dates = []
+                for x in range(1, 41):
+                    day_key = f"Day {x}"
+                    shift_key = f"Shift Selection {x}"
+                    if day_key in row and row[day_key]:
+                        try:
+                            pick_date = parse_date(row[day_key])
+                            shift_selection = row.get(shift_key, 'AMPM')
+                            pick_dates.append(Pick(pick_date, increments=shift_selection))
+                            logger.debug(f"Added pick - Date: {pick_date}, Shift: {shift_selection} for {fname} {lname}")
+                        except ValueError as ve:
+                            logger.error(f"Failed to parse pick date '{row[day_key]}' in row {index + 1}: {ve}")
+                            continue
 
-            ffdata.append(FFighter(idnum, fname, lname, startDate, rank, shift, pick_dates))
-        
+            # Create FFighter instance
+            ffighter = FFighter(idnum, fname, lname, startDate, rank, shift, pick_dates)
+            logger.debug(f"Created FFighter instance: {ffighter}")
+
+            ffdata.append(ffighter)
+
         except Exception as e:
-            logger.error(f"Failed to process row {index + 1}: {e}")
-
+            logger.error(f"Unhandled error processing row {index + 1}: {e}. Row: {row}")
+            # Optionally, include stack trace for deeper debugging
+            logger.exception(e)
     return ffdata
 
-# Helpers
-# =================================================================================
-def parse_date(date_str):
-    """Try to parse a date string in multiple formats until one works."""
-    possible_formats = [
-        '%m-%d-%Y',  # e.g., 06-11-2009
-        '%m/%d/%Y',  # e.g., 06/11/2009
-        '%Y-%m-%d',  # e.g., 2009-06-11
-        '%d-%m-%Y',  # e.g., 11-06-2009
-        '%d/%m/%Y'   # e.g., 11/06/2009
-    ]
-    for fmt in possible_formats:
-        try:
-            return datetime.strptime(date_str, fmt).date()
-        except ValueError:
-            continue
-    raise ValueError(f"Date format for '{date_str}' not recognized.")
+
+# Helper function to parse dates from strings
+def parse_date(date_value):
+    """Parses a date from various input types, including strings and pandas Timestamps."""
+    from pandas import Timestamp
+
+    # If the value is already a Timestamp, convert it to a date
+    if isinstance(date_value, Timestamp):
+        return date_value.date()
+
+    # If the value is a string, parse it
+    if isinstance(date_value, str):
+        possible_formats = [
+            '%Y-%m-%d %H:%M:%S',  # e.g., 2024-11-15 08:53:32
+            '%Y-%m-%d %H:%M',     # e.g., 2024-11-15 08:53
+            '%Y-%m-%d',           # e.g., 2024-11-15
+            '%m-%d-%Y',           # e.g., 11-15-2024
+            '%m/%d/%Y',           # e.g., 11/15/2024
+            '%d-%m-%Y',           # e.g., 15-11-2024
+            '%d/%m/%Y'            # e.g., 15/11/2024
+        ]
+        for fmt in possible_formats:
+            try:
+                return datetime.strptime(date_value, fmt).date()
+            except ValueError:
+                continue
+        raise ValueError(f"Unrecognized date format for '{date_value}'")
+
+    # If the value is not a recognized type, raise an error
+    raise TypeError(f"Unsupported date type: {type(date_value)}")
+
+
+
+# Read in the HR_Validation File
+def read_hr_validation(filename):
+    """Reads HR validation data from an Excel file and returns it as a list of dictionaries."""
+    hr_data = []
+    try:
+        # Read the .xlsx file using pandas
+        df = pd.read_excel(filename, engine='openpyxl')
+
+        # Convert DataFrame to a list of dictionaries
+        hr_data = df.to_dict(orient='records')
+        logger.debug(f"Successfully read HR validation file: {filename}")
+        
+    except Exception as e:
+        logger.error(f"Failed to read HR validation file: {e}")
+
+    return hr_data
 
 # ================================================================================
 # Writing Outputs
@@ -149,58 +258,277 @@ def print_final(ffighters):
     """Prints the final results for each firefighter."""
     print('\n\n  --==  Final Results   ==--\n')
     for ffighter in ffighters:
-        print(f'{ffighter.name:<20} ({ffighter.idnum}): \n  Started:{ffighter.hireDate} - ({ffighter.shift} shift) {ffighter.rank}')
+        # Include ID in the name for clarity
+        print(f'{ffighter.name:<20} (ID: {ffighter.idnum}): \n  Started:{ffighter.hireDate} - ({ffighter.shift} shift) {ffighter.rank}')
         for key in ffighter.processed:
             print(key)
 
 
-def write_picks_to_csv(ffighters, suffix, write_path, runtime):
-    """Writes the picks and status of each firefighter to a CSV file."""
-    with open(f'{write_path}/{runtime}-FFighters-{suffix}.csv', 'w', newline='') as f:
+def write_picks_to_csv(ffighters, suffix, write_path, runtime, pick_filter=None):
+    """Writes the picks and status of each firefighter to a CSV file.
+       Optionally, only writes picks that satisfy pick_filter (a function that takes a pick and returns True/False).
+    """
+    file_name = f'{write_path}/{runtime}-FFighters-{suffix}.csv'
+    with open(file_name, 'w', newline='') as f:
         writer = csv.writer(f)
-        header = ['Name', "Rank", "Date Requested", "Type", "Increments" "Determination", "Reason"]
+        header = ['Name (ID)', "Rank", "Date Requested", "Type", "Increments", "Determination", "Reason"]
         writer.writerow(header)
 
         for ffighter in ffighters:
-            writer.writerow([ffighter.name, ffighter.rank])
-            for key in ffighter.processed:
-                writer.writerow(['', '', key.date, key.type, key.increments_plain_text(), key.determination, key.reason])
+            writer.writerow([f'{ffighter.name} (ID: {ffighter.idnum})', ffighter.rank])
+            for pick in ffighter.processed:
+                # If a pick_filter is provided, skip picks that don't match
+                if pick_filter and not pick_filter(pick):
+                    continue
+                writer.writerow([
+                    '', '', pick.format_date_display(), pick.type,
+                    pick.increments_plain_text(), pick.determination, pick.reason
+                ])
             writer.writerow([])
 
 
-# ================================================================================
-# Writing Outputs
-# ================================================================================
+# ==========    JSON    ==============================================================
+
+class CustomJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, date):
+            return obj.isoformat()  # Convert `date` to a string in ISO 8601 format
+        return super().default(obj)
+    
 def write_ffighters_to_json(ffighters, suffix, write_path, runtime):
     """Writes the firefighter list and their processed picks to a JSON file."""
-    # Prepare the data for JSON serialization
-    ffighter_data = []
-    for ffighter in ffighters:
-        ffighter_dict = ffighter.to_dict()  # Convert the firefighter to a dictionary
-        ffighter_data.append(ffighter_dict)
-    
-    # Construct the file name using the suffix and runtime
+    # Include ID in the name field in the dictionary representation
+    ffighter_data = [
+        {**ffighter.to_dict(), "name": f"{ffighter.name} (ID: {ffighter.idnum})"} 
+        for ffighter in ffighters
+    ]
     file_name = f"{write_path}/{runtime}-FFighters-{suffix}.json"
-    
-    # Write the data to a JSON file
+
     with open(file_name, 'w') as json_file:
-        json.dump(ffighter_data, json_file, indent=4)
+        # Use the custom encoder to handle `date` serialization
+        json.dump(ffighter_data, json_file, indent=4, cls=CustomJSONEncoder)
+
+def sanitize_ff_dict(ff_dict):
+    from datetime import datetime
+    
+    # Ensure hireDate is valid:
+    raw_hire_date = ff_dict.get('hireDate')
+    if not raw_hire_date or not isinstance(raw_hire_date, str):
+        # Use current date if missing
+        ff_dict['hireDate'] = datetime.now().strftime('%Y-%m-%d')
+    else:
+        try:
+            parsed_date = datetime.strptime(raw_hire_date, '%Y-%m-%d')
+            ff_dict['hireDate'] = parsed_date.strftime('%Y-%m-%d')
+        except Exception as e:
+            logger.error(
+                f"sanitize_ff_dict: Failed to parse hireDate '{raw_hire_date}'. "
+                f"Exception: {e}. Using current date."
+            )
+            ff_dict['hireDate'] = datetime.now().strftime('%Y-%m-%d')
+
+    # Ensure idnum is present. If it's missing, set a default like 0 or log a warning.
+    if not ff_dict.get('idnum'):
+        logger.warning(
+            f"sanitize_ff_dict: Missing idnum in entry {ff_dict}. Defaulting idnum to 0."
+        )
+        ff_dict['idnum'] = 0
+
+    # Ensure max_shifts_off is a valid integer
+    raw_max_shifts_off = ff_dict.get('max_shifts_off')
+    if raw_max_shifts_off is None:
+        ff_dict['max_shifts_off'] = 0
+    else:
+        try:
+            ff_dict['max_shifts_off'] = int(raw_max_shifts_off)
+        except (ValueError, TypeError):
+            logger.warning(
+                f"sanitize_ff_dict: Invalid max_shifts_off '{raw_max_shifts_off}' in {ff_dict}. "
+                "Defaulting to 0."
+            )
+            ff_dict['max_shifts_off'] = 0
+
+    # Ensure hr_validations exists. Since HR hasn't run yet, set it to an empty dict if missing.
+    if 'hr_validations' not in ff_dict or ff_dict['hr_validations'] is None:
+        ff_dict['hr_validations'] = {}
+
+    # Ensure approved_shifts_count is valid; default to 0 if missing or None.
+    if 'approved_shifts_count' not in ff_dict or ff_dict['approved_shifts_count'] is None:
+        ff_dict['approved_shifts_count'] = 0
+
+    # Sanitize picks: Ensure each pick has a 'place' key.
+    picks = ff_dict.get('picks', [])
+    for pick in picks:
+        if 'place' not in pick:
+            logger.info(
+                f"sanitize_ff_dict: Missing 'place' in pick {pick} for FFighter id {ff_dict.get('idnum')}. "
+                "Setting 'place' to None."
+            )
+            pick['place'] = None
+    ff_dict['picks'] = picks
+
+    # Sanitize exclusions: Convert "Leave Start" and "Leave End" to datetime.date objects.
+    exclusions = ff_dict.get('exclusions', [])
+    for exclusion in exclusions:
+        for key in ['Leave Start', 'Leave End']:
+            if key in exclusion and isinstance(exclusion[key], str):
+                try:
+                    date_str = exclusion[key].split('T')[0]
+                    exclusion[key] = datetime.strptime(date_str, '%Y-%m-%d').date()
+                except Exception as e:
+                    logger.error(
+                        f"sanitize_ff_dict: Failed to parse {key} '{exclusion.get(key)}' for FFighter id {ff_dict.get('idnum')}. "
+                        f"Exception: {e}. Using current date."
+                    )
+                    exclusion[key] = datetime.now().date()
+    ff_dict['exclusions'] = exclusions
+
+    return ff_dict
 
 
-# def read_ffighters_from_json(file_path):
-#     """Reads the firefighter list from a JSON file.
+def read_ffighters_from_json(file_path):
+    """Reads firefighter data from a JSON file and returns a list of FFighter objects."""
+    from datetime import datetime
+    ffighter_list = []
+    try:
+        with open(file_path, 'r') as json_file:
+            ffighter_dicts = json.load(json_file)
+            logger.debug(f"Read {len(ffighter_dicts)} entries from {file_path}")
+            # Sanitize each dictionary before converting to an FFighter object.
+            sanitized_dicts = [sanitize_ff_dict(ff_dict) for ff_dict in ffighter_dicts]
+            ffighter_list = [FFighter.from_dict(ff_dict) for ff_dict in sanitized_dicts]
+    except Exception as e:
+        logger.error(f"Failed to read from JSON: {e}")
+    logger.info(f"Loaded {len(ffighter_list)} firefighters from {file_path}")
+    return ffighter_list
 
-#     Args:
-#     file_path (str): File path of the JSON file.
 
-#     Returns:
-#     list: List of Firefighter objects.
-#     """
-#     from your_module.firefighter import Firefighter  # Import the Firefighter class
+def write_analysis_to_json(analysis, write_path, runtime):
+    """
+    Writes the analysis data to a JSON file in the specified output folder.
+    """
+    try:
+        # Ensure the write path exists
+        os.makedirs(write_path, exist_ok=True)
 
-#     with open(file_path, 'r') as json_file:
-#         ffighter_dicts = json.load(json_file)
+        # Construct file name
+        file_name = f"{write_path}/{runtime}-analysis.json"
+        
+        # Write JSON data
+        with open(file_name, 'w') as json_file:
+            json.dump(analysis, json_file, indent=4, cls=CustomJSONEncoder)
+        logger.info(f"Analysis data saved to {file_name}")
+    except Exception as e:
+        logger.error(f"Failed to write analysis data to JSON: {e}")
+        raise
 
-#     # Convert dictionaries to Firefighter objects
-#     ffighter_list = [Firefighter.from_dict(ff_dict) for ff_dict in ffighter_dicts]
-#     return ffighter_list
+def read_analysis_from_json(output_folder):
+    """
+    Loads the most recent analysis JSON file from the specified output folder.
+    Returns None if no valid analysis file is found.
+    """
+    try:
+        # Ensure the output folder exists
+        if not os.path.exists(output_folder):
+            logger.warning(f"Output folder '{output_folder}' does not exist.")
+            return None
+
+        # Get all analysis files
+        analyze_files = [
+            f for f in os.listdir(output_folder) if f.endswith("-analysis.json")
+        ]
+        
+        if not analyze_files:
+            logger.warning("No analysis files found.")
+            return None
+
+        # Sort files by modification time (newest first)
+        analyze_files.sort(key=lambda x: os.path.getmtime(os.path.join(output_folder, x)), reverse=True)
+        latest_file = os.path.join(output_folder, analyze_files[0])
+
+        # Read and return JSON data
+        with open(latest_file, 'r') as json_file:
+            analysis_data = json.load(json_file)
+        logger.info(f"Loaded analysis file: {latest_file}")
+        return analysis_data
+    except Exception as e:
+        logger.error(f"Failed to load analysis data: {e}")
+        return None
+
+
+def write_calendar_to_csv(calendar, suffix, write_path, runtime):
+    """Writes the calendar data to a CSV file."""
+    file_name = f'{write_path}/{runtime}-calendar-{suffix}.csv'
+    with open(file_name, 'w', newline='') as f:
+        writer = csv.writer(f)
+        header = Day.get_header()
+        writer.writerow(header)
+
+        for date in sorted(calendar.keys()):
+            calendar[date].write_to_row(writer)
+
+
+def write_runner_ups_to_csv(calendar, suffix, write_path, runtime):
+    """
+    Writes runner-up data to a CSV file for Captains.
+    Runner-ups are firefighters whose picks were denied, listed in order of denial (seniority).
+    This helps Captains know who to contact if approved firefighters need to cancel.
+
+    Args:
+        calendar: Dictionary of Day objects containing increment data
+        suffix: Suffix for the filename (e.g., shift name)
+        write_path: Directory to write the file to
+        runtime: Timestamp string for the filename
+    """
+    file_name = f'{write_path}/{runtime}-runner-ups-{suffix}.csv'
+
+    try:
+        with open(file_name, 'w', newline='') as f:
+            writer = csv.writer(f)
+
+            # Write header
+            writer.writerow(['Date', 'Increment', 'Position', 'Firefighter', 'ID', 'Rank',
+                           'Type', 'Requested Increments', 'Denial Reason'])
+
+            # Sort dates
+            sorted_dates = sorted(calendar.keys())
+
+            # Track if we found any runner-ups
+            runner_up_count = 0
+
+            for date in sorted_dates:
+                day = calendar[date]
+
+                # Check each increment for runner-ups
+                for inc_index, increment in day.increments.items():
+                    if increment.runner_ups:
+                        # Write each runner-up
+                        for runner_up in increment.runner_ups:
+                            ffighter = runner_up['ffighter']
+                            pick = runner_up['pick']
+                            reason = runner_up['reason']
+                            position = runner_up['position']
+
+                            # Format the date display for this increment
+                            date_display = pick.format_date_display()
+
+                            writer.writerow([
+                                date_display,
+                                increment.name,
+                                position,
+                                ffighter.name,
+                                ffighter.idnum,
+                                ffighter.rank,
+                                pick.type,
+                                pick.increments_plain_text(),
+                                reason
+                            ])
+                            runner_up_count += 1
+
+            logger.info(f"Runner-ups file created: {file_name} ({runner_up_count} runner-ups)")
+
+    except Exception as e:
+        logger.error(f"Failed to write runner-ups to CSV: {e}")
+        raise
+
+    return file_name
