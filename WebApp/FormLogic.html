@@ -51,7 +51,7 @@
             };
 
             if (selectedAction === 'continue') {
-
+                
                 // Initialize an empty array to hold all selections
                 const allDaySelections = [];
 
@@ -60,14 +60,14 @@
                 $('input[id$="-date"]').each(function (index) {
                     const $dateInput = $(this);
                     const dateText = $dateInput.val();
-
+                    
                     // Only process days where a date has been selected
                     if (dateText) {
                         // Extract the numerical day index (e.g., 1 from 'day1-date')
                         const dayIdMatch = this.id.match(/^day(\d+)-date$/);
                         if (!dayIdMatch) return;
                         const dayIndex = parseInt(dayIdMatch[1]);
-
+                        
                         // --- 1. Calculate assigned shift ---
                         let assignedShift = '';
                         try {

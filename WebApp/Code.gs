@@ -219,7 +219,7 @@ function findUserById(employeeId) {
           yearsOfService: data[i][6].toString(), // <-- CONVERTED
           holidayHours: data[i][7],
           vacationHours: data[i][8],
-          shift: data[i][9],
+          shift: data[i][9]
         };
         // --- END FIX ---
       }

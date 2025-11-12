@@ -73,70 +73,11 @@
         </form>
     </div>
 
-    <div id="alert-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full flex items-center justify-center" style="display: none;">
-        <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
-            <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Form Submission Data</h3>
-            <div class="bg-gray-50 p-4 rounded-md">
-                <pre id="modal-content" class="text-sm text-gray-800"></pre>
-            </div>
-            <div class="mt-6 text-right">
-                <button id="close-modal" type="button" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                    Close
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- External Libraries -->
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
-
-    <!-- Test Data (for development) -->
-    <script>
-        const testData = {
-            "userInfo": {
-                "employeeName": "Fairbanks, Brian",
-                "hireDate": "Mon Jan 13 2025 00:00:00 GMT-0600 (Central Standard Time)",
-                "trackingLevel": "FF",
-                "yearsOfService": "0",
-                "vacationHours": 192,
-                "rank": "Probationary Firefighter",
-                "employeeId": 538,
-                "holidayHours": 144,
-                "shift": "A"
-            },
-            "previousPicks": null,
-            "logs": [
-                "Email found: bfairbanks@pflugervillefire.org",
-                "Search term: bfairbanks",
-                "Matches found: [{\"id\":538,\"name\":\"Fairbanks, Brian\",\"score\":1}]",
-                "is confident: true",
-                "Confident match found: {\"id\":538,\"name\":\"Fairbanks, Brian\",\"score\":1}",
-                "Now calling getEmployeeDataAndPicks..."
-            ]
-        };
-    </script>
-
     <!-- Modular JavaScript Includes -->
     <?!= include('ShiftLogic'); ?>
     <?!= include('DatepickerInit'); ?>
     <?!= include('FormLogic'); ?>
 
-    <!-- Main Initialization -->
-    <script>
-        $(document).ready(function () {
-            // Update message on load
-            $('#message')
-                .text('jQuery, UI Datepicker, & Test Data Loaded!')
-                .removeClass('text-gray-500')
-                .addClass('text-green-600');
-
-            console.log("Test Data Loaded:", testData);
-
-            // Initialize all components
-            initializeDatepicker();
-            initializeFormLogic();
-        });
-    </script>
+    
 
 </div>
