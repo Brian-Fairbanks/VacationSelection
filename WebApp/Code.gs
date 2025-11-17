@@ -1,9 +1,7 @@
 // --- CONFIGURATION ---
-const configs = {
-  hr_validation_sheet_id: "1QDF8CUhbC4cZKK0dnf5gOPL3SA7hXFihK1BqmJsufic", // 2026 HR Validations
-};
-const SHEET_MAIN = "Sheet1";
-const SHEET_CACHE = "Cache";
+const HR_VALIDATION_ID = "1QDF8CUhbC4cZKK0dnf5gOPL3SA7hXFihK1BqmJsufic"; // 2026 HR Validations
+const HR_VALIDATION_SHEET_NAME = "Sheet1";
+const SHEET_CACHE = "Cache";    // The new sheet name created for maintaining fuzzy lookups of user names
 const SubmissionSheetName = "2026-Vacation Picks"
 
 // --- CORE WEB APP FUNCTIONS ---
@@ -93,9 +91,12 @@ function convertEmailToSearchableName(email) {
 
 // --- DATA-GETTING FUNCTIONS (CALLED FROM HTML) ---
 function getEmployeeDataAndPicks(employeeId) {
-  var userInfo = findUserById(employeeId);
+  // Finds user details in the Roster sheet
+  var userInfo = findUserById(employeeId); 
   if (!userInfo) return null;
-  var previousPicks = findPreviousPicks(employeeId);
+  
+  // Finds user's last submission in the Picks sheet
+  var previousPicks = findPreviousPicks(employeeId); 
   return { userInfo: userInfo, previousPicks: previousPicks };
 }
 
@@ -167,7 +168,7 @@ function tokenize(s) {
 // --- ROSTER ACCESS (Keep This) ---
 function getHrRosterList() {
   try {
-    var ss = SpreadsheetApp.openById(configs.hr_validation_sheet_id);
+    var ss = SpreadsheetApp.openById(HR_VALIDATION_ID);
     var sh = ss.getSheetByName(SHEET_CACHE);
     var rows = sh.getLastRow(),
       cols = sh.getLastColumn();
@@ -192,8 +193,8 @@ function getHrRosterList() {
 // --- MAIN DATA LOOKUPS (Keep This) ---
 function findUserById(employeeId) {
   try {
-    var ss = SpreadsheetApp.openById(configs.hr_validation_sheet_id);
-    var sheet = ss.getSheetByName(SHEET_MAIN);
+    var ss = SpreadsheetApp.openById(HR_VALIDATION_ID);
+    var sheet = ss.getSheetByName(HR_VALIDATION_SHEET_NAME);
     var data = sheet.getDataRange().getValues();
     var ID_COLUMN_INDEX = 0;
     for (var i = 1; i < data.length; i++) {
@@ -234,65 +235,34 @@ function findUserById(employeeId) {
 
 function findPreviousPicks(employeeId) {
   try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet(); // Correctly get submission sheet
-    var sheet = ss.getSheetByName(SHEET_MAIN);
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(SubmissionSheetName);
+    var ID_COLUMN_INDEX = 3; // "Employee ID #" in column 'D', is 3rd index
+
+    if (!sheet) {
+        Logger.log('ERROR: Submission sheet not found: ' + SubmissionSheetName);
+        return null;
+    }
+    
     var data = sheet.getDataRange().getValues();
-    var ID_COLUMN_INDEX = 3; // From your CSV
+    
+    // Search backwards from the latest submission
     for (var i = data.length - 1; i > 0; i--) {
       if (String(data[i][ID_COLUMN_INDEX]) == String(employeeId)) {
-        return data[i];
+        
+        // --- FIX: MAP THE ENTIRE ROW TO STRINGS ---
+        // This converts Dates, Numbers, and anything else into reliable strings
+        return data[i].map(function(value) {
+            return value ? String(value) : '';
+        });
+        // ------------------------------------------
       }
     }
     return null;
   } catch (e) {
-    Logger.log(e);
+    Logger.log("Error in findPreviousPicks: " + e.message);
     return null;
   }
-}
-
-// --- CACHE BUILDER (Keep This) ---
-function buildNormalizedCacheSheet() {
-  var ss = SpreadsheetApp.openById(configs.hr_validation_sheet_id);
-  var cacheSheet = ss.getSheetByName(SHEET_CACHE);
-  if (cacheSheet) {
-    cacheSheet.clear();
-  } else {
-    cacheSheet = ss.insertSheet(SHEET_CACHE);
-  }
-
-  cacheSheet.appendRow([
-    "EmployeeID",
-    "DisplayName",
-    "NormalizedSearchString",
-    "TokensCSV",
-  ]);
-  cacheSheet.setFrozenRows(1);
-
-  var rosterSheet = ss.getSheetByName(SHEET_MAIN);
-  var data = rosterSheet.getDataRange().getValues();
-  var ID_COL = 0,
-    NAME_COL = 1;
-  var outputRows = [];
-
-  for (var i = 1; i < data.length; i++) {
-    var id = data[i][ID_COL];
-    var name = String(data[i][NAME_COL] || "").trim();
-    if (!name) continue;
-    var searchParts = normalizeRosterName(name);
-    var searchString = searchParts.join(" ");
-    var toks = Array.from(
-      new Set(tokenize(name).concat(tokenize(searchString)))
-    );
-    outputRows.push([id, name, searchString, toks.join(" ")]);
-  }
-
-  if (outputRows.length > 0) {
-    cacheSheet.getRange(2, 1, outputRows.length, 4).setValues(outputRows);
-  }
-  SpreadsheetApp.flush();
-  Logger.log(
-    "SUCCESS: 'Cache' built with " + outputRows.length + " employees."
-  );
 }
 
 function normalizeRosterName(rosterName) {
@@ -420,7 +390,7 @@ function processShiftRequest(formData) {
 // --- TEST FUNCTION ---
 function testLookup() {
   Logger.log("--- Test 0: Rebuilding Cache Sheet ---");
-  buildNormalizedCacheSheet();
+  // buildNormalizedCacheSheet();
 
   Logger.log("--- Test 1: Find User by ID 538 ---");
   var data = findUserById("538");
@@ -447,4 +417,68 @@ function testLookup() {
 
   var emailCheck = getInitialUserInfo(email);
   Logger.log(emailCheck);
+}
+
+
+
+
+
+// --- NEW DEBUG TEST FUNCTION ---
+/**
+ * Test function to simulate client submission and verify data flattening.
+ * Run this by selecting 'testFormSubmissionData' in the Apps Script menu and clicking 'Run'.
+ */
+function testFormSubmissionData() {
+  Logger.log("--- STARTING TEST FORM SUBMISSION ---");
+  
+  // 1. SIMULATE CLIENT PAYLOAD
+  // Use the structure of the data the client would send.
+  // const testPayload = {
+  //   acknowledgment: "continue",
+  //   submittedAt: new Date().toISOString(),
+  //   userInfo: {
+  //     firstName: "Brian",
+  //     lastName: "Fairbanks",
+  //     employeeId: "538",
+  //     rank: "Probationary Firefighter",
+  //     shift: "B",
+  //     hireDate: "Mon Jan 13 2025 00:00:00 GMT-0600 (Central Standard Time)",
+  //     yearsOfService: "0",
+  //     vacationHours: 192,
+  //     holidayHours: 144
+  //   },
+  //   daySelections: [
+  //     { day: 1, date: "02/06/2026", shifts: ["Day1", "Day2"] },
+  //     { day: 2, date: "03/20/2026", shifts: ["Day1", "Day2"] },
+  //     { day: 4, date: "06/18/2026", shifts: ["Day1", "Day2"] }
+  //   ]
+  // };
+
+  // // 2. TEST DATA FLATTENING
+  // Logger.log("Testing data flattening...");
+  // const flatData = flattenSubmissionData(testPayload);
+
+  // Logger.log("--- FLATTENED DATA STRUCTURE ---");
+  // Logger.log("Total Columns: " + flatData.length);
+  // // Log the first 15 columns to check header data and Day 1/2 structure
+  // Logger.log("Header/Picks Preview (Cols 1-15): " + flatData.slice(0, 15).join(' | ')); 
+  
+  // // Example of what Day 4 (Cols 15-16) looks like (index 15)
+  // Logger.log("Day 4 Data (Cols 16-17): " + flatData[15] + " | " + flatData[16]); 
+
+
+  // 3. TEST FIND PREVIOUS PICKS
+  Logger.log("\nTesting previous picks lookup for ID 538...");
+  const previousPicks = findPreviousPicks("538");
+  
+  if (previousPicks) {
+      Logger.log("--- PREVIOUS PICKS FOUND ---");
+      // Log the date of the first pick to confirm it's reading the row
+      Logger.log("First Pick Date (Col 10): " + previousPicks[9]); 
+      Logger.log(previousPicks)
+  } else {
+      Logger.log("--- PREVIOUS PICKS NOT FOUND (This may be correct if sheet is empty) ---");
+  }
+
+  Logger.log("--- TEST COMPLETE ---");
 }
