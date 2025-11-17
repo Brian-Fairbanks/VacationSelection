@@ -7,9 +7,12 @@
     // Global list to track all selected block start dates
     let allSelectedBlockStarts = {};
 
+    // Track which input is currently opening the datepicker
+    let currentOpenInputId = null;
+
     /**
      * Generates the HTML string for a new day selection block.
-     * NOTE: We remove the 'disabled' check from the template since it's now handled 
+     * NOTE: We remove the 'disabled' check from the template since it's now handled
      * dynamically in onSelect whenever a date is picked.
      */
     function createDayBlock(dayNum) {
@@ -45,7 +48,6 @@
     /**
      * This function contains your complex datepicker configuration.
      */
-    var selectedDate=undefined
     function applyComplexDatepicker(inputElement) {
 
         $(inputElement).datepicker({
@@ -53,14 +55,10 @@
             defaultDate: defaultStartDate,
 
             // Your hover logic (unchanged)
-            beforeShow: function (input, inst) { // Use the 'input' argument
-                console.log("Clicked on an instance!");
-                // You can log the jQuery-wrapped version
-                console.log($(input));
-                window.selectedDate = this.value
-                console.log(window.selectedDate)
-
-                
+            beforeShow: function (input, inst) {
+                // Track which input is currently open
+                currentOpenInputId = this.id;
+                console.log("Opened datepicker for:", currentOpenInputId, "with value:", this.value);
 
                 setTimeout(function () {
                     $('.ui-datepicker-calendar a').off('mouseenter mouseleave')
@@ -106,7 +104,7 @@
 
                     // Update the feedback span for *this* input
                     const $feedback = $(`#day${dayNum}-shift-feedback`);
-                     const { block } = getShiftAndBlock(blockStartDate);
+                    const { block } = getShiftAndBlock(blockStartDate);
 
                     //  none of this should actually be needed, limitations are handled in beforeShowDay
 
@@ -132,119 +130,120 @@
 
             // --- beforeShowDay (Modified for Calendar Day Disabling) ---
             beforeShowDay: function (date) {
-              const { class: shiftClass, blockStartDate, shift: currentShift } = getShiftAndBlock(date);
-              let extraClass = shiftClass;
-              
-              const userAssignedShift = window.USER_INFO ? window.USER_INFO.shift : null;
-              let isSelectable = true;
-              let isGloballyBooked = false;
+                const { class: shiftClass, blockStartDate, shift: currentShift } = getShiftAndBlock(date);
+                let extraClass = shiftClass;
+
+                const userAssignedShift = window.USER_INFO ? window.USER_INFO.shift : null;
+                let isSelectable = true;
+                let isGloballyBooked = false;
+
+                // Get the current input's ID and day number from our tracked variable
+                const currentInputId = currentOpenInputId;
+                const currentDayNumMatch = currentInputId ? currentInputId.match(/^day(\d+)-date$/) : null;
+                const currentDayNum = currentDayNumMatch ? parseInt(currentDayNumMatch[1]) : null;
+
+                // Get the current input's selected date value
+                const currentInputValue = currentInputId ? $(`#${currentInputId}`).val() : '';
+
+                // Safety check for shift restriction
+                if (!currentInputId) {
+                    // Datepicker not fully initialized yet
+                    if (userAssignedShift && currentShift && currentShift !== userAssignedShift) {
+                        return [false, shiftClass, `Shift ${currentShift}`];
+                    }
+                    return [true, shiftClass, `Shift ${currentShift}`];
+                }
+
+                // 1. SHIFT RESTRICTION CHECK: Disable days that don't match the user's shift
+                if (userAssignedShift && currentShift && currentShift !== userAssignedShift) {
+                    isSelectable = false;
+                }
 
 
+                // 2. GLOBAL BOOKING CHECK & HIGHLIGHT LOGIC
+                const currentDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
-              // --- SAFETY CHECK (Prevents 'reading properties of null' during refresh) ---
-              const currentInst = $.datepicker._curInst;
-              if (!currentInst || !currentInst.input) {
-                  // This can happen on a refresh. Check if user's shift is loaded yet.
-                  if (userAssignedShift && currentShift && currentShift !== userAssignedShift) {
-                      return [false, shiftClass, `Shift ${currentShift}`];
-                  }
-                  return [true, shiftClass, `Shift ${currentShift}`];
-              }
-              const currentInput = currentInst.input; 
-              const currentDayNumMatch = currentInput.attr('id').match(/^day(\d+)-date$/);
-              const currentDayNum = currentDayNumMatch ? parseInt(currentDayNumMatch[1]) : null;
-              // -----------------------------------------------------------
+                for (const dayKey in allSelectedBlockStarts) {
+                    const selectedBlockStartDate = allSelectedBlockStarts[dayKey];
+                    if (!selectedBlockStartDate) continue;
 
-              // 1. SHIFT RESTRICTION CHECK: Disable days that don't match the user's shift
-              if (userAssignedShift && currentShift && currentShift !== userAssignedShift) {
-                  isSelectable = false;
-              }
+                    // --- KEY MODIFICATION: Skip checking the dates selected by the current input ---
+                    if (parseInt(dayKey) === currentDayNum) {
+                        continue;
+                    }
 
+                    // Calculate the two days of the globally selected block
+                    const selectedDay1 = new Date(selectedBlockStartDate.getFullYear(), selectedBlockStartDate.getMonth(), selectedBlockStartDate.getDate());
+                    const selectedDay2 = new Date(selectedDay1);
+                    selectedDay2.setDate(selectedDay2.getDate() + 1);
 
-              // 2. GLOBAL BOOKING CHECK & HIGHLIGHT LOGIC
-              const currentDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                    // Check if the current calendar day matches any OTHER selected block
+                    const isDay1Match = currentDate.getTime() === selectedDay1.getTime();
+                    const isDay2Match = currentDate.getTime() === selectedDay2.getTime();
 
-              for (const dayKey in allSelectedBlockStarts) {
-                  const selectedBlockStartDate = allSelectedBlockStarts[dayKey];
-                  if (!selectedBlockStartDate) continue; 
-                  
-                  // --- KEY MODIFICATION: Skip checking the dates selected by the current input ---
-                  if (parseInt(dayKey) === currentDayNum) {
-                      continue;
-                  }
+                    if (isDay1Match || isDay2Match) {
+                        isGloballyBooked = true;
+                        extraClass += ' ui-state-highlight ui-state-active selected-shift-day globally-booked-disabled';
+                        break;
+                    }
+                }
 
-                  // Calculate the two days of the globally selected block
-                  const selectedDay1 = new Date(selectedBlockStartDate.getFullYear(), selectedBlockStartDate.getMonth(), selectedBlockStartDate.getDate());
-                  const selectedDay2 = new Date(selectedDay1);
-                  selectedDay2.setDate(selectedDay2.getDate() + 1);
-
-                  // Check if the current calendar day matches any OTHER selected block
-                  const isDay1Match = currentDate.getTime() === selectedDay1.getTime();
-                  const isDay2Match = currentDate.getTime() === selectedDay2.getTime();
-
-                  if (isDay1Match || isDay2Match) {
-                      isGloballyBooked = true;
-                      extraClass += ' ui-state-highlight ui-state-active selected-shift-day globally-booked-disabled'; 
-                      break;
-                  }
-              }
-              
-              // 3. ENFORCEMENT: If the day is part of an already selected block (by a *different* input), make it UNSELECTABLE
-              if (isGloballyBooked) {
-                  isSelectable = false;
-              }
+                // 3. ENFORCEMENT: If the day is part of an already selected block (by a *different* input), make it UNSELECTABLE
+                if (isGloballyBooked) {
+                    isSelectable = false;
+                }
 
 
-              // 4. BLOCK STYLING (Unchanged)
-              if (blockStartDate) {
-                  const secondDay = new Date(blockStartDate.getFullYear(), blockStartDate.getMonth(), blockStartDate.getDate());
-                  secondDay.setDate(secondDay.getDate() + 1);
-                  const isBlockStart = currentDate.getTime() === blockStartDate.getTime();
-                  const isBlockSecondDay = currentDate.getTime() === secondDay.getTime();
-                  const firstDayIsWeekend = blockStartDate.getDay() === 0 || blockStartDate.getDay() === 6;
-                  const secondDayIsWeekend = secondDay.getDay() === 0 || secondDay.getDay() === 6;
-                  const bothDaysWeekend = firstDayIsWeekend && secondDayIsWeekend;
+                // 4. BLOCK STYLING (Unchanged)
+                if (blockStartDate) {
+                    const secondDay = new Date(blockStartDate.getFullYear(), blockStartDate.getMonth(), blockStartDate.getDate());
+                    secondDay.setDate(secondDay.getDate() + 1);
+                    const isBlockStart = currentDate.getTime() === blockStartDate.getTime();
+                    const isBlockSecondDay = currentDate.getTime() === secondDay.getTime();
+                    const firstDayIsWeekend = blockStartDate.getDay() === 0 || blockStartDate.getDay() === 6;
+                    const secondDayIsWeekend = secondDay.getDay() === 0 || secondDay.getDay() === 6;
+                    const bothDaysWeekend = firstDayIsWeekend && secondDayIsWeekend;
 
-                  if (isBlockStart) { extraClass += ' shift-block-start'; if (bothDaysWeekend) extraClass += ' both-days-weekend'; }
-                  if (isBlockSecondDay) { extraClass += ' shift-block-end'; if (bothDaysWeekend) extraClass += ' both-days-weekend'; }
-              }
-              
-              // 5. CURRENT INPUT'S SELECTION (Your logic, fixed)
-              // 'date' is the calendar day. 'currentSelectionDate' is the specific day from the calendar
-              const currentSelectionDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-              
-              // Get the date string from your global variable
-              const myGlobalDateString = window.selectedDate;
+                    if (isBlockStart) { extraClass += ' shift-block-start'; if (bothDaysWeekend) extraClass += ' both-days-weekend'; }
+                    if (isBlockSecondDay) { extraClass += ' shift-block-end'; if (bothDaysWeekend) extraClass += ' both-days-weekend'; }
+                }
 
-              if (myGlobalDateString) { // Check if it's not ""
-                  try {
-                      // Create a Date object from the global string (e.g., "02/12/2026")
-                      const dateParts = myGlobalDateString.split('/');
-                      const mySelectedBlock = new Date(dateParts[2], dateParts[0] - 1, dateParts[1]);
+                // 5. CURRENT INPUT'S SELECTION (Your logic, fixed)
+                // 'date' is the calendar day. 'currentSelectionDate' is the specific day from the calendar
+                const currentSelectionDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
-                      // Calculate the two days of the block
-                      const selectedDay1 = new Date(mySelectedBlock.getFullYear(), mySelectedBlock.getMonth(), mySelectedBlock.getDate());
-                      const selectedDay2 = new Date(selectedDay1);
-                      selectedDay2.setDate(selectedDay2.getDate() + 1);
+                // Get the date string from your global variable
+                const myGlobalDateString = window.selectedDate;
 
-                      // --- THIS IS THE FIX ---
-                      // Compare the CALENDAR DAY (currentDate) to the GLOBAL block
-                      const isDay1Match = currentDate.getTime() === selectedDay1.getTime();
-                      const isDay2Match = currentDate.getTime() === selectedDay2.getTime();
+                if (myGlobalDateString) { // Check if it's not ""
+                    try {
+                        // Create a Date object from the global string (e.g., "02/12/2026")
+                        const dateParts = myGlobalDateString.split('/');
+                        const mySelectedBlock = new Date(dateParts[2], dateParts[0] - 1, dateParts[1]);
 
-                      if (isDay1Match || isDay2Match) {
-                          // It's a match, so highlight and "unlock" it
-                          extraClass += ' ui-state-highlight ui-state-active selected-shift-day';
-                          extraClass = extraClass.replace('globally-booked-disabled', '');
-                          isSelectable = true; // Override any previous 'false'
-                      }
-                  } catch (e) {
-                      // This will catch "Invalid Date" errors if the string is bad
-                  }
-              }
-              
-              // Return [isSelectable, extraClass, title]
-              return [isSelectable, extraClass, `Shift ${currentShift}`];
+                        // Calculate the two days of the block
+                        const selectedDay1 = new Date(mySelectedBlock.getFullYear(), mySelectedBlock.getMonth(), mySelectedBlock.getDate());
+                        const selectedDay2 = new Date(selectedDay1);
+                        selectedDay2.setDate(selectedDay2.getDate() + 1);
+
+                        // --- THIS IS THE FIX ---
+                        // Compare the CALENDAR DAY (currentDate) to the GLOBAL block
+                        const isDay1Match = currentDate.getTime() === selectedDay1.getTime();
+                        const isDay2Match = currentDate.getTime() === selectedDay2.getTime();
+
+                        if (isDay1Match || isDay2Match) {
+                            // It's a match, so highlight and "unlock" it
+                            extraClass += ' ui-state-highlight ui-state-active selected-shift-day ui-datepicker-current-day';
+                            extraClass = extraClass.replace('globally-booked-disabled', '');
+                            isSelectable = true; // Override any previous 'false'
+                        }
+                    } catch (e) {
+                        // This will catch "Invalid Date" errors if the string is bad
+                    }
+                }
+
+                // Return [isSelectable, extraClass, title]
+                return [isSelectable, extraClass, `Shift ${currentShift}`];
             }
         });
 

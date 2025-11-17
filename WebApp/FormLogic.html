@@ -45,10 +45,31 @@
                 return;
             }
 
-            const formSubmissionData = {
+            const userData = window.USER_INFO || {};
+            const submissionDateISO = new Date().toISOString();
+
+            // --- Form Submission Data Object ---
+            let formSubmissionData = {
+                // Basic Submission Info
                 acknowledgment: selectedAction,
-                submittedAt: new Date().toISOString()
-            };
+                submittedAt: submissionDateISO,
+
+                // --- INTEGRATE USER DATA ---
+                userInfo: {
+                    // Note: This split/trim logic relies on the server providing "LastName, FirstName"
+                    firstName: userData.employeeName ? userData.employeeName.split(',')[1].trim() : '',
+                    lastName: userData.employeeName ? userData.employeeName.split(',')[0].trim() : '',
+                    employeeId: userData.employeeId || '',
+                    rank: userData.rank || '',
+                    shift: userData.shift || '',
+                    hireDate: userData.hireDate || '',
+                    yearsOfService: userData.yearsOfService || '',
+                    vacationHours: userData.vacationHours || '',
+                    holidayHours: userData.holidayHours || ''
+                },
+                // daySelections will be added next if 'continue' is selected
+            }; 
+            // ------------------------------------
 
             if (selectedAction === 'continue') {
                 
@@ -68,31 +89,17 @@
                         if (!dayIdMatch) return;
                         const dayIndex = parseInt(dayIdMatch[1]);
                         
-                        // --- 1. Calculate assigned shift ---
-                        let assignedShift = '';
-                        try {
-                            const dateParts = dateText.split('/');
-                            // Months in Date object are 0-indexed (Jan=0), so dateParts[0] - 1 is correct.
-                            const dateForCalc = new Date(dateParts[2], dateParts[0] - 1, dateParts[1]);
-                            // Assumes getShiftAndBlock is available from ShiftLogic
-                            assignedShift = getShiftAndBlock(dateForCalc).shift;
-                        } catch (e) {
-                            console.error(`Error calculating shift for day ${dayIndex}:`, dateText, e);
-                        }
-
-                        // --- 2. Get shift checkboxes for this specific day ---
                         const selectedShifts = [];
                         // Targets input names like 'day1Shift', 'day2Shift', etc.
                         $(`input[name="day${dayIndex}Shift"]:checked`).each(function () {
                             selectedShifts.push($(this).val());
                         });
 
-                        // --- 3. Add to the collection ---
+                        // Add to the collection
                         allDaySelections.push({
                             day: dayIndex,
                             date: dateText,
                             shifts: selectedShifts,
-                            assignedShift: assignedShift
                         });
                     }
                 });
@@ -100,8 +107,21 @@
                 // Assign the collected data to the payload
                 formSubmissionData.daySelections = allDaySelections;
             }
+            
+            // --- SERVER CALL ---
+            google.script.run
+                .withSuccessHandler(function() {
+                    alert("Submission successful!");
+                    $('#alert-modal').hide();
+                })
+                .withFailureHandler(function(err) {
+                    alert("Error submitting form: " + err.message);
+                    $('#alert-modal').hide();
+                })
+                .processShiftRequest(formSubmissionData); 
+            // -------------------
 
-            // Display the JSON in the modal
+            // Display the JSON in the modal (for debugging only)
             $('#modal-content').text(JSON.stringify(formSubmissionData, null, 2));
 
             // Show the modal

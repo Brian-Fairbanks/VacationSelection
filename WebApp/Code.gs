@@ -4,6 +4,7 @@ const configs = {
 };
 const SHEET_MAIN = "Sheet1";
 const SHEET_CACHE = "Cache";
+const SubmissionSheetName = "2026-Vacation Picks"
 
 // --- CORE WEB APP FUNCTIONS ---
 function doGet() {
@@ -327,6 +328,94 @@ function normalizeRosterName(rosterName) {
   combos.push(lastName + firstName);
   return Array.from(new Set(combos.map(normalizeText).filter(Boolean)));
 }
+
+
+
+/** 
+ * 
+ * Form Submission Handling
+*/
+
+/**
+ * Flattens the nested client-side data into a single array row 
+ * that matches the required sheet headers (Day 1, Shift Selection 1, Day 2, etc.).
+ * @param {Object} formData - The complete submission payload.
+ * @returns {Array} - A single array row with 65 columns of data.
+ */
+function flattenSubmissionData(formData) {
+  const user = formData.userInfo;
+  const submissions = formData.daySelections || [];
+  
+  // Initialize the row with 65 columns (for 31 days * 2 columns + 3 base columns)
+  // This ensures there are placeholders for days 5-31 even if they weren't selected.
+  const fullRow = new Array(65).fill('');
+  
+  // --- Fill Static Header Data (First 9 Columns) ---
+  const headerData = [
+    new Date(), // Submission Date
+    user.firstName,
+    user.lastName,
+    user.employeeId,
+    user.rank,
+    user.shift,
+    user.hireDate,
+    formData.acknowledgment,
+    user.yearsOfService
+  ];
+  
+  // Place header data into the beginning of the array
+  for (let i = 0; i < headerData.length; i++) {
+    fullRow[i] = headerData[i];
+  }
+  
+  // --- Fill Dynamic Day Selections (Columns 10 through 65) ---
+  // Start column index for Day 1 is 9 (since arrays are 0-indexed)
+  let currentColumnIndex = 9; 
+
+  submissions.forEach(daySelection => {
+    // Ensure the day index is valid (1-31) and we haven't exceeded the sheet size
+    if (daySelection.day >= 1 && daySelection.day <= 31) {
+      
+      // Calculate the start position for this day's pair of columns
+      // Example: Day 1 maps to index 9, Day 2 maps to index 11
+      const startIndex = 9 + (daySelection.day - 1) * 2;
+      
+      // Safety check: ensure we don't write beyond the array boundary
+      if (startIndex + 1 < fullRow.length) {
+        
+        // Column 1: Date (e.g., 'Day 1')
+        fullRow[startIndex] = daySelection.date;
+        
+        // Column 2: Shifts (e.g., 'Shift Selection 1')
+        // We join the array ["Day1", "Day2"] into a comma-separated string
+        fullRow[startIndex + 1] = daySelection.shifts.join(', ');
+      }
+    }
+  });
+
+  return fullRow;
+}
+
+/**
+ * Processes the shift request data and appends it to the Google Sheet.
+ * @param {Object} formData - Data submitted from the client-side form.
+ */
+function processShiftRequest(formData) {
+  // Replace 'Your Sheet Name Here' with the actual name of your spreadsheet.
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SubmissionSheetName); // Change 'Shift Requests' to your sheet name
+
+  if (!sheet) {
+    throw new Error('Could not find the target sheet.');
+  }
+
+  // --- 1. Flatten the Data Structure ---
+  const flatData = flattenSubmissionData(formData);
+
+  // --- 2. Append to the Sheet ---
+  sheet.appendRow(flatData);
+}
+
 
 // --- TEST FUNCTION ---
 function testLookup() {
