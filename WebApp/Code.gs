@@ -237,28 +237,37 @@ function findPreviousPicks(employeeId) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sheet = ss.getSheetByName(SubmissionSheetName);
-    var ID_COLUMN_INDEX = 3; // "Employee ID #" in column 'D', is 3rd index
+    
+    // --- USE YOUR NEW INDEXES ---
+    // Column F = index 5
+    const ID_COLUMN_INDEX = 5; 
+    // Column B = index 1
+    const STATUS_COLUMN_INDEX = 1;
+    // ----------------------------
 
     if (!sheet) {
-        Logger.log('ERROR: Submission sheet not found: ' + SubmissionSheetName);
-        return null;
+      Logger.log('ERROR: Submission sheet not found: ' + SubmissionSheetName);
+      return null;
     }
-    
+
     var data = sheet.getDataRange().getValues();
     
     // Search backwards from the latest submission
-    for (var i = data.length - 1; i > 0; i--) {
-      if (String(data[i][ID_COLUMN_INDEX]) == String(employeeId)) {
-        
-        // --- FIX: MAP THE ENTIRE ROW TO STRINGS ---
-        // This converts Dates, Numbers, and anything else into reliable strings
-        return data[i].map(function(value) {
+    for (var i = data.length - 1; i > 0; i--) { // i > 0 to skip header
+      const rowId = data[i][ID_COLUMN_INDEX];
+      const rowStatus = data[i][STATUS_COLUMN_INDEX];
+
+      if (String(rowId) == String(employeeId) && rowStatus === "Active") {
+        // Found the most recent, active submission for this user
+        // We return the raw row, as the map-to-string logic
+        // is now handled in the getEmployeeDataAndPicks function.
+        return data[i].slice(2).map(function(value) {
             return value ? String(value) : '';
         });
-        // ------------------------------------------
       }
     }
-    return null;
+    
+    return null; // No *active* picks found
   } catch (e) {
     Logger.log("Error in findPreviousPicks: " + e.message);
     return null;
@@ -308,17 +317,16 @@ function normalizeRosterName(rosterName) {
 
 /**
  * Flattens the nested client-side data into a single array row 
- * that matches the required sheet headers (Day 1, Shift Selection 1, Day 2, etc.).
+ * starting from "Submission Date" (Column C).
  * @param {Object} formData - The complete submission payload.
- * @returns {Array} - A single array row with 65 columns of data.
+ * @returns {Array} - A single array row with 89 columns of data.
  */
 function flattenSubmissionData(formData) {
   const user = formData.userInfo;
   const submissions = formData.daySelections || [];
   
-  // Initialize the row with 65 columns (for 31 days * 2 columns + 3 base columns)
-  // This ensures there are placeholders for days 5-31 even if they weren't selected.
-  const fullRow = new Array(65).fill('');
+  // 9 header columns + 40*2 day columns = 89 total columns
+  const fullRow = new Array(89).fill(''); 
   
   // --- Fill Static Header Data (First 9 Columns) ---
   const headerData = [
@@ -338,26 +346,24 @@ function flattenSubmissionData(formData) {
     fullRow[i] = headerData[i];
   }
   
-  // --- Fill Dynamic Day Selections (Columns 10 through 65) ---
-  // Start column index for Day 1 is 9 (since arrays are 0-indexed)
-  let currentColumnIndex = 9; 
+  // --- Fill Dynamic Day Selections ---
+  // Start column index for Day 1 is 9 (the 10th column in this array)
+  const START_DAY_INDEX = 9; 
 
   submissions.forEach(daySelection => {
-    // Ensure the day index is valid (1-31) and we haven't exceeded the sheet size
-    if (daySelection.day >= 1 && daySelection.day <= 31) {
+    // Ensure the day index is valid (1-40)
+    if (daySelection.day >= 1 && daySelection.day <= 40) { 
       
       // Calculate the start position for this day's pair of columns
-      // Example: Day 1 maps to index 9, Day 2 maps to index 11
-      const startIndex = 9 + (daySelection.day - 1) * 2;
+      const startIndex = START_DAY_INDEX + (daySelection.day - 1) * 2;
       
-      // Safety check: ensure we don't write beyond the array boundary
+      // Safety check
       if (startIndex + 1 < fullRow.length) {
         
         // Column 1: Date (e.g., 'Day 1')
         fullRow[startIndex] = daySelection.date;
         
         // Column 2: Shifts (e.g., 'Shift Selection 1')
-        // We join the array ["Day1", "Day2"] into a comma-separated string
         fullRow[startIndex + 1] = daySelection.shifts.join(', ');
       }
     }
@@ -366,24 +372,59 @@ function flattenSubmissionData(formData) {
   return fullRow;
 }
 
+
 /**
  * Processes the shift request data and appends it to the Google Sheet.
+ * This function now handles versioning by superseding old picks.
  * @param {Object} formData - Data submitted from the client-side form.
  */
 function processShiftRequest(formData) {
-  // Replace 'Your Sheet Name Here' with the actual name of your spreadsheet.
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(SubmissionSheetName); // Change 'Shift Requests' to your sheet name
-
+  const sheet = ss.getSheetByName(SubmissionSheetName);
   if (!sheet) {
     throw new Error('Could not find the target sheet.');
   }
 
-  // --- 1. Flatten the Data Structure ---
-  const flatData = flattenSubmissionData(formData);
+  const employeeId = formData.userInfo.employeeId;
+  const ID_COLUMN_INDEX = 5; // Employee ID is column D (index 3)
+  const STATUS_COLUMN_INDEX = 1; // Status is column BO (index 90)
+                                 // (A-Z = 26, AA-AZ = 26, BA-BN = 14. 26+26+14 = 66th col = index 65)
+                                 // Let's find the real last column.
+                                 
+  // --- DYNAMIC COLUMN INDEXING (Safer) ---
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const idCol = headers.indexOf("Employee ID #") + 1; // +1 for 1-based index
+  const statusCol = headers.indexOf("Status") + 1; // +1 for 1-based index
 
-  // --- 2. Append to the Sheet ---
-  sheet.appendRow(flatData);
+  if (idCol === 0 || statusCol === 0) {
+      throw new Error('Could not find "Employee ID #" or "Status" column in the sheet.');
+  }
+  
+  // --- 1. Supersede Old Submissions ---
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) { // Start at 1 to skip header
+    const rowId = data[i][ID_COLUMN_INDEX];
+    const rowStatus = data[i][STATUS_COLUMN_INDEX];
+
+    if (String(rowId) === String(employeeId) && rowStatus === "Active") {
+      // Found an old, active row for this user.
+      // Mark it as "Superseded".
+      sheet.getRange(i + 1, STATUS_COLUMN_INDEX + 1).setValue("Superseded"); // +1 for 1-based index
+    }
+  }
+
+  // --- 2. Flatten the New Data ---
+  // This function now returns an array of 89 columns
+  // (9 headers + 40*2 days)
+  const flatData = flattenSubmissionData(formData); 
+
+  // --- 3. Prepend the new columns ---
+  // Add "Manual Entry" (blank) and "Status" (Active) to the front
+  // of the flattened data array before appending.
+  const newRow = ["", "Active", ...flatData];
+
+  // --- 4. Append the New Row ---
+  sheet.appendRow(newRow);
 }
 
 

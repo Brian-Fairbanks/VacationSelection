@@ -40,59 +40,54 @@
     </script>
 
 
-    <div id="loading-screen">
-        <h2>Loading Your Information...</h2>
-        <p>Please wait.</p>
-    </div>
-
     <div id="form-content" style="display:none;">
-      <div class="bg-white p-8 rounded-lg shadow-md max-w-xl w-full">
-        <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 24px; background-color: #f8fafc;">
-          
-          <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 12px;">
-            <h3 style="font-size: 1.25rem; font-weight: 600; color: #1e293b; margin: 0;">
-              Welcome, <span id="emp-name"></span>
-            </h3>
-            <span id="emp-rank" style="font-size: 0.9rem; font-weight: 500; color: #475569; background-color: #e2e8f0; padding: 4px 8px; border-radius: 6px;"></span>
-          </div>
-          
-          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; font-size: 0.9rem;">
-            
-            <div>
-              <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Employee ID</span>
-              <strong id="emp-id" style="color: #334155;"></strong>
-            </div>
-            
-            <div>
-              <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Hire Date</span>
-              <strong id="emp-hire-date" style="color: #334155;"></strong>
+        <div class="bg-white p-8 rounded-lg shadow-md max-w-xl w-full">
+            <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 24px; background-color: #f8fafc;">
+
+                <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 12px;">
+                    <h3 style="font-size: 1.25rem; font-weight: 600; color: #1e293b; margin: 0;">
+                        Welcome, <span id="emp-name"></span>
+                    </h3>
+                    <span id="emp-rank" style="font-size: 0.9rem; font-weight: 500; color: #475569; background-color: #e2e8f0; padding: 4px 8px; border-radius: 6px;"></span>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; font-size: 0.9rem;">
+
+                    <div>
+                        <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Employee ID</span>
+                        <strong id="emp-id" style="color: #334155;"></strong>
+                    </div>
+
+                    <div>
+                        <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Hire Date</span>
+                        <strong id="emp-hire-date" style="color: #334155;"></strong>
+                    </div>
+
+                    <div>
+                        <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Years of Service</span>
+                        <strong id="emp-years" style="color: #334155;"></strong>
+                    </div>
+
+                    <div>
+                        <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Vacation Hours</span>
+                        <strong id="emp-vac-hours" style="color: #334155;"></strong>
+                    </div>
+
+                    <div>
+                        <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Holiday Hours</span>
+                        <strong id="emp-hol-hours" style="color: #334155;"></strong>
+                    </div>
+
+                    <div>
+                        <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Shift</span>
+                        <strong id="emp-shift" style="color: #334155;"></strong>
+                    </div>
+
+                </div>
             </div>
 
-            <div>
-              <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Years of Service</span>
-              <strong id="emp-years" style="color: #334155;"></strong>
-            </div>
-            
-            <div>
-              <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Vacation Hours</span>
-              <strong id="emp-vac-hours" style="color: #334155;"></strong>
-            </div>
-
-            <div>
-              <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Holiday Hours</span>
-              <strong id="emp-hol-hours" style="color: #334155;"></strong>
-            </div>
-
-            <div>
-              <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Shift</span>
-              <strong id="emp-shift" style="color: #334155;"></strong>
-            </div>
-
-          </div>
+            <?!= include('Form_Refactored'); ?>
         </div>
-
-          <?!= include('Form_Refactored'); ?>
-      </div>
     </div>
 
 
@@ -108,17 +103,24 @@
 
     <div id="alert-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full flex items-center justify-center" style="display: none;">
         <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
-            <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Form Submission Data</h3>
-            <div class="bg-gray-50 p-4 rounded-md">
-                <pre id="modal-content" class="text-sm text-gray-800"></pre>
+
+            <h3 id="modal-title" class="text-lg font-medium leading-6 text-gray-900 mb-4">
+                Form Submission Data
+            </h3>
+
+            <div id="modal-content" class="bg-gray-50 p-4 rounded-md">
+                <pre id="json-pre" class="text-sm text-gray-800"></pre>
             </div>
-            <div class="mt-6 text-right">
+
+            <div id="modal-buttons" class="mt-6 text-right">
                 <button id="close-modal" type="button" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                     Close
                 </button>
             </div>
+
         </div>
     </div>
+
 
     <!-- External Libraries -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
@@ -128,54 +130,131 @@
     <script>
         // This runs as soon as the page is loaded
         window.addEventListener("load", function () {
+            // --- STEP 1: Show the LOADING modal immediately ---
+            var loadingContent = `
+              <div class="flex flex-col items-center justify-center h-24">
+                  <div class="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                  
+                  <p class="text-gray-600">Please wait while we retrieve your information...</p>
+              </div>
+          `;
+            // We pass empty string "" for buttons
+            showAppModal("Loading Your Information", loadingContent, "");
+
+            // --- STEP 2: Call the server ---
             google.script.run
                 .withSuccessHandler(onInitialDataLoaded)
                 .withFailureHandler(onLoadError)
                 .getInitialUserInfo();
         });
 
+        /**
+        * Shows the reusable application modal with custom content.
+        * @param {string} title - The text for the modal's title.
+        * @param {string} content - The HTML or text for the modal's body.
+        * @param {string} buttonHtml - The HTML string for the buttons.
+        */
+        function showAppModal(title, content, buttonHtml) {
+            // Target the *existing* alert modal's children
+            $('#alert-modal').find('#modal-title').text(title);
+            $('#alert-modal').find('#modal-content').html(content); // This will overwrite the <pre> tag, which is fine
+            $('#alert-modal').find('#modal-buttons').html(buttonHtml);
+
+            $('#alert-modal').fadeIn(200);
+        }
+
+        /**
+         * Hides the reusable application modal.
+         */
+        function hideAppModal() {
+            $('#alert-modal').fadeOut(200);
+        }
+
         //
         // --- THIS IS THE CRITICAL FUNCTION ---
         //
         function onInitialDataLoaded(data) {
-
             console.log(data)
-            // // 1. Check for logs and print them to the debug panel
-            // if (data && data.hasOwnProperty('logs')) {
-            //     var debugPanel = document.getElementById("debug-panel");
-            //     var logContent = data.logs.join('<br>');
-            //     debugPanel.innerHTML += "<br>--- Auto-Login Log ---<br>" + logContent;
-            //     debugPanel.style.display = "block";
-            // }
-            
 
-            // 2. The original logic to check for success (this still works perfectly)
+            // 2. Check for success
             if (data && data.hasOwnProperty('userInfo') && data.userInfo) {
                 // SUCCESS!
                 window.USER_INFO = data.userInfo;
+
+                // Initialize the form components (this is safe now)
                 initializeDatepicker();
                 initializeFormLogic();
 
+                // Fill the static user info header
                 fillUserInfo(data.userInfo);
+
+                // --- STEP 3: Handle Previous Picks ---
                 if (data.hasOwnProperty('previousPicks') && data.previousPicks) {
-                    fillPreviousPicks(data.previousPicks);
+
+                    // --- A. Show CONFIRMATION modal ---
+                    var title = "Previous Submission Found";
+                    var content = "Would you like to load your previous selections or start a new form?";
+
+                    // Define buttons with Tailwind classes and IDs
+                    var buttons =
+                        '<button id="btn-start-new" type="button" class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">' +
+                        'Start New' +
+                        '</button>' +
+                        '<button id="btn-load-previous" type="button" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">' +
+                        'Load Previous' +
+                        '</button>';
+
+                    // Hide the loading modal and show the confirmation modal
+                    hideAppModal();
+                    showAppModal(title, content, buttons);
+
+                    // --- B. Attach click handlers to the new buttons ---
+                    // Use .one() to prevent double-click issues
+                    $('#btn-load-previous').one('click', function () {
+                        fillPreviousPicks(data.previousPicks);
+                        hideAppModal();
+                        document.getElementById("form-content").style.display = "block";
+                    });
+
+                    $('#btn-start-new').one('click', function () {
+                        // User clicked Cancel - just start a blank form
+                        $('input[name="formCompletion"][value="continue"]').prop('checked', true);
+                        $('input[name="formCompletion"]').trigger('change');
+                        hideAppModal();
+                        document.getElementById("form-content").style.display = "block";
+                    });
+
+                } else {
+                    // --- C. No previous picks found ---
+                    // Just start a blank form
+                    $('input[name="formCompletion"][value="continue"]').prop('checked', true);
+                    $('input[name="formCompletion"]').trigger('change');
+
+                    // Hide the loading modal and show the form
+                    hideAppModal();
+                    document.getElementById("form-content").style.display = "block";
                 }
-                document.getElementById("loading-screen").style.display = "none";
-                document.getElementById("form-content").style.display = "block";
 
             } else {
                 // FAILURE!
-                document.getElementById("loading-screen").style.display = "none";
+                hideAppModal(); // Hide the loading modal
                 document.getElementById("manual-login").style.display = "block";
             }
         }
 
         function onLoadError(err) {
             // Hard script failure
-            document.getElementById("loading-screen").style.display = "none";
-            document.getElementById("manual-login").style.display = "block";
-            // document.getElementById("debug-panel").style.display = "block";
-            alert("A script error occurred: " + err.message);
+            // Show an error in our new modal
+            var errorContent = "A critical error occurred: " + err.message +
+                "<br><br>Please try refreshing the page.";
+            var closeButton = '<button id="btn-close-error" type="button" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700">Close</button>';
+
+            showAppModal("Script Error", errorContent, closeButton);
+
+            $('#btn-close-error').one('click', function () {
+                hideAppModal();
+                document.getElementById("manual-login").style.display = "block";
+            });
         }
 
 
@@ -262,129 +341,6 @@
             document.getElementById("emp-hol-hours").innerText = userInfo.holidayHours;
             document.getElementById("emp-shift").innerText = userInfo.shift;
         }
-
-        /**
-         * Enforces the shift checkbox state (disabled/enabled) based on the date input's value.
-         */
-        function enforceCheckboxState($input, dayNum) {
-            const dateText = $input.val();
-            const $shiftCheckboxes = $(`input[name="day${dayNum}Shift"]`);
-            const $feedback = $(`#day${dayNum}-shift-feedback`);
-            
-            if (!dateText) {
-                $shiftCheckboxes.prop('disabled', false).prop('checked', true);
-                $feedback.text('').removeClass('bg-red-200 bg-blue-200 bg-orange-200 text-red-800 text-blue-800 text-orange-800 border-red-400 border-blue-400 border-orange-400 border');
-                return;
-            }
-
-            const userAssignedShift = window.USER_INFO ? window.USER_INFO.shift : null;
-
-            try {
-                const dateParts = dateText.split('/');
-                const dateForCalc = new Date(dateParts[2], dateParts[0] - 1, dateParts[1]);
-                const { shift: selectedShift } = getShiftAndBlock(dateForCalc);
-
-                if (selectedShift !== userAssignedShift) {
-                    $shiftCheckboxes.prop('disabled', true).prop('checked', false);
-                } else {
-                    $shiftCheckboxes.prop('disabled', false).prop('checked', true);
-                }
-            } catch (e) {
-                console.error("Error during checkbox enforcement:", e);
-                $shiftCheckboxes.prop('disabled', true).prop('checked', false);
-            }
-        }
-
-        /**
-         * Fills data into a specific date block and ensures the global state is updated.
-         * This is called by fillPreviousPicks.
-         * @param {string} dateText - The RAW date string (e.g., "Fri Feb 06 2026...").
-         * @param {string} shiftsString - Comma-separated shifts (e.g., "Day1, Day2").
-         * @param {number} dayIndex - The day number (1, 2, 3...)
-         */
-        function loadPickIntoDayBlock(dateText, shiftsString, dayIndex) {
-            const $dateInput = $(`#day${dayIndex}-date`);
-            
-            // --- FIX A: PARSE AND FORMAT THE DATE ---
-            let blockStartDate;
-            let formattedDate;
-            try {
-                // 1. Create a Date object from the raw string
-                blockStartDate = new Date(dateText);
-                
-                // 2. Format it to MM/DD/YYYY
-                // We'll add a simple formatter here to be safe
-                let month = (blockStartDate.getMonth() + 1).toString().padStart(2, '0');
-                let day = blockStartDate.getDate().toString().padStart(2, '0');
-                let year = blockStartDate.getFullYear();
-                formattedDate = `${month}/${day}/${year}`;
-
-            } catch (e) {
-                console.error(`Could not parse date ${dateText} for day ${dayIndex}.`, e);
-                $dateInput.val("INVALID DATE"); // Show an error
-                return; // Stop
-            }
-            // ------------------------------------
-
-            // 1. Set the *formatted* date value in the input field
-            $dateInput.val(formattedDate);
-
-            // 2. Set the global selection state (using the Date object)
-            allSelectedBlockStarts[dayIndex] = blockStartDate;
-            
-            // 3. Set checkboxes (This will run now that the date parsing is fixed)
-            const shiftsArray = shiftsString.split(',').map(s => s.trim());
-            
-            $(`input[name="day${dayIndex}Shift"]`).prop('checked', false);
-            shiftsArray.forEach(shiftValue => {
-                $(`input[name="day${dayIndex}Shift"][value="${shiftValue}"]`).prop('checked', true);
-            });
-
-            // 4. Force enforcement/feedback update
-            enforceCheckboxState($dateInput, dayIndex);
-        }
-
-        function fillPreviousPicks(picksRow) {
-        // picksRow is the full array: [SubmissionDate, FirstName, ..., Day 1, Shift 1, Day 2, Shift 2, ...]
-        
-        // --- FIX B: SET ACKNOWLEDGMENT ---
-        // Acknowledgment is at index 7 (the 8th column)
-        var acknowledgment = picksRow[7]; 
-        if (acknowledgment) {
-            // 1. Check the radio button
-            $(`input[name="formCompletion"][value="${acknowledgment}"]`).prop('checked', true);
-            
-            // 2. Manually trigger 'change' so the form shows the day selection container
-            $('input[name="formCompletion"]').trigger('change');
-        }
-        // ----------------------------------
-        
-        var START_PICK_INDEX = 9; // Index of Day 1 column (Column J)
-        var pickCount = 0;
-
-        // We iterate through the picksRow, jumping 2 columns at a time.
-        for (var i = START_PICK_INDEX; i < picksRow.length; i += 2) {
-            var dateText = picksRow[i]; // This is the RAW date string
-            var shiftString = picksRow[i + 1]; // e.g., "Day1, Day2"
-            
-            // Stop if the date column is empty
-            if (!dateText) break;
-
-            pickCount++;
-            
-            // A. Handle Day 1 (which is already in the DOM)
-            if (pickCount === 1) {
-                loadPickIntoDayBlock(dateText, shiftString, 1);
-            } else {
-                // B. Handle Day 2 and subsequent days
-                addNewDayBlock(); // This function should be global from DatepickerInit.html
-                loadPickIntoDayBlock(dateText, shiftString, currentDayCount);
-            }
-        }
-    
-    // CRITICAL: Refresh all datepickers to show the correct global highlights
-    $('.datepicker').datepicker('refresh'); 
-}
     </script>
 </body>
 

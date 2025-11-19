@@ -31,15 +31,57 @@
             }
         };
 
+
+        // Prevent the Enter key (keyCode 13) from submitting the form.
+        $('#request-form').on('keypress', 'input, select', function(e) {
+            // Check if the key pressed is the Enter key (key code 13)
+            if (e.keyCode === 13) {
+                // Stop the default browser action (form submission)
+                e.preventDefault();
+                
+                // Optional: If you want to run the validation check without submitting, 
+                // you could call $(this).blur() here, but e.preventDefault() is sufficient 
+                // to block the submit action.
+            }
+        });
+
         // Attach event listener to radio buttons
         $('input[name="formCompletion"]').on('change', toggleSubmitButton);
+        
+        $('#day-selection-container').on('change', 'input[type="checkbox"]', function() {
+            
+            // 'this' is the checkbox that was just changed
+            const $checkbox = $(this);
+            
+            // Get the name of the checkbox group (e.g., "day1Shift", "day2Shift")
+            const name = $checkbox.attr('name');
+            
+            // Find all *checked* boxes within that same group
+            const $checkedBoxes = $(`input[name="${name}"]:checked`);
+            
+            if ($checkedBoxes.length === 0) {
+                // The user just unchecked the LAST box!
+                
+                // Get the day number (e.g., 1 from "day1Shift")
+                const dayNum = name.match(/^day(\d+)Shift$/)[1];
+                
+                // Find the corresponding date input
+                const $dateInput = $(`#day${dayNum}-date`);
+                
+                // Clear the date input's value and trigger the 'change' event
+                // This is CRITICAL: .trigger('change') tells your *other* scripts
+                // (like in DatepickerInit.html) that this date has been cleared,
+                // which will remove it from 'allSelectedBlockStarts' and refresh
+                // all other calendars.
+                $dateInput.val("").trigger('change');
+            }
+        });
 
         // Handle form submission
         $('#request-form').on('submit', function (event) {
             event.preventDefault();
 
             const selectedAction = $('input[name="formCompletion"]:checked').val();
-
             if (!selectedAction) {
                 console.error("Form submitted without acknowledgment selection.");
                 return;
@@ -50,11 +92,8 @@
 
             // --- Form Submission Data Object ---
             let formSubmissionData = {
-                // Basic Submission Info
                 acknowledgment: selectedAction,
                 submittedAt: submissionDateISO,
-
-                // --- INTEGRATE USER DATA ---
                 userInfo: {
                     // Note: This split/trim logic relies on the server providing "LastName, FirstName"
                     firstName: userData.employeeName ? userData.employeeName.split(',')[1].trim() : '',
@@ -67,35 +106,26 @@
                     vacationHours: userData.vacationHours || '',
                     holidayHours: userData.holidayHours || ''
                 },
-                // daySelections will be added next if 'continue' is selected
             }; 
-            // ------------------------------------
-
+            
+            // --- Add day selections (if any) ---
             if (selectedAction === 'continue') {
-                
-                // Initialize an empty array to hold all selections
                 const allDaySelections = [];
-
-                // Loop through all date inputs that are not empty
-                // Selector 'input[id$="-date"]' finds all inputs whose ID ends with '-date' (e.g., day1-date, day2-date)
-                $('input[id$="-date"]').each(function (index) {
+                $('input[id$="-date"]').each(function () {
                     const $dateInput = $(this);
                     const dateText = $dateInput.val();
                     
                     // Only process days where a date has been selected
                     if (dateText) {
-                        // Extract the numerical day index (e.g., 1 from 'day1-date')
                         const dayIdMatch = this.id.match(/^day(\d+)-date$/);
                         if (!dayIdMatch) return;
                         const dayIndex = parseInt(dayIdMatch[1]);
                         
                         const selectedShifts = [];
-                        // Targets input names like 'day1Shift', 'day2Shift', etc.
                         $(`input[name="day${dayIndex}Shift"]:checked`).each(function () {
                             selectedShifts.push($(this).val());
                         });
 
-                        // Add to the collection
                         allDaySelections.push({
                             day: dayIndex,
                             date: dateText,
@@ -103,34 +133,68 @@
                         });
                     }
                 });
-
-                // Assign the collected data to the payload
                 formSubmissionData.daySelections = allDaySelections;
             }
+
             
-            // --- SERVER CALL ---
+            
+            // --- 1. Show "Submitting..." MODAL FIRST ---
+            var loadingContent = `
+                <div class="flex flex-col items-center justify-center h-24">
+                    <div class="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                    <p class="text-gray-600">Submitting your selections...</p>
+                </div>
+            `;
+            // We pass empty string "" for buttons
+            // This assumes showAppModal() and hideAppModal() are defined in Index.html
+            showAppModal("Submitting...", loadingContent, "");
+            
+
+            // --- 2. SERVER CALL ---
             google.script.run
                 .withSuccessHandler(function() {
-                    alert("Submission successful!");
-                    $('#alert-modal').hide();
+                    // --- 3A. SUCCESS! ---
+                    var title = "Submission Successful";
+                    var content = "<p>Your vacation picks have been recorded.</p>";
+                    var button = '<button id="btn-submit-ok" type="button" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">OK</button>';
+                    
+                    // Update the modal
+                    showAppModal(title, content, button);
+
+                    // Attach handler to the new OK button
+                    $('#btn-submit-ok').one('click', function() {
+                        hideAppModal();
+                        // location.reload(); // Optional: Uncomment to refresh the page
+                    });
                 })
                 .withFailureHandler(function(err) {
-                    alert("Error submitting form: " + err.message);
-                    $('#alert-modal').hide();
+                    // --- 3B. FAILURE! ---
+                    var title = "Submission Error";
+                    var content = `<p>An error occurred. Your submission was not saved.</p>
+                                 <p class="mt-2 text-xs text-red-500"><strong>Error:</strong> ${err.message}</p>
+                                 <p class="mt-4 text-xs text-gray-500">Your data (for debugging):</p>
+                                 <pre class="mt-2 bg-gray-100 p-2 text-xs rounded">${JSON.stringify(formSubmissionData, null, 2)}</pre>`;
+                    var button = '<button id="btn-submit-fail" type="button" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700">Close</button>';
+
+                    // Update the modal
+                    showAppModal(title, content, button);
+
+                    // Attach handler to the new Close button
+                    $('#btn-submit-fail').one('click', function() {
+                        hideAppModal();
+                    });
                 })
                 .processShiftRequest(formSubmissionData); 
-            // -------------------
-
-            // Display the JSON in the modal (for debugging only)
-            $('#modal-content').text(JSON.stringify(formSubmissionData, null, 2));
-
-            // Show the modal
-            $('#alert-modal').show();
+            
+            // We no longer show the debug modal with the JSON
+            // The failure handler will show it if something goes wrong.
         });
 
         // Handle closing the modal
+        // This is now redundant since our modal buttons have their own handlers,
+        // but we'll keep it in case the user clicks the "Close" button
         $('#close-modal').on('click', function () {
-            $('#alert-modal').hide();
+            hideAppModal();
         });
     }
 </script>
