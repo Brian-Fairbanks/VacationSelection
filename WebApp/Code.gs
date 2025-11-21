@@ -1,6 +1,7 @@
 // --- CONFIGURATION ---
 const HR_VALIDATION_ID = "1QDF8CUhbC4cZKK0dnf5gOPL3SA7hXFihK1BqmJsufic"; // 2026 HR Validations
 const HR_VALIDATION_SHEET_NAME = "Sheet1";
+const ManualEntriesSheetName = "ManualEntries";
 const SHEET_CACHE = "Cache"; // The new sheet name created for maintaining fuzzy lookups of user names
 const SubmissionSheetName = "2026-Vacation Picks";
 
@@ -192,45 +193,47 @@ function getHrRosterList() {
 
 // --- MAIN DATA LOOKUPS (Keep This) ---
 function findUserById(employeeId) {
-  try {
-    var ss = SpreadsheetApp.openById(HR_VALIDATION_ID);
-    var sheet = ss.getSheetByName(HR_VALIDATION_SHEET_NAME);
-    var data = sheet.getDataRange().getValues();
-    var ID_COLUMN_INDEX = 0;
-    for (var i = 1; i < data.length; i++) {
-      if (String(data[i][ID_COLUMN_INDEX]) == String(employeeId)) {
-        // --- THIS IS THE FIX ---
-        // Convert Date objects to simple strings so they can be sent.
-        /*
-        0 Employee Number
-        1 Employee Name
-        2 Default Tracking Level 3
-        3 Rank
-        4 Hire Date
-        5 As of date
-        6 Years of Service
-        7 # of Holiday Leave Hours awarded
-        8 # of Vacation Leave Hours awarded
-        */
-        return {
-          employeeId: data[i][0],
-          employeeName: data[i][1],
-          trackingLevel: data[i][2],
-          rank: data[i][3],
-          hireDate: data[i][4].toString(),
-          yearsOfService: data[i][6].toString(), // <-- CONVERTED
-          holidayHours: data[i][7],
-          vacationHours: data[i][8],
-          shift: data[i][9],
-        };
-        // --- END FIX ---
+  var sheetNames = [HR_VALIDATION_SHEET_NAME, ManualEntriesSheetName];
+  // 1. Try to find in HR Validation Sheet
+  for (var j = 0; j < sheetNames.length; j++) {
+    try {
+      console.log("Checking sheet: ",sheetNames[j])
+      var ss = SpreadsheetApp.openById(HR_VALIDATION_ID);
+      var sheet = ss.getSheetByName(sheetNames[j]);
+      var data = sheet.getDataRange().getValues();
+      var ID_COLUMN_INDEX = 0;
+      for (var i = 1; i < data.length; i++) {
+        if (String(data[i][ID_COLUMN_INDEX]) == String(employeeId)) {
+          // Convert Date objects to simple strings so they can be sent.
+          /*
+          0 Employee Number
+          1 Employee Name
+          2 Default Tracking Level 3
+          3 Rank
+          4 Hire Date
+          5 As of date
+          6 Years of Service
+          7 # of Holiday Leave Hours awarded
+          8 # of Vacation Leave Hours awarded
+          */
+          return {
+            employeeId: data[i][0],
+            employeeName: data[i][1],
+            trackingLevel: data[i][2],
+            rank: data[i][3],
+            hireDate: data[i][4].toString(),
+            yearsOfService: data[i][6].toString(), // <-- CONVERTED
+            holidayHours: data[i][7],
+            vacationHours: data[i][8],
+            shift: data[i][9],
+          };
+        }
       }
+    } catch (e) {
+      Logger.log(e);
     }
-    return null;
-  } catch (e) {
-    Logger.log(e);
-    return null;
   }
+  return null;
 }
 
 function findPreviousPicks(employeeId) {
@@ -315,6 +318,72 @@ function normalizeRosterName(rosterName) {
  */
 
 /**
+ * Saves manually entered user info to the ManualEntries sheet.
+ * Mirrors the structure of the HR Validation sheet.
+ */
+function logManualUserToSheets(userInfo) {
+  // const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = SpreadsheetApp.openById(HR_VALIDATION_ID);
+  let sheet = ss.getSheetByName(ManualEntriesSheetName);
+
+  // Create the sheet if it doesn't exist
+  if (!sheet) {
+    sheet = ss.insertSheet(ManualEntriesSheetName);
+    const headers = [
+      "Employee Number",
+      "Employee Name",
+      "Default Tracking Level 3",
+      "Rank",
+      "Hire Date",
+      "As of date",
+      "Years of Service",
+      "# of Holiday Leave Hours awarded",
+      "# of Vacation Leave Hours awarded",
+      "Shift",
+    ];
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  }
+
+  // --- CALCULATE "LAST OCTOBER 1st" ---
+  const now = new Date();
+  let refYear = now.getFullYear();
+  // If we are currently before October (Month 9), the "last Oct 1st" was last year.
+  if (now.getMonth() < 9) { 
+    refYear -= 1;
+  }
+  const asOfDate = `10/1/${refYear}`;
+  // ------------------------------------
+
+  // Prepare the row data (Mirrored Structure)
+  const newRow = [
+    userInfo.employeeId,
+    `${userInfo.lastName}, ${userInfo.firstName}`, // Fixed: Use backticks for interpolation
+    "Manual Entry", // Placeholder for Tracking Level
+    userInfo.rank,
+    userInfo.hireDate,
+    asOfDate,       // Dynamic date
+    userInfo.yearsOfService,
+    userInfo.holidayHours,
+    userInfo.vacationHours,
+    userInfo.shift,
+  ];
+
+  // Check for existing ID to update
+  const data = sheet.getDataRange().getValues();
+  const idColumnIndex = 0; 
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][idColumnIndex]) === String(userInfo.employeeId)) {
+      sheet.getRange(i + 1, 1, 1, newRow.length).setValues([newRow]);
+      return;
+    }
+  }
+
+  // If ID not found, append
+  sheet.appendRow(newRow);
+}
+
+/**
  * Flattens the nested client-side data into a single array row
  * starting from "Submission Date" (Column C).
  * @param {Object} formData - The complete submission payload.
@@ -376,53 +445,70 @@ function flattenSubmissionData(formData) {
  */
 function processShiftRequest(formData) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
+  // Assuming SubmissionSheetName is defined and accessible
   const sheet = ss.getSheetByName(SubmissionSheetName);
   if (!sheet) {
     throw new Error("Could not find the target sheet.");
   }
 
   const employeeId = formData.userInfo.employeeId;
-  const ID_COLUMN_INDEX = 5; // Employee ID is column D (index 3)
-  const STATUS_COLUMN_INDEX = 1; // Status is column BO (index 90)
-  // (A-Z = 26, AA-AZ = 26, BA-BN = 14. 26+26+14 = 66th col = index 65)
-  // Let's find the real last column.
 
-  // --- DYNAMIC COLUMN INDEXING (Safer) ---
+  // --- 1. DYNAMIC COLUMN INDEXING (Crucial for the lookup loop) ---
+  // Get headers to find the correct 1-based column indices.
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const idCol = headers.indexOf("Employee ID #") + 1; // +1 for 1-based index
-  const statusCol = headers.indexOf("Status") + 1; // +1 for 1-based index
 
-  if (idCol === 0 || statusCol === 0) {
+  // Convert 0-based index from indexOf() to 1-based column number (+1)
+  const statusColNum = headers.indexOf("Status") + 1;
+  const idColNum = headers.indexOf("Employee ID #") + 1;
+
+  // Convert 0-based index from indexOf() to 0-based array index (no change)
+  const statusArrIndex = headers.indexOf("Status");
+  const idArrIndex = headers.indexOf("Employee ID #");
+
+  // Ensure the required columns exist
+  if (statusColNum === 0 || idColNum === 0) {
     throw new Error(
-      'Could not find "Employee ID #" or "Status" column in the sheet.'
+      'Could not find "Status" or "Employee ID #" column in the sheet.'
     );
   }
 
-  // --- 1. Supersede Old Submissions ---
+  // --- 2. Supersede Old Submissions ---
   const data = sheet.getDataRange().getValues();
+  // data[i] is the whole row array. We must use the 0-based array index (statusArrIndex, idArrIndex)
   for (let i = 1; i < data.length; i++) {
     // Start at 1 to skip header
-    const rowId = data[i][ID_COLUMN_INDEX];
-    const rowStatus = data[i][STATUS_COLUMN_INDEX];
+    const rowId = data[i][idArrIndex];
+    const rowStatus = data[i][statusArrIndex];
 
     if (String(rowId) === String(employeeId) && rowStatus === "Active") {
       // Found an old, active row for this user.
-      // Mark it as "Superseded".
-      sheet.getRange(i + 1, STATUS_COLUMN_INDEX + 1).setValue("Superseded"); // +1 for 1-based index
+      // i + 1 is the 1-based row number. statusColNum is the 1-based column number.
+      sheet.getRange(i + 1, statusColNum).setValue("Superseded");
     }
   }
 
-  // --- 2. Flatten the New Data ---
-  // This function now returns an array of 89 columns
-  // (9 headers + 40*2 days)
+  // --- 3. Flatten the New Data ---
   const flatData = flattenSubmissionData(formData);
 
-  // --- 3. Prepend the new columns ---
-  // Add "Manual Entry" (blank) and "Status" (Active) to the front
-  // of the flattened data array before appending.
-  const newRow = ["", "Active", ...flatData];
+  // --- 4. Prepare the New Row with Status and Manual Entry Flag, and log if needed ---
 
-  // --- 4. Append the New Row ---
+  // Determine the value for the "Manual Entry" column (Assumed to be the 1st column)
+  const manualEntryValue = formData.isManualEntry ? "Yes" : "";
+  if (formData.isManualEntry) {
+    // Log or update the manually entered user info for future use
+    logManualUserToSheets(formData.userInfo);
+  }
+
+  // Determine the value for the "Status" column (Assumed to be the 2nd column)
+  // NOTE: This assumes your spreadsheet structure is: [Manual Entry], [Status], [Submission Date]...
+
+  const newRow = [
+    manualEntryValue, // Column 1: Manual Entry (Yes or blank)
+    "Active", // Column 2: Status
+    ...flatData, // Column 3 onwards: Submission Date, Employee Info, Day Selections
+  ];
+
+  // --- 5. Append the New Row ---
   sheet.appendRow(newRow);
 }
 
@@ -454,6 +540,7 @@ function testLookup() {
   var nameData4 = findMatchingUsers("bfairbanks");
   Logger.log(nameData4);
 
+Logger.log("--- Test 6: Full Data Retreival",email," ---");
   var emailCheck = getInitialUserInfo(email);
   Logger.log(emailCheck);
 }

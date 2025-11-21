@@ -159,12 +159,13 @@
 
             // --- 1. Show "Submitting..." MODAL FIRST ---
             var loadingContent = `
-            <div class="flex flex-col items-center justify-center h-24">
-                <div class="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                <p class="text-gray-600">Submitting your selections...</p>
-            </div>
-        `;
+                <div class="flex flex-col items-center justify-center h-24">
+                    <div class="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                    <p class="text-gray-600">Submitting your selections...</p>
+                </div>
+            `;
             showAppModal("Submitting...", loadingContent, "");
+            console.log(formSubmissionData)
 
             // --- 2. SERVER CALL ---
             google.script.run
