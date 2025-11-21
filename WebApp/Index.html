@@ -6,7 +6,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vacation Selection Form</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+    <!-- External Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+
     <script>
         tailwind.config = {
             theme: {
@@ -18,7 +23,6 @@
             },
         }
     </script>
-
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.css">
 
     <?!= include('Styles'); ?>
@@ -122,11 +126,6 @@
     </div>
 
 
-    <!-- External Libraries -->
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
-
-
     <script>
         // This runs as soon as the page is loaded
         window.addEventListener("load", function () {
@@ -182,8 +181,9 @@
                 window.USER_INFO = data.userInfo;
 
                 // Initialize the form components (this is safe now)
-                initializeDatepicker();
                 initializeFormLogic();
+                initializeDatepicker();
+
 
                 // Fill the static user info header
                 fillUserInfo(data.userInfo);
@@ -311,6 +311,24 @@
             }
         });
 
+        function formatCleanDate(dateString) {
+            if (!dateString) return '';
+            try {
+                const date = new Date(dateString);
+                if (isNaN(date.getTime())) {
+                    return dateString; // Return original if parsing fails
+                }
+                // Format as MM/DD/YYYY
+                let month = (date.getMonth() + 1).toString().padStart(2, '0');
+                let day = date.getDate().toString().padStart(2, '0');
+                let year = date.getFullYear();
+                return `${month}/${day}/${year}`;
+            } catch (e) {
+                console.error("Error formatting hire date:", e);
+                return dateString;
+            }
+        }
+
         function loadFullData(employeeId) {
             google.script.run
                 .withSuccessHandler(onManualDataLoaded)
@@ -335,12 +353,18 @@
             document.getElementById("emp-name").innerText = userInfo.employeeName;
             document.getElementById("emp-id").innerText = userInfo.employeeId;
             document.getElementById("emp-rank").innerText = userInfo.rank;
-            document.getElementById("emp-hire-date").innerText = userInfo.hireDate;
+            document.getElementById("emp-hire-date").innerText = formatCleanDate(userInfo.hireDate);
             document.getElementById("emp-years").innerText = userInfo.yearsOfService;
             document.getElementById("emp-vac-hours").innerText = userInfo.vacationHours;
             document.getElementById("emp-hol-hours").innerText = userInfo.holidayHours;
             document.getElementById("emp-shift").innerText = userInfo.shift;
         }
+
+        // Remove autocomplete from date inputs globally
+        $(document).on('focus', 'input[type="date"]', function () {
+            $(this).removeAttr('autocomplete').attr('autocomplete', 'off');
+        });
+
     </script>
 </body>
 

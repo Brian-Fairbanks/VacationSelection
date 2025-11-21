@@ -1,8 +1,8 @@
 // --- CONFIGURATION ---
 const HR_VALIDATION_ID = "1QDF8CUhbC4cZKK0dnf5gOPL3SA7hXFihK1BqmJsufic"; // 2026 HR Validations
 const HR_VALIDATION_SHEET_NAME = "Sheet1";
-const SHEET_CACHE = "Cache";    // The new sheet name created for maintaining fuzzy lookups of user names
-const SubmissionSheetName = "2026-Vacation Picks"
+const SHEET_CACHE = "Cache"; // The new sheet name created for maintaining fuzzy lookups of user names
+const SubmissionSheetName = "2026-Vacation Picks";
 
 // --- CORE WEB APP FUNCTIONS ---
 function doGet() {
@@ -92,11 +92,11 @@ function convertEmailToSearchableName(email) {
 // --- DATA-GETTING FUNCTIONS (CALLED FROM HTML) ---
 function getEmployeeDataAndPicks(employeeId) {
   // Finds user details in the Roster sheet
-  var userInfo = findUserById(employeeId); 
+  var userInfo = findUserById(employeeId);
   if (!userInfo) return null;
-  
+
   // Finds user's last submission in the Picks sheet
-  var previousPicks = findPreviousPicks(employeeId); 
+  var previousPicks = findPreviousPicks(employeeId);
   return { userInfo: userInfo, previousPicks: previousPicks };
 }
 
@@ -221,7 +221,7 @@ function findUserById(employeeId) {
           yearsOfService: data[i][6].toString(), // <-- CONVERTED
           holidayHours: data[i][7],
           vacationHours: data[i][8],
-          shift: data[i][9]
+          shift: data[i][9],
         };
         // --- END FIX ---
       }
@@ -237,23 +237,24 @@ function findPreviousPicks(employeeId) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sheet = ss.getSheetByName(SubmissionSheetName);
-    
+
     // --- USE YOUR NEW INDEXES ---
     // Column F = index 5
-    const ID_COLUMN_INDEX = 5; 
+    const ID_COLUMN_INDEX = 5;
     // Column B = index 1
     const STATUS_COLUMN_INDEX = 1;
     // ----------------------------
 
     if (!sheet) {
-      Logger.log('ERROR: Submission sheet not found: ' + SubmissionSheetName);
+      Logger.log("ERROR: Submission sheet not found: " + SubmissionSheetName);
       return null;
     }
 
     var data = sheet.getDataRange().getValues();
-    
+
     // Search backwards from the latest submission
-    for (var i = data.length - 1; i > 0; i--) { // i > 0 to skip header
+    for (var i = data.length - 1; i > 0; i--) {
+      // i > 0 to skip header
       const rowId = data[i][ID_COLUMN_INDEX];
       const rowStatus = data[i][STATUS_COLUMN_INDEX];
 
@@ -261,12 +262,12 @@ function findPreviousPicks(employeeId) {
         // Found the most recent, active submission for this user
         // We return the raw row, as the map-to-string logic
         // is now handled in the getEmployeeDataAndPicks function.
-        return data[i].slice(2).map(function(value) {
-            return value ? String(value) : '';
+        return data[i].slice(2).map(function (value) {
+          return value ? String(value) : "";
         });
       }
     }
-    
+
     return null; // No *active* picks found
   } catch (e) {
     Logger.log("Error in findPreviousPicks: " + e.message);
@@ -308,15 +309,13 @@ function normalizeRosterName(rosterName) {
   return Array.from(new Set(combos.map(normalizeText).filter(Boolean)));
 }
 
-
-
-/** 
- * 
+/**
+ *
  * Form Submission Handling
-*/
+ */
 
 /**
- * Flattens the nested client-side data into a single array row 
+ * Flattens the nested client-side data into a single array row
  * starting from "Submission Date" (Column C).
  * @param {Object} formData - The complete submission payload.
  * @returns {Array} - A single array row with 89 columns of data.
@@ -324,10 +323,10 @@ function normalizeRosterName(rosterName) {
 function flattenSubmissionData(formData) {
   const user = formData.userInfo;
   const submissions = formData.daySelections || [];
-  
+
   // 9 header columns + 40*2 day columns = 89 total columns
-  const fullRow = new Array(89).fill(''); 
-  
+  const fullRow = new Array(89).fill("");
+
   // --- Fill Static Header Data (First 9 Columns) ---
   const headerData = [
     new Date(), // Submission Date
@@ -338,40 +337,37 @@ function flattenSubmissionData(formData) {
     user.shift,
     user.hireDate,
     formData.acknowledgment,
-    user.yearsOfService
+    user.yearsOfService,
   ];
-  
+
   // Place header data into the beginning of the array
   for (let i = 0; i < headerData.length; i++) {
     fullRow[i] = headerData[i];
   }
-  
+
   // --- Fill Dynamic Day Selections ---
   // Start column index for Day 1 is 9 (the 10th column in this array)
-  const START_DAY_INDEX = 9; 
+  const START_DAY_INDEX = 9;
 
-  submissions.forEach(daySelection => {
+  submissions.forEach((daySelection) => {
     // Ensure the day index is valid (1-40)
-    if (daySelection.day >= 1 && daySelection.day <= 40) { 
-      
+    if (daySelection.day >= 1 && daySelection.day <= 40) {
       // Calculate the start position for this day's pair of columns
       const startIndex = START_DAY_INDEX + (daySelection.day - 1) * 2;
-      
+
       // Safety check
       if (startIndex + 1 < fullRow.length) {
-        
         // Column 1: Date (e.g., 'Day 1')
         fullRow[startIndex] = daySelection.date;
-        
+
         // Column 2: Shifts (e.g., 'Shift Selection 1')
-        fullRow[startIndex + 1] = daySelection.shifts.join(', ');
+        fullRow[startIndex + 1] = daySelection.shifts.join(", ");
       }
     }
   });
 
   return fullRow;
 }
-
 
 /**
  * Processes the shift request data and appends it to the Google Sheet.
@@ -382,27 +378,30 @@ function processShiftRequest(formData) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SubmissionSheetName);
   if (!sheet) {
-    throw new Error('Could not find the target sheet.');
+    throw new Error("Could not find the target sheet.");
   }
 
   const employeeId = formData.userInfo.employeeId;
   const ID_COLUMN_INDEX = 5; // Employee ID is column D (index 3)
   const STATUS_COLUMN_INDEX = 1; // Status is column BO (index 90)
-                                 // (A-Z = 26, AA-AZ = 26, BA-BN = 14. 26+26+14 = 66th col = index 65)
-                                 // Let's find the real last column.
-                                 
+  // (A-Z = 26, AA-AZ = 26, BA-BN = 14. 26+26+14 = 66th col = index 65)
+  // Let's find the real last column.
+
   // --- DYNAMIC COLUMN INDEXING (Safer) ---
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   const idCol = headers.indexOf("Employee ID #") + 1; // +1 for 1-based index
   const statusCol = headers.indexOf("Status") + 1; // +1 for 1-based index
 
   if (idCol === 0 || statusCol === 0) {
-      throw new Error('Could not find "Employee ID #" or "Status" column in the sheet.');
+    throw new Error(
+      'Could not find "Employee ID #" or "Status" column in the sheet.'
+    );
   }
-  
+
   // --- 1. Supersede Old Submissions ---
   const data = sheet.getDataRange().getValues();
-  for (let i = 1; i < data.length; i++) { // Start at 1 to skip header
+  for (let i = 1; i < data.length; i++) {
+    // Start at 1 to skip header
     const rowId = data[i][ID_COLUMN_INDEX];
     const rowStatus = data[i][STATUS_COLUMN_INDEX];
 
@@ -416,7 +415,7 @@ function processShiftRequest(formData) {
   // --- 2. Flatten the New Data ---
   // This function now returns an array of 89 columns
   // (9 headers + 40*2 days)
-  const flatData = flattenSubmissionData(formData); 
+  const flatData = flattenSubmissionData(formData);
 
   // --- 3. Prepend the new columns ---
   // Add "Manual Entry" (blank) and "Status" (Active) to the front
@@ -426,7 +425,6 @@ function processShiftRequest(formData) {
   // --- 4. Append the New Row ---
   sheet.appendRow(newRow);
 }
-
 
 // --- TEST FUNCTION ---
 function testLookup() {
@@ -460,10 +458,6 @@ function testLookup() {
   Logger.log(emailCheck);
 }
 
-
-
-
-
 // --- NEW DEBUG TEST FUNCTION ---
 /**
  * Test function to simulate client submission and verify data flattening.
@@ -471,7 +465,7 @@ function testLookup() {
  */
 function testFormSubmissionData() {
   Logger.log("--- STARTING TEST FORM SUBMISSION ---");
-  
+
   // 1. SIMULATE CLIENT PAYLOAD
   // Use the structure of the data the client would send.
   // const testPayload = {
@@ -502,23 +496,24 @@ function testFormSubmissionData() {
   // Logger.log("--- FLATTENED DATA STRUCTURE ---");
   // Logger.log("Total Columns: " + flatData.length);
   // // Log the first 15 columns to check header data and Day 1/2 structure
-  // Logger.log("Header/Picks Preview (Cols 1-15): " + flatData.slice(0, 15).join(' | ')); 
-  
-  // // Example of what Day 4 (Cols 15-16) looks like (index 15)
-  // Logger.log("Day 4 Data (Cols 16-17): " + flatData[15] + " | " + flatData[16]); 
+  // Logger.log("Header/Picks Preview (Cols 1-15): " + flatData.slice(0, 15).join(' | '));
 
+  // // Example of what Day 4 (Cols 15-16) looks like (index 15)
+  // Logger.log("Day 4 Data (Cols 16-17): " + flatData[15] + " | " + flatData[16]);
 
   // 3. TEST FIND PREVIOUS PICKS
   Logger.log("\nTesting previous picks lookup for ID 538...");
   const previousPicks = findPreviousPicks("538");
-  
+
   if (previousPicks) {
-      Logger.log("--- PREVIOUS PICKS FOUND ---");
-      // Log the date of the first pick to confirm it's reading the row
-      Logger.log("First Pick Date (Col 10): " + previousPicks[9]); 
-      Logger.log(previousPicks)
+    Logger.log("--- PREVIOUS PICKS FOUND ---");
+    // Log the date of the first pick to confirm it's reading the row
+    Logger.log("First Pick Date (Col 10): " + previousPicks[9]);
+    Logger.log(previousPicks);
   } else {
-      Logger.log("--- PREVIOUS PICKS NOT FOUND (This may be correct if sheet is empty) ---");
+    Logger.log(
+      "--- PREVIOUS PICKS NOT FOUND (This may be correct if sheet is empty) ---"
+    );
   }
 
   Logger.log("--- TEST COMPLETE ---");

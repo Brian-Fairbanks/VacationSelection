@@ -1,6 +1,7 @@
 <script>
     // Global variables initialized in DatepickerInit
-    let currentDayCount = 1;
+    let currentDayCount = 0;
+    console.log("Current Day Initialized at ", currentDayCount);
     const MAX_DAYS = 30;
     defaultStartDate = new Date('2026-02-04')
     endSelectDate = new Date('2027-01-01')
@@ -10,40 +11,51 @@
     // Track which input is currently opening the datepicker
     let currentOpenInputId = null;
 
+
     /**
      * Generates the HTML string for a new day selection block.
      * NOTE: We remove the 'disabled' check from the template since it's now handled
      * dynamically in onSelect whenever a date is picked.
      */
-    function createDayBlock(dayNum) {
-        return `
-        <div id="day-${dayNum}-selection" class="flex flex-col sm:flex-row gap-4 sm:gap-8 items-start sm:items-end py-4 border-t mt-4 day-selection-block" style="display: none;">
-                
-                <div class="flex-1 min-w-0">
-                        <label for="day${dayNum}-date" class="block text-base font-medium text-gray-700 mb-1">Date</label>
-                        <div class="flex items-center space-x-2">
-                                <input type="text" id="day${dayNum}-date" name="day${dayNum}Date" class="datepicker w-full mt-1 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" placeholder="MM/DD/YYYY">
-                                <span id="day${dayNum}-shift-feedback" class="text-xs px-2 py-1 rounded-full font-semibold border border-transparent transition-all duration-300 whitespace-nowrap"></span>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1">MM-DD-YYYY (Click input for calendar)</p>
-                </div>
-
-                <div class="shrink-0">
-                        <label class="block text-base font-medium text-gray-700 mb-1">Shift Selection ${dayNum}</label>
-                        <div class="flex space-x-4">
-                                <div class="flex items-center">
-                                        <input id="day${dayNum}-shift-day1" name="day${dayNum}Shift" type="checkbox" value="Day1" checked class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                                        <label for="day${dayNum}-shift-day1" class="ml-2 text-sm font-medium text-gray-700">Day 1</label>
-                                </div>
-                                <div class="flex items-center">
-                                        <input id="day${dayNum}-shift-day2" name="day${dayNum}Shift" type="checkbox" value="Day2" checked class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                                        <label for="day${dayNum}-shift-day2" class="ml-2 text-sm font-medium text-gray-700">Day 2</label>
-                                </div>
-                        </div>
+function createDayBlock(dayNum) {
+    console.log("Creating Day HTML");
+    return `
+    <div id="day-${dayNum}-selection" class="flex flex-col rounded-lg sm:flex-row gap-4 sm:gap-8 items-start sm:items-center py-3 px-3 border-t mt-2 day-selection-block bg-white/80 shadow-sm transition-shadow duration-200" style="display: none;">
+        
+        <div class="drag-handle cursor-move p-1 flex-shrink-0">
+            <svg class="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M7 2a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM7 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM7 14a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM17 2a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM17 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM17 14a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"/>
+            </svg>
+        </div>
+        
+        <div class="flex-1 min-w-0 sm:w-64"> 
+                <label for="day${dayNum}-date" class="block text-base font-medium text-gray-700 mb-1">Date</label>
+                <input type="text" id="day${dayNum}-date" name="day${dayNum}Date" 
+                       class="datepicker w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" 
+                       placeholder="MM/DD/YYYY" autocomplete="off">
+                <div class="mt-1 h-6">
+                    <span id="day${dayNum}-shift-feedback" class="text-xs text-gray-500 px-2 py-1 rounded-full font-semibold border border-transparent transition-all duration-300 whitespace-nowrap">
+                        MM-DD-YYYY (Click input)
+                    </span>
                 </div>
         </div>
-        `;
-    }
+
+        <div class="shrink-0">
+                <label class="block text-base font-medium text-gray-700 mb-1">Shift Selection ${dayNum}</label>
+                <div class="flex space-x-4">
+                    <div class="flex items-center">
+                        <input id="day${dayNum}-shift-day1" name="day${dayNum}Shift" type="checkbox" value="Day1" checked class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                        <label for="day${dayNum}-shift-day1" class="ml-2 text-sm font-medium text-gray-700">Day 1</label>
+                    </div>
+                    <div class="flex items-center">
+                        <input id="day${dayNum}-shift-day2" name="day${dayNum}Shift" type="checkbox" value="Day2" checked class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                        <label for="day${dayNum}-shift-day2" class="ml-2 text-sm font-medium text-gray-700">Day 2</label>
+                    </div>
+                </div>
+        </div>
+    </div>
+    `;
+}
 
     /**
      * This function contains your complex datepicker configuration.
@@ -88,34 +100,27 @@
 
             // --- onSelect (Modified for Checkbox Disabling) ---
             onSelect: function (dateText, inst) {
+                console.log("Datepicker Select Function Called")
                 const selectedDate = new Date(inst.selectedYear, inst.selectedMonth, inst.selectedDay);
                 const { blockStartDate, shift } = getShiftAndBlock(selectedDate);
                 const $input = $(this);
                 const dayNum = parseInt(this.id.match(/^day(\d+)-date$/)[1]);
-                const userAssignedShift = window.USER_INFO ? window.USER_INFO.shift : null;
-                // console.log(`selectedDate:${selectedDate}, dayNum:${dayNum}, input:${$input} `);
-                if (blockStartDate) {
-                    
-                    //  All Block Methods 
-                    allSelectedBlockStarts[dayNum] = blockStartDate;
 
+                if (blockStartDate) {
+                    allSelectedBlockStarts[dayNum] = blockStartDate;
                     const formattedDate = formatDate(blockStartDate);
                     $input.val(formattedDate);
 
                     // Refresh ALL datepickers to show the new global state
                     $('.datepicker').datepicker('refresh');
-                      collapseEmptyRows();
 
-                    // Update the feedback span for *this* input
-
+                    // Update feedback
                     const $feedback = $(`#day${dayNum}-shift-feedback`);
                     const { block } = getShiftAndBlock(blockStartDate);
                 }
 
-                // Add new day logic 
-                if (dayNum === currentDayCount && currentDayCount < MAX_DAYS) {
-                    addNewDayBlock();
-                }
+                // Do NOT call any empty row management here - let the change handler do it
+                $input.trigger('change');
             },
 
             // --- beforeShowDay (Modified for Calendar Day Disabling) ---
@@ -237,265 +242,407 @@
             }
         });
 
-        // Handle clearing an input
-        $(inputElement).on('change', function() {
-        const $input = $(this);
-        const dayNum = parseInt(this.id.match(/^day(\d+)-date$/)[1]);
-        
-        // The core validation now runs here
-        enforceCheckboxState($input, dayNum);
-        collapseEmptyRows();
+        // Handle clearing an input - simplified to ONLY do validation
+        $(inputElement).on('change', function () {
+            console.log("Selected a value through datepickerInit!");
+            const $input = $(this);
+            const dayNum = parseInt(this.id.match(/^day(\d+)-date$/)[1]);
+
+            // The core validation now runs here
+            enforceCheckboxState($input, dayNum);
+
+            // NEW: always run empty-row logic after a valid change
+            clearTimeout(window.emptyRowTimeout);
+            window.emptyRowTimeout = setTimeout(manageEmptyRows, 50);
         });
     }
 
-/**
- * Handles creating the new block, initializing its datepicker, and showing it.
- */
-function addNewDayBlock() {
-    currentDayCount++;
-    const newBlockHtml = createDayBlock(currentDayCount);
-    const $newBlock = $(newBlockHtml);
-    $('#day-selection-container').append($newBlock);
+    /**
+     * Handles creating the new block, initializing its datepicker, and showing it.
+     */
+    function addNewDayBlock() {
+        currentDayCount++;
+        const newBlockHtml = createDayBlock(currentDayCount);
+        const $newBlock = $(newBlockHtml);
+        $('#day-selection-container').append($newBlock);
 
-    // Apply the complex datepicker to the new input
-    const newInput = $newBlock.find('.datepicker');
-    applyComplexDatepicker(newInput);
+        const newInput = $newBlock.find('.datepicker');
+        applyComplexDatepicker(newInput);
 
-    $newBlock.slideDown(200);
-}
-
-// In DatepickerInit.html
-
-function enforceCheckboxState($input, dayNum) {
-    const dateText = $input.val();
-    const $shiftCheckboxes = $(`input[name="day${dayNum}Shift"]`);
-    const $feedback = $(`#day${dayNum}-shift-feedback`);
-    
-    // Default class removal to reset validation styling
-    $input.removeClass('border-red-500 border-green-500'); 
-    $feedback.removeClass('bg-red-200 bg-blue-200 bg-orange-200 text-red-800 text-blue-800 text-orange-800 border-red-400 border-blue-400 border-orange-400 border');
-    
-    // 1. Handle the "clear" case (if input is empty)
-    if (!dateText) {
-        $shiftCheckboxes.prop('disabled', false).prop('checked', true); 
-        $feedback.text('');
-        if (allSelectedBlockStarts[dayNum]) {
-            delete allSelectedBlockStarts[dayNum];
-            $('.datepicker').datepicker('refresh'); 
-        }
-        return;
+        $newBlock.slideDown(200, function () {
+            $('#day-selection-container').sortable('refresh');
+        });
     }
 
-    // 2. Handle the "filled" case (VALIDATION)
-    const userAssignedShift = window.USER_INFO ? window.USER_INFO.shift : null;
-    let dateForCalc;
-    let validationError = "";
+    function enforceCheckboxState($input, dayNum) {
+        console.log("Validating status");
+        const dateText = $input.val();
+        const $shiftCheckboxes = $(`input[name="day${dayNum}Shift"]`);
+        const $feedback = $(`#day${dayNum}-shift-feedback`);
 
-    try {
-        // --- VALIDATION CHECKS (Format, Validity, Range, Shift) ---
-        const dateParts = dateText.split('/');
-        if (dateParts.length !== 3 || dateParts[2].length !== 4) {
-             throw new Error("Invalid format.");
-        }
-        
-        dateForCalc = new Date(dateParts[2], dateParts[0] - 1, dateParts[1]);
-        if (isNaN(dateForCalc.getTime())) {
-            throw new Error("Invalid date entered.");
-        }
+        // reset styles
+        $input.removeClass('border-red-500 border-green-500');
+        $feedback.removeClass(
+            'bg-red-200 bg-blue-200 bg-orange-200 text-red-800 text-blue-800 text-orange-800 border-red-400 border-blue-400 border-orange-400 border'
+        );
 
-        const { shift: selectedShift, blockStartDate, block } = getShiftAndBlock(dateForCalc);
-        
-        if (selectedShift === "Pre-Cycle") {
-            throw new Error("Date is before cycle start.");
-        }
+        // EMPTY = user intentionally cleared date
+        // --- 1. DETERMINE CLEAR STATE ---
+        const checkedShifts = $shiftCheckboxes.filter(':checked').length;
+        // Check if the date is missing OR if the date is present but no shifts are checked.
+        const shouldClear = !dateText || (dateText && checkedShifts === 0);
 
-        if (selectedShift !== userAssignedShift) {
-            throw new Error(`Shift mismatch (${selectedShift}).`);
-        }
-        
-        // --- 3. VALID STATE ACTIONS ---
-        const formattedDate = formatDate(blockStartDate);
-        $input.val(formattedDate).addClass('border-green-500'); // ✅ Green border on success
-        
-        // Update global state
-        allSelectedBlockStarts[dayNum] = blockStartDate;
-        
-        // Update feedback
-        $feedback.text(`Block ${block}`).addClass('bg-blue-200 text-blue-800 border-blue-400'); // Example coloring
-        $shiftCheckboxes.prop('disabled', false); 
-        $('.datepicker').datepicker('refresh'); 
-
-    } catch (e) {
-        // --- 4. INVALID STATE ACTIONS (Error Highlighting) ---
-        validationError = e.message;
-        
-        // Apply Red Styling
-        $input.addClass('border-red-500'); // ❌ Red border on failure
-        $feedback.text(validationError).addClass('bg-red-200 text-red-800 border-red-400');
-        
-        // Clear the bad data
-        $input.val("");
-        
-        // Reset state
-        $shiftCheckboxes.prop('disabled', true).prop('checked', false); // Disable checkboxes on error
-        if (allSelectedBlockStarts[dayNum]) {
-            delete allSelectedBlockStarts[dayNum];
-            $('.datepicker').datepicker('refresh'); 
-        }
-    }
-}
-
-/**
- * Fills data into a specific date block and ensures the global state is updated.
- * This is called by fillPreviousPicks.
- * @param {string} dateText - The RAW date string (e.g., "Fri Feb 06 2026...").
- * @param {string} shiftsString - Comma-separated shifts (e.g., "Day1, Day2").
- * @param {number} dayIndex - The day number (1, 2, 3...)
- */
-function loadPickIntoDayBlock(dateText, shiftsString, dayIndex) {
-    const $dateInput = $(`#day${dayIndex}-date`);
-    
-    // --- FIX A: PARSE AND FORMAT THE DATE ---
-    let blockStartDate;
-    let formattedDate;
-    try {
-        // 1. Create a Date object from the raw string
-        blockStartDate = new Date(dateText);
-        
-        // 2. Format it to MM/DD/YYYY
-        // We'll add a simple formatter here to be safe
-        let month = (blockStartDate.getMonth() + 1).toString().padStart(2, '0');
-        let day = blockStartDate.getDate().toString().padStart(2, '0');
-        let year = blockStartDate.getFullYear();
-        formattedDate = `${month}/${day}/${year}`;
-
-    } catch (e) {
-        console.error(`Could not parse date ${dateText} for day ${dayIndex}.`, e);
-        $dateInput.val("INVALID DATE"); // Show an error
-        return; // Stop
-    }
-    // ------------------------------------
-
-    // 1. Set the *formatted* date value in the input field
-    $dateInput.val(formattedDate);
-
-    // 2. Set the global selection state (using the Date object)
-    allSelectedBlockStarts[dayIndex] = blockStartDate;
-    
-    // 3. Set checkboxes (This will run now that the date parsing is fixed)
-    const shiftsArray = shiftsString.split(',').map(s => s.trim());
-    
-    $(`input[name="day${dayIndex}Shift"]`).prop('checked', false);
-    shiftsArray.forEach(shiftValue => {
-        $(`input[name="day${dayIndex}Shift"][value="${shiftValue}"]`).prop('checked', true);
-    });
-
-    // 4. Force enforcement/feedback update
-    enforceCheckboxState($dateInput, dayIndex);
-}
-
-function fillPreviousPicks(picksRow) {
-    
-    // --- SET ACKNOWLEDGMENT (Existing logic remains) ---
-    var acknowledgment = picksRow[7]; 
-    if (acknowledgment) {
-        $(`input[name="formCompletion"][value="${acknowledgment}"]`).prop('checked', true);
-        $('input[name="formCompletion"]').trigger('change');
-    }
-    // -----------------------------------------------------------
-    
-    var START_PICK_INDEX = 9; // Index of Day 1 column (Column J)
-    var pickCount = 0;
-
-    // We iterate through the picksRow, jumping 2 columns at a time.
-    for (var i = START_PICK_INDEX; i < picksRow.length; i += 2) {
-        var dateText = picksRow[i]; // This is the RAW date string
-        var shiftString = picksRow[i + 1]; // e.g., "Day1, Day2"
-        
-        // Stop if the date column is empty
-        if (!dateText) break;
-
-        pickCount++;
-        
-        // Check to ensure we don't exceed the max (safety)
-        if (pickCount > MAX_DAYS) break; 
-        
-        // A. Handle Day 1 (which is already in the DOM)
-        if (pickCount === 1) {
-            loadPickIntoDayBlock(dateText, shiftString, 1);
-        } else {
-            // B. Handle Day 2 and subsequent days:
-            // The Day 1 block is already visible, but Day 2/3/etc. slots MUST be created.
-            addNewDayBlock(); // Creates the slot for pickCount=2, 3, 4, etc.
+        if (shouldClear) {
+            // Force the input to clear if this routine was triggered by unchecking shifts
+            $input.val(""); 
             
-            // loadPickIntoDayBlock uses currentDayCount, which was just incremented by addNewDayBlock
-            loadPickIntoDayBlock(dateText, shiftString, currentDayCount);
+            $shiftCheckboxes.prop('disabled', false).prop('checked', false); 
+            $feedback.text('');
+            if (allSelectedBlockStarts[dayNum]) {
+                delete allSelectedBlockStarts[dayNum];
+                $('.datepicker').datepicker('refresh'); 
+            }
+            
+            // 🔥 FIX: Reset shift labels to generic "Day 1" / "Day 2"
+            $(`label[for="day${dayNum}-shift-day1"]`).text('Day 1');
+            $(`label[for="day${dayNum}-shift-day2"]`).text('Day 2');
+            return;
+        }
+
+        // 2. Handle the "filled" case (VALIDATION)
+        const userAssignedShift = window.USER_INFO ? window.USER_INFO.shift : null;
+        let dateForCalc;
+        let validationError = "";
+
+        try {
+            // --- VALIDATION CHECKS (Format, Validity, Range, Shift) ---
+            const dateParts = dateText.split('/');
+            if (dateParts.length !== 3 || dateParts[2].length !== 4) {
+                throw new Error("Invalid format (MM/DD/YYYY).");
+            }
+
+            dateForCalc = new Date(dateParts[2], dateParts[0] - 1, dateParts[1]);
+            if (isNaN(dateForCalc.getTime())) {
+                throw new Error("Invalid date entered.");
+            }
+
+            const { shift: selectedShift, blockStartDate } = getShiftAndBlock(dateForCalc);
+
+            if (selectedShift === "Pre-Cycle") {
+                throw new Error("Date is before cycle start.");
+            }
+
+            if (userAssignedShift && selectedShift !== userAssignedShift) {
+                throw new Error(
+                    `This date is on Shift ${selectedShift}. Your shift is ${userAssignedShift}.`
+                );
+            }
+
+            // ✅ VALID
+            const formattedDate = formatDate(blockStartDate);
+            $input.data('invalid', false); // ✅ Set invalid flag to false on success
+            $input.val(formattedDate).addClass('border-green-500');
+
+            // Update global state
+            allSelectedBlockStarts[dayNum] = blockStartDate;
+
+            
+            // 🔥 NEW LOGIC: Update Shift Labels to show actual Dates
+            const day2Date = new Date(blockStartDate);
+            day2Date.setDate(day2Date.getDate() + 1);
+
+            const day1Formatted = formatDate(blockStartDate);
+            const day2Formatted = formatDate(day2Date);
+
+            // Update Day 1 Label
+            $(`label[for="day${dayNum}-shift-day1"]`).text(day1Formatted);
+            // Update Day 2 Label
+            $(`label[for="day${dayNum}-shift-day2"]`).text(day2Formatted);
+            // ------------------------------------
+
+
+            $feedback
+                .text(`Shift ${selectedShift} – OK`)
+                .addClass('bg-blue-200 text-blue-800 border-blue-400');
+
+            $shiftCheckboxes.prop('disabled', false);
+            $('.datepicker').datepicker('refresh');
+
+        } catch (e) {
+            // ❌ INVALID – keep the value so row is NOT treated as empty
+            $input.data('invalid', true); // ❌ Set invalid flag to true
+            validationError = e.message;
+
+            $input.addClass('border-red-500');
+            $feedback
+                .text(validationError)
+                .addClass('bg-red-200 text-red-800 border-red-400');
+
+            // do NOT clear value, do NOT mark block as empty
+            // (optional) keep shifts enabled so the row feels editable
+            $shiftCheckboxes.prop('disabled', false);
+            
+            // Reset dates if they have changed.
+            $(`label[for="day${dayNum}-shift-day1"]`).text('Day 1');
+            $(`label[for="day${dayNum}-shift-day2"]`).text('Day 2');
+            
+            // and IMPORTANT: DO NOT do $input.val("") here
         }
     }
-    
-    // --- CRITICAL FIX: Add ONLY the single blank day after the loop ends ---
-    // This is the clean, single slot the user needs to interact with next.
-    // It runs regardless of whether pickCount is 1 or 5, ensuring a single blank line.
-    if (currentDayCount < MAX_DAYS) {
-        addNewDayBlock(); 
+
+    /**
+     * Fills data into a specific date block and ensures the global state is updated.
+     * This is called by fillPreviousPicks.
+     * @param {string} dateText - The RAW date string (e.g., "Fri Feb 06 2026...").
+     * @param {string} shiftsString - Comma-separated shifts (e.g., "Day1, Day2").
+     * @param {number} dayIndex - The day number (1, 2, 3...)
+     */
+    function loadPickIntoDayBlock(dateText, shiftsString, dayIndex) {
+        const $dateInput = $(`#day${dayIndex}-date`);
+
+        // --- FIX A: PARSE AND FORMAT THE DATE ---
+        let blockStartDate;
+        let formattedDate;
+        try {
+            // 1. Create a Date object from the raw string
+            blockStartDate = new Date(dateText);
+
+            // 2. Format it to MM/DD/YYYY
+            // We'll add a simple formatter here to be safe
+            let month = (blockStartDate.getMonth() + 1).toString().padStart(2, '0');
+            let day = blockStartDate.getDate().toString().padStart(2, '0');
+            let year = blockStartDate.getFullYear();
+            formattedDate = `${month}/${day}/${year}`;
+
+        } catch (e) {
+            console.error(`Could not parse date ${dateText} for day ${dayIndex}.`, e);
+            $dateInput.val("INVALID DATE"); // Show an error
+            return; // Stop
+        }
+        // ------------------------------------
+
+        // 1. Set the *formatted* date value in the input field
+        $dateInput.val(formattedDate);
+
+        // 2. Set the global selection state (using the Date object)
+        allSelectedBlockStarts[dayIndex] = blockStartDate;
+
+        // 3. Set checkboxes (This will run now that the date parsing is fixed)
+        const shiftsArray = shiftsString.split(',').map(s => s.trim());
+
+        $(`input[name="day${dayIndex}Shift"]`).prop('checked', false);
+        shiftsArray.forEach(shiftValue => {
+            $(`input[name="day${dayIndex}Shift"][value="${shiftValue}"]`).prop('checked', true);
+        });
+
+        // 4. Force enforcement/feedback update
+        enforceCheckboxState($dateInput, dayIndex);
     }
-    // ------------------------------------------------------------------
-    
-    // CRITICAL: Refresh all datepickers to show the correct global highlights
-    $('.datepicker').datepicker('refresh'); 
-}
 
-/**
- * Removes all redundant empty day selection blocks, leaving only the first blank spot.
- * This also ensures there is *always* at least one empty block available,
- * provided MAX_DAYS hasn't been reached.
- */
-function collapseEmptyRows() {
-    const $allBlocks = $('#day-selection-container').find('.day-selection-block');
-    
-    // We use a flag to track the first time we encounter an empty block.
-    let foundFirstEmpty = false;
-    let blocksToDelete = $(); // Initialize an empty jQuery collection
-    
-    $allBlocks.each(function() {
-        const $block = $(this);
-        const isEmpty = $block.find('input[id$="-date"]').val().length === 0;
 
-        if (isEmpty) {
-            if (foundFirstEmpty) {
-                // This is the second, third, etc., empty block. Mark for deletion.
-                blocksToDelete = blocksToDelete.add($block);
+    function fillPreviousPicks(picksRow) {
+
+        // --- SET ACKNOWLEDGMENT (Existing logic remains) ---
+        var acknowledgment = picksRow[7];
+        if (acknowledgment) {
+            $(`input[name="formCompletion"][value="${acknowledgment}"]`).prop('checked', true);
+            $('input[name="formCompletion"]').trigger('change');
+        }
+        // -----------------------------------------------------------
+
+        var START_PICK_INDEX = 9; // Index of Day 1 column (Column J)
+        var pickCount = 0;
+
+        // We iterate through the picksRow, jumping 2 columns at a time.
+        for (var i = START_PICK_INDEX; i < picksRow.length; i += 2) {
+            var dateText = picksRow[i]; // This is the RAW date string
+            var shiftString = picksRow[i + 1]; // e.g., "Day1, Day2"
+
+            // Stop if the date column is empty
+            if (!dateText) break;
+
+            pickCount++;
+
+            // Check to ensure we don't exceed the max (safety)
+            if (pickCount > MAX_DAYS) break;
+
+            // A. Handle Day 1 (which is already in the DOM)
+            if (pickCount === 1) {
+                loadPickIntoDayBlock(dateText, shiftString, 1);
             } else {
-                // This is the first empty block. We KEEP this one and set the flag.
-                foundFirstEmpty = true;
+                // B. Handle Day 2 and subsequent days:
+                // The Day 1 block is already visible, but Day 2/3/etc. slots MUST be created.
+                addNewDayBlock(); // Creates the slot for pickCount=2, 3, 4, etc.
+
+                // loadPickIntoDayBlock uses currentDayCount, which was just incremented by addNewDayBlock
+                loadPickIntoDayBlock(dateText, shiftString, currentDayCount);
             }
         }
-    });
 
-    // 1. Perform the deletion animation and DOM removal
-    blocksToDelete.fadeOut(200, function() {
-        $(this).remove();
-    });
-
-    // 2. Recalculate the global counter based on the DOM length
-    // We wait 250ms to ensure the deletion animation finishes before recalculating the true count.
-    setTimeout(function() {
-        // Recalculate the current number of rows in the DOM
-        currentDayCount = $('#day-selection-container').find('.day-selection-block').length;
-        
-        // --- NEW LOGIC: Add a new block if one is needed ---
-        // If we didn't find *any* empty block, it means all existing blocks are filled.
-        // In this case, we need to add the next blank row (if max not reached).
-        if (!foundFirstEmpty && currentDayCount < MAX_DAYS) {
+        // --- CRITICAL FIX: Add ONLY the single blank day after the loop ends ---
+        // This is the clean, single slot the user needs to interact with next.
+        // It runs regardless of whether pickCount is 1 or 5, ensuring a single blank line.
+        if (currentDayCount < MAX_DAYS) {
             addNewDayBlock();
         }
-    }, 250); 
-}
+        // ------------------------------------------------------------------
+
+        // CRITICAL: Refresh all datepickers to show the correct global highlights
+        $('.datepicker').datepicker('refresh');
+    }
+
+
+
+
+
+
+    // SINGLE CHANGE HANDLER - manages all empty row logic
+    $('#day-selection-container').off('change').on('change', 'input', function () {
+        console.log("Detected change through formLogic!");
+        // Debounce to prevent multiple rapid calls
+        clearTimeout(window.emptyRowTimeout);
+        window.emptyRowTimeout = setTimeout(manageEmptyRows, 50);
+    });
+
+    // Robust empty row management function
+    function manageEmptyRows() {
+        console.log("Running ManageEmptyRows()")
+        const $container = $('#day-selection-container');
+        const $allBlocks = $container.find('.day-selection-block');
+
+        let emptyBlocks = [];
+        let filledBlocks = [];
+
+        // Categorize all blocks
+        $allBlocks.each(function () {
+            const $block = $(this);
+            const $dateInput = $block.find('input[id$="-date"]');
+            const hasDate = $dateInput.val().trim() !== '';
+            const hasCheckedShifts = $block.find('input[type="checkbox"]:checked').length > 0;
+            console.log({ date: $dateInput.val().trim(), checked: $block.find('input[type="checkbox"]:checked').length > 0 })
+            if (!hasDate) {
+                emptyBlocks.push($block);
+            } else {
+                filledBlocks.push($block);
+            }
+        });
+
+        console.log(`Found ${emptyBlocks.length} empty blocks, ${filledBlocks.length} filled blocks`);
+
+        // Remove excess empty blocks (keep only the first one)
+        if (emptyBlocks.length > 1) {
+            for (let i = 1; i < emptyBlocks.length; i++) {
+                console.log(`Removing excess empty block ${i}`);
+                emptyBlocks[i].remove();
+            }
+            emptyBlocks = [emptyBlocks[0]]; // Keep only the first
+        }
+
+        // If no empty blocks exist and we haven't reached max, add one
+        if (emptyBlocks.length === 0 && $allBlocks.length < MAX_DAYS) {
+            console.log('No empty blocks found, adding one');
+            addNewDayBlock();
+        }
+
+        // Reorder indices after any changes
+        reorderDayIndices();
+    }
+
+    // Reorder day indices after sorting
+    function reorderDayIndices() {
+        console.log("reorderDayIndicies");
+
+        const newAllSelectedBlockStarts = {};
+
+        $('#day-selection-container .day-selection-block').each(function (index) {
+            const newIndex = index + 1;
+            const $block = $(this);
+
+            // 1. Store the old date value before changing IDs
+            const $dateInput = $block.find('input[id$="-date"]');
+            const dateValue = $dateInput.val();
+
+            // Update block ID
+            $block.attr('id', `day-${newIndex}-selection`);
+
+            // Update all IDs and names in the block
+            $block.find('input, label, span').each(function () {
+                const $el = $(this);
+                const oldId = $el.attr('id');
+                const oldName = $el.attr('name');
+                const oldFor = $el.attr('for');
+
+                if (oldId) {
+                    // Use a regex that replaces the last number sequence, regardless of size
+                    $el.attr('id', oldId.replace(/day\d+/, `day${newIndex}`));
+                }
+                if (oldName) {
+                    $el.attr('name', oldName.replace(/day\d+/, `day${newIndex}`));
+                }
+                if (oldFor) {
+                    $el.attr('for', oldFor.replace(/day\d+/, `day${newIndex}`));
+                }
+            });
+
+            // Update shift selection labels
+            $block.find('label:contains("Shift Selection")').text(`Shift Selection ${newIndex}`);
+
+            // 2. Reconstruct new allSelectedBlockStarts map based on the dateValue
+            if (dateValue) {
+                try {
+                    // Safely parse the MM/DD/YYYY string back into a Date object
+                    const dateParts = dateValue.split('/');
+                    const parsedDate = new Date(dateParts[2], dateParts[0] - 1, dateParts[1]);
+
+                    if (!isNaN(parsedDate.getTime())) {
+                        newAllSelectedBlockStarts[newIndex] = parsedDate;
+                    }
+                } catch (e) {
+                    console.error(`Re-indexing failed to parse date for new index ${newIndex}:`, dateValue, e);
+                }
+            }
+        });
+
+        // 3. Update global state variables
+        currentDayCount = $('#day-selection-container .day-selection-block').length;
+        console.log("reorderDayIndices set day count to: ", currentDayCount);
+        allSelectedBlockStarts = newAllSelectedBlockStarts;
+
+        // 4. 🔥 CRITICAL FIX: Destroy and Re-apply Datepicker
+        // This is necessary because changing the ID of an input element requires 
+        // the jQuery UI Datepicker instance to be fully reset and re-initialized 
+        // so it can register the new ID and metadata.
+        $('.datepicker').each(function () {
+            const $input = $(this);
+
+            // Destroy the old instance if it exists
+            if ($input.data('datepicker')) {
+                $input.datepicker('destroy');
+            }
+
+            // Re-apply the complex datepicker (which includes the 'change' handler binding)
+            applyComplexDatepicker(this);
+        });
+    }
 
     /**
      * This is the main function called from Form_Refactored.html
      */
     function initializeDatepicker() {
-        applyComplexDatepicker('#day1-date');
+        // init sortable for future blocks
+        $('#day-selection-container').sortable({
+            handle: '.drag-handle',
+            axis: 'y',
+            containment: 'parent',
+            tolerance: 'pointer',
+            items: '.day-selection-block',
+            update: reorderDayIndices
+        });
+
+        // (your delegated change handler for manageEmptyRows can stay as-is)
+
+        // bootstrap Day 1 dynamically
+        addNewDayBlock();   // creates #day1-selection + #day1-date and wires datepicker
     }
+
 </script>
