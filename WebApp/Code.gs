@@ -12,21 +12,6 @@ function doGet() {
   var rosterList = getHrRosterList();
   html.rosterData = JSON.stringify(rosterList);
 
-  // --- NEW DEBUG CODE ---
-  // Let's find out what email the app is *really* seeing
-  var userEmail = "";
-  try {
-    userEmail = Session.getActiveUser().getEmail();
-    if (!userEmail) {
-      userEmail = "EMAIL_IS_BLANK (empty string)";
-    }
-  } catch (e) {
-    userEmail = "ERROR_GETTING_EMAIL: " + e.message;
-  }
-  // Pass this 'userEmail' string to the HTML file
-  html.debugEmail = userEmail;
-  // --- END DEBUG CODE ---
-
   return html.evaluate().setTitle("Vacation Selection Form");
 }
 
@@ -42,6 +27,7 @@ function getInitialUserInfo(passedEmail) {
   var data = { userInfo: null, previousPicks: null, logs: [] };
 
   var email = passedEmail || Session.getActiveUser().getEmail(); // This is the cleanest syntax
+  console.log("Scanning for ", email);
   data.logs.push("Email found: " + (email || "NULL/BLANK"));
   if (!email) return data;
 
@@ -148,6 +134,140 @@ function findMatchingUsers(searchText) {
   return scored.slice(0, 5);
 }
 
+// --- CACHE MANAGEMENT ---
+
+/**
+ * REBUILDS the entire Cache sheet.
+ * It combines data from the Main HR Sheet AND the Manual Entries sheet.
+ * Run this manually if the cache gets out of sync, or if the sheet is empty.
+ */
+function buildNormalizedCacheSheet() {
+  var ss = SpreadsheetApp.openById(HR_VALIDATION_ID);
+  var cacheSheet = ss.getSheetByName(SHEET_CACHE);
+
+  // Create Cache sheet if it doesn't exist
+  if (!cacheSheet) {
+    cacheSheet = ss.insertSheet(SHEET_CACHE);
+  } else {
+    cacheSheet.clear();
+  }
+
+  cacheSheet.appendRow([
+    "EmployeeID",
+    "DisplayName",
+    "NormalizedSearchString",
+    "TokensCSV",
+  ]);
+  cacheSheet.setFrozenRows(1);
+
+  var outputRows = [];
+
+  // -- SOURCE 1: HR Validation Sheet --
+  var hrSheet = ss.getSheetByName(HR_VALIDATION_SHEET_NAME);
+  if (hrSheet) {
+    // Assumes: Col A = ID, Col B = Name
+    processSheetForCache(hrSheet, outputRows);
+  }
+
+  // -- SOURCE 2: Manual Entries Sheet --
+  var manualSheet = ss.getSheetByName(ManualEntriesSheetName);
+  if (manualSheet) {
+    // Assumes: Col A = ID, Col B = Name
+    processSheetForCache(manualSheet, outputRows);
+  }
+
+  // Write to Cache
+  if (outputRows.length > 0) {
+    cacheSheet.getRange(2, 1, outputRows.length, 4).setValues(outputRows);
+  }
+
+  Logger.log(
+    "SUCCESS: 'Cache' built with " + outputRows.length + " employees."
+  );
+}
+
+/**
+ * Helper to process a sheet and add rows to the output array.
+ */
+function processSheetForCache(sheet, outputArray) {
+  var data = sheet.getDataRange().getValues();
+  // Skip header (i=1)
+  for (var i = 1; i < data.length; i++) {
+    var id = data[i][0];
+    var name = String(data[i][1] || "").trim();
+
+    if (!id || !name) continue; // Skip empty rows
+
+    // Check if this ID is already in our list (deduplicate if user exists in both sheets)
+    // This prevents duplicates if a Manual Entry gets moved to the Official HR sheet later
+    var exists = outputArray.some(function (row) {
+      return String(row[0]) === String(id);
+    });
+    if (exists) continue;
+
+    var searchParts = normalizeRosterName(name);
+    var searchString = searchParts.join(" ");
+    // Create tokens from both the raw name and the normalized permutations
+    var toks = Array.from(
+      new Set(tokenize(name).concat(tokenize(searchString)))
+    );
+
+    outputArray.push([id, name, searchString, toks.join(" ")]);
+  }
+}
+
+/**
+ * APPENDS a single user to the Cache.
+ * Call this immediately after a manual entry is saved.
+ * Updates the Cache if the ID exists, or appends if it doesn't.
+ */
+function appendUserToCache(userInfo) {
+  var ss = SpreadsheetApp.openById(HR_VALIDATION_ID);
+  var cacheSheet = ss.getSheetByName(SHEET_CACHE);
+
+  // Safety: If cache is missing, build it fresh
+  if (!cacheSheet || cacheSheet.getLastRow() < 1) {
+    buildNormalizedCacheSheet();
+    return;
+  }
+
+  // 1. Prepare the Data Row
+  var id = String(userInfo.employeeId);
+  var displayName = userInfo.lastName + ", " + userInfo.firstName;
+  var searchParts = normalizeRosterName(displayName);
+  var searchString = searchParts.join(" ");
+  var toks = Array.from(
+    new Set(tokenize(displayName).concat(tokenize(searchString)))
+  );
+
+  var newRowData = [id, displayName, searchString, toks.join(" ")];
+
+  // 2. Scan for existing ID
+  var data = cacheSheet.getDataRange().getValues();
+  var rowIndexToUpdate = -1;
+
+  // Start at i=1 to skip header
+  for (var i = 1; i < data.length; i++) {
+    // strict string comparison to ensure "538" matches 538
+    if (String(data[i][0]) === id) {
+      rowIndexToUpdate = i + 1; // +1 because sheet rows are 1-based
+      break;
+    }
+  }
+
+  // 3. Execute Write
+  if (rowIndexToUpdate > -1) {
+    // UPDATE existing row
+    // getRange(row, col, numRows, numCols)
+    cacheSheet.getRange(rowIndexToUpdate, 1, 1, 4).setValues([newRowData]);
+    Logger.log("UPDATED Cache for User ID: " + id);
+  } else {
+    // APPEND new row
+    cacheSheet.appendRow(newRowData);
+    Logger.log("APPENDED User ID to Cache: " + id);
+  }
+}
+
 // --- TEXT NORMALIZATION (Keep This) ---
 function normalizeText(s) {
   return String(s || "")
@@ -171,6 +291,15 @@ function getHrRosterList() {
   try {
     var ss = SpreadsheetApp.openById(HR_VALIDATION_ID);
     var sh = ss.getSheetByName(SHEET_CACHE);
+
+    // --- AUTO-BUILD CHECK ---
+    if (!sh || sh.getLastRow() < 2) {
+      Logger.log("Cache empty or missing. Rebuilding now...");
+      buildNormalizedCacheSheet();
+      // Refresh the sheet object after build
+      sh = ss.getSheetByName(SHEET_CACHE);
+    }
+
     var rows = sh.getLastRow(),
       cols = sh.getLastColumn();
     if (rows < 2) return [];
@@ -197,7 +326,7 @@ function findUserById(employeeId) {
   // 1. Try to find in HR Validation Sheet
   for (var j = 0; j < sheetNames.length; j++) {
     try {
-      console.log("Checking sheet: ",sheetNames[j])
+      console.log("Checking sheet: ", sheetNames[j]);
       var ss = SpreadsheetApp.openById(HR_VALIDATION_ID);
       var sheet = ss.getSheetByName(sheetNames[j]);
       var data = sheet.getDataRange().getValues();
@@ -348,7 +477,7 @@ function logManualUserToSheets(userInfo) {
   const now = new Date();
   let refYear = now.getFullYear();
   // If we are currently before October (Month 9), the "last Oct 1st" was last year.
-  if (now.getMonth() < 9) { 
+  if (now.getMonth() < 9) {
     refYear -= 1;
   }
   const asOfDate = `10/1/${refYear}`;
@@ -361,7 +490,7 @@ function logManualUserToSheets(userInfo) {
     "Manual Entry", // Placeholder for Tracking Level
     userInfo.rank,
     userInfo.hireDate,
-    asOfDate,       // Dynamic date
+    asOfDate, // Dynamic date
     userInfo.yearsOfService,
     userInfo.holidayHours,
     userInfo.vacationHours,
@@ -370,17 +499,22 @@ function logManualUserToSheets(userInfo) {
 
   // Check for existing ID to update
   const data = sheet.getDataRange().getValues();
-  const idColumnIndex = 0; 
+  const idColumnIndex = 0;
+  let userUpdated = false;
 
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][idColumnIndex]) === String(userInfo.employeeId)) {
       sheet.getRange(i + 1, 1, 1, newRow.length).setValues([newRow]);
-      return;
+      userUpdated = true;
+      break;
     }
   }
 
-  // If ID not found, append
-  sheet.appendRow(newRow);
+  if (!userUpdated) {
+    sheet.appendRow(newRow);
+  }
+  // Update the fuzzy search cache immediately
+  appendUserToCache(userInfo);
 }
 
 /**
@@ -540,7 +674,7 @@ function testLookup() {
   var nameData4 = findMatchingUsers("bfairbanks");
   Logger.log(nameData4);
 
-Logger.log("--- Test 6: Full Data Retreival",email," ---");
+  Logger.log("--- Test 6: Full Data Retreival", email, " ---");
   var emailCheck = getInitialUserInfo(email);
   Logger.log(emailCheck);
 }
