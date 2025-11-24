@@ -54,7 +54,7 @@
                 const $dateInput = $(`#day${dayNum}-date`);
 
                 // Only react when we just went to 0 halves on a day that had a date
-                if (!anyChecked && $dateInput.val().trim() !== '') {
+                if (!anyChecked) {
                     // 1) Clear the date (no request for that block anymore)
                     $dateInput.val('');
 
@@ -141,15 +141,21 @@
                         if (!dayIdMatch) return;
                         const dayIndex = parseInt(dayIdMatch[1]);
 
+                        // Get Shifts
                         const selectedShifts = [];
                         $(`input[name="day${dayIndex}Shift"]:checked`).each(function () {
                             selectedShifts.push($(this).val());
                         });
 
+                        // --- NEW: Get Prioritize Checkbox Status ---
+                        const isPrioritized = $(`#day${dayIndex}-prioritize`).is(':checked');
+                        // ------------------------------------------
+
                         allDaySelections.push({
                             day: dayIndex,
                             date: dateText,
                             shifts: selectedShifts,
+                            prioritize: isPrioritized // <--- Add to payload
                         });
                     }
                 });

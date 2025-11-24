@@ -29,29 +29,51 @@
         </div>
         
         <div class="flex-1 min-w-0 sm:w-64"> 
-                <label for="day${dayNum}-date" class="block text-base font-medium text-gray-700 mb-1">Date</label>
-                <input type="text" id="day${dayNum}-date" name="day${dayNum}Date" 
-                       class="datepicker w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" 
-                       placeholder="MM/DD/YYYY" autocomplete="off">
-                <div class="mt-1 h-6">
-                    <span id="day${dayNum}-shift-feedback" class="text-xs text-gray-500 px-2 py-1 rounded-full font-semibold border border-transparent transition-all duration-300 whitespace-nowrap">
-                        MM-DD-YYYY (Click input)
-                    </span>
-                </div>
+            <label for="day${dayNum}-date" class="block text-base font-medium text-gray-700 mb-1">Date</label>
+            <input type="text" id="day${dayNum}-date" name="day${dayNum}Date" 
+                   class="datepicker w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" 
+                   placeholder="MM/DD/YYYY" autocomplete="off">
+            
+            <div class="mt-1 h-6">
+                <span id="day${dayNum}-shift-feedback" class="text-xs text-gray-500 px-2 py-1 rounded-full font-semibold border border-transparent transition-all duration-300 whitespace-nowrap">
+                    MM-DD-YYYY (Click input)
+                </span>
+            </div>
+
+            <div id="warning-${dayNum}" class="hidden mt-2 p-2 bg-yellow-50 rounded border border-yellow-200 flex items-start w-full sm:w-auto">
+                <svg class="h-4 w-4 text-yellow-600 mr-2 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <p class="text-xs text-yellow-700 leading-snug">
+                    <strong>Half-Tour:</strong> You are only requesting off one day.
+                </p>
+            </div>
         </div>
 
-        <div class="shrink-0">
-                <label class="block text-base font-medium text-gray-700 mb-1">Shift Selection ${dayNum}</label>
-                <div class="flex flex-col space-y-2:">
-                    <div class="flex items-center">
-                        <input id="day${dayNum}-shift-day1" name="day${dayNum}Shift" type="checkbox" value="Day1" checked class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                        <label for="day${dayNum}-shift-day1" class="ml-2 text-sm font-medium text-gray-700">Day 1</label>
-                    </div>
-                    <div class="flex items-center">
-                        <input id="day${dayNum}-shift-day2" name="day${dayNum}Shift" type="checkbox" value="Day2" checked class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                        <label for="day${dayNum}-shift-day2" class="ml-2 text-sm font-medium text-gray-700">Day 2</label>
-                    </div>
+        <div class="shrink-0 max-w-xs"> 
+            <label class="block text-base font-medium text-gray-700 mb-1">Shift Selection ${dayNum}</label>
+            <div class="flex flex-col space-y-2">
+                
+                <div class="flex items-center">
+                    <input id="day${dayNum}-shift-day1" name="day${dayNum}Shift" type="checkbox" value="Day1" checked 
+                           onchange="toggleHalfTourWarning(${dayNum})"
+                           class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                    <label for="day${dayNum}-shift-day1" class="ml-2 text-sm font-medium text-gray-700">Day 1</label>
                 </div>
+
+                <div class="flex items-center">
+                    <input id="day${dayNum}-shift-day2" name="day${dayNum}Shift" type="checkbox" value="Day2" checked 
+                           onchange="toggleHalfTourWarning(${dayNum})"
+                           class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                    <label for="day${dayNum}-shift-day2" class="ml-2 text-sm font-medium text-gray-700">Day 2</label>
+                </div>
+
+                <div class="mt-2 pt-2 border-t border-gray-100 flex items-center">
+                    <input id="day${dayNum}-prioritize" name="day${dayNum}Prioritize" type="checkbox" value="yes" disabled 
+                           class="h-4 w-4 text-orange-500 border-gray-300 rounded focus:ring-orange-400">
+                    <label for="day${dayNum}-prioritize" class="ml-2 text-xs italic text-gray-500">Prioritize Later Day First</label>
+                </div>
+            </div>
         </div>
     </div>
     `;
@@ -278,6 +300,9 @@
         console.log("Validating status");
         const dateText = $input.val();
         const $shiftCheckboxes = $(`input[name="day${dayNum}Shift"]`);
+        // --- NEW SELECTOR ---
+        const $prioritizeCheckbox = $(`#day${dayNum}-prioritize`);
+        // --------------------
         const $feedback = $(`#day${dayNum}-shift-feedback`);
 
         // reset styles
@@ -287,23 +312,25 @@
         );
 
         // EMPTY = user intentionally cleared date
-        // --- 1. DETERMINE CLEAR STATE ---
         const checkedShifts = $shiftCheckboxes.filter(':checked').length;
-        // Check if the date is missing OR if the date is present but no shifts are checked.
         const shouldClear = !dateText || (dateText && checkedShifts === 0);
 
         if (shouldClear) {
-            // Force the input to clear if this routine was triggered by unchecking shifts
             $input.val("");
 
+            // Reset Shifts
             $shiftCheckboxes.prop('disabled', false).prop('checked', false);
+
+            // --- NEW: Reset Prioritize Checkbox ---
+            $prioritizeCheckbox.prop('checked', false).prop('disabled', true);
+            // -------------------------------------
+
             $feedback.text('');
             if (allSelectedBlockStarts[dayNum]) {
                 delete allSelectedBlockStarts[dayNum];
                 $('.datepicker').datepicker('refresh');
             }
 
-            // 🔥 FIX: Reset shift labels to generic "Day 1" / "Day 2"
             $(`label[for="day${dayNum}-shift-day1"]`).text('Day 1');
             $(`label[for="day${dayNum}-shift-day2"]`).text('Day 2');
             return;
@@ -315,7 +342,7 @@
         let validationError = "";
 
         try {
-            // --- VALIDATION CHECKS (Format, Validity, Range, Shift) ---
+            // ... [Validation checks remain the same] ...
             const dateParts = dateText.split('/');
             if (dateParts.length !== 3 || dateParts[2].length !== 4) {
                 throw new Error("Invalid format (MM/DD/YYYY).");
@@ -340,17 +367,14 @@
 
             // ✅ VALID
             const formattedDate = formatDate(blockStartDate);
-            $input.data('invalid', false); // ✅ Set invalid flag to false on success
+            $input.data('invalid', false);
             $input.val(formattedDate).addClass('border-green-500');
 
             // Update global state
             allSelectedBlockStarts[dayNum] = blockStartDate;
 
-
-            // 🔥 NEW LOGIC: Update Shift Labels to show actual Dates
             const day2Date = new Date(blockStartDate);
             day2Date.setDate(day2Date.getDate() + 1);
-
             const day1Formatted = formatDate(blockStartDate);
             const day2Formatted = formatDate(day2Date);
 
@@ -366,6 +390,11 @@
                 .addClass('bg-blue-200 text-blue-800 border-blue-400');
 
             $shiftCheckboxes.prop('disabled', false);
+
+            // --- NEW: Enable Prioritize Checkbox ---
+            $prioritizeCheckbox.prop('disabled', false);
+            // ---------------------------------------
+
             $('.datepicker').datepicker('refresh');
 
         } catch (e) {
@@ -382,11 +411,12 @@
             // (optional) keep shifts enabled so the row feels editable
             $shiftCheckboxes.prop('disabled', false);
 
-            // Reset dates if they have changed.
+            // --- NEW: Reset Prioritize Checkbox on error ---
+            $prioritizeCheckbox.prop('disabled', true).prop('checked', false);
+            // ----------------------------------------------
+
             $(`label[for="day${dayNum}-shift-day1"]`).text('Day 1');
             $(`label[for="day${dayNum}-shift-day2"]`).text('Day 2');
-
-            // and IMPORTANT: DO NOT do $input.val("") here
         }
     }
 
@@ -397,7 +427,7 @@
      * @param {string} shiftsString - Comma-separated shifts (e.g., "Day1, Day2").
      * @param {number} dayIndex - The day number (1, 2, 3...)
      */
-    function loadPickIntoDayBlock(dateText, shiftsString, dayIndex) {
+    function loadPickIntoDayBlock(dateText, shiftsString, dayIndex, prioritizeLater = false) {
         const $dateInput = $(`#day${dayIndex}-date`);
 
         // --- FIX A: PARSE AND FORMAT THE DATE ---
@@ -434,6 +464,14 @@
         shiftsArray.forEach(shiftValue => {
             $(`input[name="day${dayIndex}Shift"][value="${shiftValue}"]`).prop('checked', true);
         });
+
+        toggleHalfTourWarning(dayIndex);
+
+        // --- NEW: Set Prioritize Checkbox ---
+        if (prioritizeLater) {
+            $(`#day${dayIndex}-prioritize`).prop('checked', true);
+        }
+        // ------------------------------------
 
         // 4. Force enforcement/feedback update
         enforceCheckboxState($dateInput, dayIndex);
@@ -623,6 +661,23 @@
             // Re-apply the complex datepicker (which includes the 'change' handler binding)
             applyComplexDatepicker(this);
         });
+    }
+
+    function toggleHalfTourWarning(dayNum) {
+        const checkbox1 = document.getElementById(`day${dayNum}-shift-day1`);
+        const checkbox2 = document.getElementById(`day${dayNum}-shift-day2`);
+        const warningDiv = document.getElementById(`warning-${dayNum}`);
+
+        if (!checkbox1 || !checkbox2 || !warningDiv) return;
+
+        // Check count: 1 = Half Tour, 2 = Full Tour, 0 = Empty
+        const count = (checkbox1.checked ? 1 : 0) + (checkbox2.checked ? 1 : 0);
+
+        if (count === 1) {
+            warningDiv.classList.remove('hidden');
+        } else {
+            warningDiv.classList.add('hidden');
+        }
     }
 
     /**
