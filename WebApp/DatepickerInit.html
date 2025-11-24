@@ -20,58 +20,61 @@
     function createDayBlock(dayNum) {
         console.log("Creating Day HTML");
         return `
-    <div id="day-${dayNum}-selection" class="flex flex-col rounded-lg sm:flex-row gap-4 sm:gap-8 items-start sm:items-center py-3 px-3 border-t mt-2 day-selection-block bg-white/80 shadow-sm transition-shadow duration-200" style="display: none;">
+    <div id="day-${dayNum}-selection" class="flex flex-row border-t mt-4 rounded-lg day-selection-block bg-white shadow-sm overflow-hidden transition-shadow duration-200" style="display: none;">
         
-        <div class="drag-handle cursor-move p-1 flex-shrink-0">
-            <svg class="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+        <div class="drag-handle cursor-move w-12 flex-shrink-0 bg-gray-50 hover:bg-gray-100 border-r border-gray-200 flex flex-col items-center justify-center self-stretch" style="touch-action: none;">
+            <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M7 2a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM7 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM7 14a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM17 2a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM17 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM17 14a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"/>
             </svg>
         </div>
         
-        <div class="flex-1 min-w-0 sm:w-64"> 
-            <label for="day${dayNum}-date" class="block text-base font-medium text-gray-700 mb-1">Date</label>
-            <input type="text" id="day${dayNum}-date" name="day${dayNum}Date" 
-                   class="datepicker w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" 
-                   placeholder="MM/DD/YYYY" autocomplete="off">
+        <div class="flex-1 flex flex-col sm:flex-row gap-2 sm:gap-8 items-start sm:items-center p-3 sm:p-4 min-w-0">
             
-            <div class="mt-1 h-6">
-                <span id="day${dayNum}-shift-feedback" class="text-xs text-gray-500 px-2 py-1 rounded-full font-semibold border border-transparent transition-all duration-300 whitespace-nowrap">
-                    MM-DD-YYYY (Click input)
-                </span>
-            </div>
-
-            <div id="warning-${dayNum}" class="hidden mt-2 p-2 bg-yellow-50 rounded border border-yellow-200 flex items-start w-full sm:w-auto">
-                <svg class="h-4 w-4 text-yellow-600 mr-2 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                <p class="text-xs text-yellow-700 leading-snug">
-                    <strong>Half-Tour:</strong> You are only requesting off one day.
-                </p>
-            </div>
-        </div>
-
-        <div class="shrink-0 max-w-xs"> 
-            <label class="block text-base font-medium text-gray-700 mb-1">Shift Selection ${dayNum}</label>
-            <div class="flex flex-col space-y-2">
+            <div class="flex-1 w-full sm:w-64 min-w-0"> 
+                <label for="day${dayNum}-date" class="block text-base font-medium text-gray-700 mb-1">Date</label>
+                <input type="text" id="day${dayNum}-date" name="day${dayNum}Date" 
+                       class="datepicker w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-base" 
+                       placeholder="MM/DD/YYYY" autocomplete="off">
                 
-                <div class="flex items-center">
-                    <input id="day${dayNum}-shift-day1" name="day${dayNum}Shift" type="checkbox" value="Day1" checked 
-                           onchange="toggleHalfTourWarning(${dayNum})"
-                           class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                    <label for="day${dayNum}-shift-day1" class="ml-2 text-sm font-medium text-gray-700">Day 1</label>
+                <div class="mt-1 h-6">
+                    <span id="day${dayNum}-shift-feedback" class="text-xs text-gray-500 px-2 py-1 rounded-full font-semibold border border-transparent transition-all duration-300 whitespace-nowrap">
+                        MM-DD-YYYY (Click input)
+                    </span>
                 </div>
 
-                <div class="flex items-center">
-                    <input id="day${dayNum}-shift-day2" name="day${dayNum}Shift" type="checkbox" value="Day2" checked 
-                           onchange="toggleHalfTourWarning(${dayNum})"
-                           class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                    <label for="day${dayNum}-shift-day2" class="ml-2 text-sm font-medium text-gray-700">Day 2</label>
+                <div id="warning-${dayNum}" class="hidden mt-2 p-2 bg-yellow-50 rounded border border-yellow-200 flex items-start w-full sm:w-auto">
+                    <svg class="h-4 w-4 text-yellow-600 mr-2 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <p class="text-xs text-yellow-700 leading-snug">
+                        <strong>Half-Tour:</strong> Only 1 day selected.
+                    </p>
                 </div>
+            </div>
 
-                <div class="mt-2 pt-2 border-t border-gray-100 flex items-center">
-                    <input id="day${dayNum}-prioritize" name="day${dayNum}Prioritize" type="checkbox" value="yes" disabled 
-                           class="h-4 w-4 text-orange-500 border-gray-300 rounded focus:ring-orange-400">
-                    <label for="day${dayNum}-prioritize" class="ml-2 text-xs italic text-gray-500">Prioritize Later Day First</label>
+            <div class="shrink-0 max-w-xs w-full sm:w-auto"> 
+                <label class="block text-base font-medium text-gray-700 mb-1">Shift Selection ${dayNum}</label>
+                <div class="flex flex-col space-y-2">
+                    
+                    <div class="flex items-center">
+                        <input id="day${dayNum}-shift-day1" name="day${dayNum}Shift" type="checkbox" value="Day1" checked 
+                               onchange="toggleHalfTourWarning(${dayNum})"
+                               class="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                        <label for="day${dayNum}-shift-day1" class="ml-3 text-sm font-medium text-gray-700">Day 1</label>
+                    </div>
+
+                    <div class="flex items-center">
+                        <input id="day${dayNum}-shift-day2" name="day${dayNum}Shift" type="checkbox" value="Day2" checked 
+                               onchange="toggleHalfTourWarning(${dayNum})"
+                               class="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                        <label for="day${dayNum}-shift-day2" class="ml-3 text-sm font-medium text-gray-700">Day 2</label>
+                    </div>
+
+                    <div class="mt-2 pt-2 border-t border-gray-100 flex items-center">
+                        <input id="day${dayNum}-prioritize" name="day${dayNum}Prioritize" type="checkbox" value="yes" disabled 
+                               class="h-5 w-5 text-orange-500 border-gray-300 rounded focus:ring-orange-400">
+                        <label for="day${dayNum}-prioritize" class="ml-3 text-xs italic text-gray-500">Prioritize Later Day First</label>
+                    </div>
                 </div>
             </div>
         </div>
