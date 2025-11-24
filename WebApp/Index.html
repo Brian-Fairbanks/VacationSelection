@@ -31,12 +31,6 @@
 
 <body class="bg-gray-100 font-sans antialiased flex items-center justify-center min-h-screen py-12">
 
-    <!-- <div style="background-color: #fffbe6; border: 1px solid #ffe58f; padding: 10px; font-family: monospace; display:none;" id="debug-panel">
-        <strong>DEBUG PANEL:</strong><br>
-        The email Google sees for you is: <strong>
-            <?!= debugEmail ?>
-        </strong>
-    </div> -->
 
     <script>
         // This 'rosterData' variable is injected by Code.gs (in doGet)
@@ -103,7 +97,7 @@
 
         <div id="search-results" style="margin-top: 15px;">
         </div>
-        
+
         <!-- Add the "I cannot be found" button -->
         <div style="margin-top: 20px; text-align: center;">
             <button id="btn-manual-entry" type="button" class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
@@ -118,24 +112,24 @@
             <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">
                 Enter Your Information
             </h3>
-            
+
             <form id="manual-entry-form">
                 <div class="space-y-4">
                     <div>
                         <label for="manual-first-name" class="block text-sm font-medium text-gray-700">First Name *</label>
                         <input type="text" id="manual-first-name" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                     </div>
-                    
+
                     <div>
                         <label for="manual-last-name" class="block text-sm font-medium text-gray-700">Last Name *</label>
                         <input type="text" id="manual-last-name" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                     </div>
-                    
+
                     <div>
                         <label for="manual-employee-id" class="block text-sm font-medium text-gray-700">Employee ID *</label>
                         <input type="text" id="manual-employee-id" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                     </div>
-                    
+
                     <div>
                         <label for="manual-rank" class="block text-sm font-medium text-gray-700">Rank *</label>
                         <select id="manual-rank" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
@@ -148,7 +142,7 @@
                             <option value="Battalion Chief">Battalion Chief</option>
                         </select>
                     </div>
-                    
+
                     <div>
                         <label for="manual-shift" class="block text-sm font-medium text-gray-700">Shift *</label>
                         <select id="manual-shift" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
@@ -158,13 +152,13 @@
                             <option value="C">C Shift</option>
                         </select>
                     </div>
-                    
+
                     <div>
                         <label for="manual-hire-date" class="block text-sm font-medium text-gray-700">Hire Date *</label>
                         <input type="date" id="manual-hire-date" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                     </div>
                 </div>
-                
+
                 <div class="mt-6 flex justify-end space-x-3">
                     <button type="button" id="btn-cancel-manual" class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
                         Cancel
@@ -316,18 +310,19 @@
         }
 
         function onLoadError(err) {
-            // Hard script failure
-            // Show an error in our new modal
-            var errorContent = "A critical error occurred: " + err.message +
-                "<br><br>Please try refreshing the page.";
-            var closeButton = '<button id="btn-close-error" type="button" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700">Close</button>';
+            document.getElementById("manual-login").style.display = "block";
+            // // Hard script failure
+            // // Show an error in our new modal
+            // var errorContent = "A critical error occurred: " + err.message +
+            //     "<br><br>Please try refreshing the page.";
+            // var closeButton = '<button id="btn-close-error" type="button" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700">Close</button>';
 
-            showAppModal("Script Error", errorContent, closeButton);
+            // showAppModal("Script Error", errorContent, closeButton);
 
-            $('#btn-close-error').one('click', function () {
-                hideAppModal();
-                document.getElementById("manual-login").style.display = "block";
-            });
+            // $('#btn-close-error').one('click', function () {
+            //     hideAppModal();
+            //     document.getElementById("manual-login").style.display = "block";
+            // });
         }
 
 
@@ -444,26 +439,26 @@
                 }
 
                 const now = new Date();
-                
+
                 // Determine the reference date: Last October 1st
                 let referenceYear = now.getFullYear();
                 // If current date is BEFORE Oct 1st, use the previous year
                 if (now.getMonth() < 9) { // Months are 0-indexed, so 9 is October
                     referenceYear -= 1;
                 }
-                
+
                 // Oct 1st of the reference year
                 const referenceDate = new Date(referenceYear, 9, 1); // Month 9 is October
-                
+
                 // Calculate the difference in years as of the reference date
                 let yearsOfService = referenceDate.getFullYear() - hireDate.getFullYear();
-                
+
                 // Adjust if the hire date month/day is after Oct 1st
                 // Note: For simplicity, we just check the difference in years since Oct 1st is the cut-off.
                 // A full date comparison is safer for edge cases but often overcomplicates this particular rule.
                 // The current logic works: YearsOfService = (Year of Last Oct 1st) - (Hire Year).
                 // Since Oct 1st is the cut-off, this simpler calculation should be correct.
-                
+
                 // 1. Base Hours
                 let vacHours = 192;
                 const holHours = 144; // Holiday hours are static
@@ -479,7 +474,7 @@
                 userInfo.yearsOfService = String(yearsOfService);
                 userInfo.vacationHours = vacHours;
                 userInfo.holidayHours = holHours;
-                
+
                 return userInfo;
 
             } catch (e) {
@@ -509,21 +504,21 @@
         });
 
         // Add event handler for manual entry button
-        document.getElementById("btn-manual-entry").addEventListener("click", function() {
+        document.getElementById("btn-manual-entry").addEventListener("click", function () {
             document.getElementById("manual-entry-modal").style.display = "flex";
         });
 
         // Add event handler for cancel button
-        document.getElementById("btn-cancel-manual").addEventListener("click", function() {
+        document.getElementById("btn-cancel-manual").addEventListener("click", function () {
             document.getElementById("manual-entry-modal").style.display = "none";
             // Clear the form
             document.getElementById("manual-entry-form").reset();
         });
 
         // Add event handler for manual entry form submission
-        document.getElementById("manual-entry-form").addEventListener("submit", function(event) {
+        document.getElementById("manual-entry-form").addEventListener("submit", function (event) {
             event.preventDefault();
-            
+
             // Collect the manual entry data
             const manualUserInfo = {
                 firstName: document.getElementById("manual-first-name").value.trim(),
@@ -541,32 +536,32 @@
                 // Create employeeName in the expected format for compatibility
                 employeeName: `${document.getElementById("manual-last-name").value.trim()}, ${document.getElementById("manual-first-name").value.trim()}`
             };
-            
+
             // Validate required fields
-            if (!manualUserInfo.firstName || !manualUserInfo.lastName || !manualUserInfo.employeeId || 
+            if (!manualUserInfo.firstName || !manualUserInfo.lastName || !manualUserInfo.employeeId ||
                 !manualUserInfo.rank || !manualUserInfo.shift || !manualUserInfo.hireDate) {
                 alert("Please fill in all required fields.");
                 return;
             }
-            
+
             // Set the global USER_INFO
             const calculatedUserInfo = calculateEntitlements(manualUserInfo);
             window.USER_INFO = calculatedUserInfo;
-            
+
             // Initialize the form components
             initializeFormLogic();
             initializeDatepicker();
-            
+
             // Fill the static user info header
             fillUserInfo(manualUserInfo);
-            
+
             // Hide the manual entry modal and manual login section
             document.getElementById("manual-entry-modal").style.display = "none";
             document.getElementById("manual-login").style.display = "none";
-            
+
             // Show the form
             document.getElementById("form-content").style.display = "block";
-            
+
             // Set the form to continue mode
             $('input[name="formCompletion"][value="continue"]').prop('checked', true);
             $('input[name="formCompletion"]').trigger('change');

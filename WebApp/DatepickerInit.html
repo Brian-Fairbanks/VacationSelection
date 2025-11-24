@@ -17,9 +17,9 @@
      * NOTE: We remove the 'disabled' check from the template since it's now handled
      * dynamically in onSelect whenever a date is picked.
      */
-function createDayBlock(dayNum) {
-    console.log("Creating Day HTML");
-    return `
+    function createDayBlock(dayNum) {
+        console.log("Creating Day HTML");
+        return `
     <div id="day-${dayNum}-selection" class="flex flex-col rounded-lg sm:flex-row gap-4 sm:gap-8 items-start sm:items-center py-3 px-3 border-t mt-2 day-selection-block bg-white/80 shadow-sm transition-shadow duration-200" style="display: none;">
         
         <div class="drag-handle cursor-move p-1 flex-shrink-0">
@@ -42,7 +42,7 @@ function createDayBlock(dayNum) {
 
         <div class="shrink-0">
                 <label class="block text-base font-medium text-gray-700 mb-1">Shift Selection ${dayNum}</label>
-                <div class="flex space-x-4">
+                <div class="flex flex-col space-y-2:">
                     <div class="flex items-center">
                         <input id="day${dayNum}-shift-day1" name="day${dayNum}Shift" type="checkbox" value="Day1" checked class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
                         <label for="day${dayNum}-shift-day1" class="ml-2 text-sm font-medium text-gray-700">Day 1</label>
@@ -55,7 +55,7 @@ function createDayBlock(dayNum) {
         </div>
     </div>
     `;
-}
+    }
 
     /**
      * This function contains your complex datepicker configuration.
@@ -294,15 +294,15 @@ function createDayBlock(dayNum) {
 
         if (shouldClear) {
             // Force the input to clear if this routine was triggered by unchecking shifts
-            $input.val(""); 
-            
-            $shiftCheckboxes.prop('disabled', false).prop('checked', false); 
+            $input.val("");
+
+            $shiftCheckboxes.prop('disabled', false).prop('checked', false);
             $feedback.text('');
             if (allSelectedBlockStarts[dayNum]) {
                 delete allSelectedBlockStarts[dayNum];
-                $('.datepicker').datepicker('refresh'); 
+                $('.datepicker').datepicker('refresh');
             }
-            
+
             // 🔥 FIX: Reset shift labels to generic "Day 1" / "Day 2"
             $(`label[for="day${dayNum}-shift-day1"]`).text('Day 1');
             $(`label[for="day${dayNum}-shift-day2"]`).text('Day 2');
@@ -346,7 +346,7 @@ function createDayBlock(dayNum) {
             // Update global state
             allSelectedBlockStarts[dayNum] = blockStartDate;
 
-            
+
             // 🔥 NEW LOGIC: Update Shift Labels to show actual Dates
             const day2Date = new Date(blockStartDate);
             day2Date.setDate(day2Date.getDate() + 1);
@@ -381,11 +381,11 @@ function createDayBlock(dayNum) {
             // do NOT clear value, do NOT mark block as empty
             // (optional) keep shifts enabled so the row feels editable
             $shiftCheckboxes.prop('disabled', false);
-            
+
             // Reset dates if they have changed.
             $(`label[for="day${dayNum}-shift-day1"]`).text('Day 1');
             $(`label[for="day${dayNum}-shift-day2"]`).text('Day 2');
-            
+
             // and IMPORTANT: DO NOT do $input.val("") here
         }
     }
