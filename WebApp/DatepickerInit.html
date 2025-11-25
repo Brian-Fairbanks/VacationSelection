@@ -820,20 +820,25 @@
             // Update block ID
             $block.attr('id', `day-${newIndex}-selection`);
 
-            // --- FIX START: UPDATE BUTTONS ---
-            // We must find the buttons and update their IDs and ONCLICK handlers
-            // so they target the correct newIndex.
-
-            // Update Split Button
+            // Update Split/Merge Buttons
             const $splitBtn = $block.find('button[id^="btn-split-"]');
-            $splitBtn.attr('id', `btn-split-${newIndex}`);
-            $splitBtn.attr('onclick', `performSplit(${newIndex})`);
+            $splitBtn.attr('id', `btn-split-${newIndex}`).attr('onclick', `performSplit(${newIndex})`);
 
-            // Update Merge Button
             const $mergeBtn = $block.find('button[id^="btn-merge-"]');
-            $mergeBtn.attr('id', `btn-merge-${newIndex}`);
-            $mergeBtn.attr('onclick', `performMerge(${newIndex})`);
-            // --- FIX END ---
+            $mergeBtn.attr('id', `btn-merge-${newIndex}`).attr('onclick', `performMerge(${newIndex})`);
+
+            // --- FIX 1: UPDATE WARNING DIV ID ---
+            // Ensure the warning box belongs to this row index
+            const $warningDiv = $block.find('div[id^="warning-"]');
+            if ($warningDiv.length) {
+                $warningDiv.attr('id', `warning-${newIndex}`);
+            }
+
+            // --- FIX 2: UPDATE CHECKBOX LISTENERS (The Critical Fix) ---
+            // We must update the onchange attribute so it passes the NEW index
+            const $checkboxes = $block.find('input[type="checkbox"]');
+            $checkboxes.attr('onchange', `toggleHalfTourWarning(${newIndex})`);
+            // -----------------------------------------------------------
 
             // Update all IDs and names in the block (Inputs, Labels, Spans)
             $block.find('input, label, span').each(function () {
@@ -843,7 +848,6 @@
                 const oldFor = $el.attr('for');
 
                 if (oldId) {
-                    // Use a regex that replaces the last number sequence
                     $el.attr('id', oldId.replace(/day\d+/, `day${newIndex}`));
                 }
                 if (oldName) {
@@ -854,34 +858,31 @@
                 }
             });
 
-            // Update shift selection labels
+            // Update shift selection labels text
             $block.find('label:contains("Shift Selection")').text(`Shift Selection ${newIndex}`);
 
-            // 2. Reconstruct new allSelectedBlockStarts map based on the dateValue
+            // 2. Reconstruct new allSelectedBlockStarts map
             if (dateValue) {
                 try {
                     const dateParts = dateValue.split('/');
                     const parsedDate = new Date(dateParts[2], dateParts[0] - 1, dateParts[1]);
-
                     if (!isNaN(parsedDate.getTime())) {
                         newAllSelectedBlockStarts[newIndex] = parsedDate;
                     }
                 } catch (e) {
-                    console.error(`Re-indexing failed to parse date for new index ${newIndex}:`, dateValue, e);
+                    console.error(`Re-indexing failed`, e);
                 }
             }
 
-            // 3. Force Visual Update (Colors/Icons) using the new index
-            // This ensures buttons hide/show correctly based on the NEW ID
+            // 3. Force Visual Update
             updateBlockVisuals($block, newIndex);
         });
 
-        // 4. Update global state variables
+        // 4. Update global state
         currentDayCount = $('#day-selection-container .day-selection-block').length;
-        console.log("reorderDayIndices set day count to: ", currentDayCount);
         allSelectedBlockStarts = newAllSelectedBlockStarts;
 
-        // 5. Destroy and Re-apply Datepicker
+        // 5. Refresh Datepickers
         $('.datepicker').each(function () {
             const $input = $(this);
             if ($input.data('datepicker')) {
@@ -895,10 +896,19 @@
         const checkbox1 = document.getElementById(`day${dayNum}-shift-day1`);
         const checkbox2 = document.getElementById(`day${dayNum}-shift-day2`);
         const warningDiv = document.getElementById(`warning-${dayNum}`);
+        // Check if this row is part of a split group
+        const isSplit = $(`#day-${dayNum}-selection`).attr('data-split-group');
 
         if (!checkbox1 || !checkbox2 || !warningDiv) return;
 
-        // Check count: 1 = Half Tour, 2 = Full Tour, 0 = Empty
+        // If it's a split block (Blue), ALWAYS hide the warning.
+        // The user knows it's a half tour because they explicitly split it.
+        if (isSplit) {
+            warningDiv.classList.add('hidden');
+            return;
+        }
+
+        // Otherwise, standard logic:
         const count = (checkbox1.checked ? 1 : 0) + (checkbox2.checked ? 1 : 0);
 
         if (count === 1) {
