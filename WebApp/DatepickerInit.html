@@ -18,68 +18,72 @@
      * dynamically in onSelect whenever a date is picked.
      */
     function createDayBlock(dayNum) {
-        console.log("Creating Day HTML");
         return `
-    <div id="day-${dayNum}-selection" class="flex flex-row border-t mt-4 rounded-lg day-selection-block bg-white shadow-sm overflow-hidden transition-shadow duration-200" style="display: none;">
-        
-        <div class="drag-handle cursor-move w-12 flex-shrink-0 bg-gray-50 hover:bg-gray-100 border-r border-gray-200 flex flex-col items-center justify-center self-stretch" style="touch-action: none;">
-            <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M7 2a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM7 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM7 14a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM17 2a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM17 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM17 14a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"/>
-            </svg>
-        </div>
-        
-        <div class="flex-1 flex flex-col sm:flex-row gap-2 sm:gap-8 items-start sm:items-center p-3 sm:p-4 min-w-0">
+        <div id="day-${dayNum}-selection" class="flex flex-row border-t mt-4 rounded-lg day-selection-block bg-white shadow-sm overflow-hidden transition-shadow duration-200 group" style="display: none;">
             
-            <div class="flex-1 w-full sm:w-64 min-w-0"> 
-                <label for="day${dayNum}-date" class="block text-base font-medium text-gray-700 mb-1">Date</label>
-                <input type="text" id="day${dayNum}-date" name="day${dayNum}Date" 
-                       class="datepicker w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-base" 
-                       placeholder="MM/DD/YYYY" autocomplete="off">
-                
-                <div class="mt-1 h-6">
-                    <span id="day${dayNum}-shift-feedback" class="text-xs text-gray-500 px-2 py-1 rounded-full font-semibold border border-transparent transition-all duration-300 whitespace-nowrap">
-                        MM-DD-YYYY (Click input)
-                    </span>
-                </div>
-
-                <div id="warning-${dayNum}" class="hidden mt-2 p-2 bg-yellow-50 rounded border border-yellow-200 flex items-start w-full sm:w-auto">
-                    <svg class="h-4 w-4 text-yellow-600 mr-2 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    <p class="text-xs text-yellow-700 leading-snug">
-                        <strong>Half-Tour:</strong> Only 1 day selected.
-                    </p>
-                </div>
+            <div class="drag-handle cursor-move w-12 flex-shrink-0 bg-gray-50 hover:bg-gray-100 border-r border-gray-200 flex flex-col items-center justify-center self-stretch" style="touch-action: none;">
+                <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M7 2a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM7 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM7 14a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM17 2a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM17 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM17 14a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"/>
+                </svg>
             </div>
-
-            <div class="shrink-0 max-w-xs w-full sm:w-auto"> 
-                <label class="block text-base font-medium text-gray-700 mb-1">Shift Selection ${dayNum}</label>
-                <div class="flex flex-col space-y-2">
+            
+            <div class="flex-1 flex flex-col sm:flex-row gap-2 sm:gap-8 items-start sm:items-center p-3 sm:p-4 min-w-0 relative">
+                
+                <div class="flex-1 w-full sm:w-64 min-w-0"> 
+                    <label for="day${dayNum}-date" class="block text-base font-medium text-gray-700 mb-1">Date</label>
+                    <input type="text" id="day${dayNum}-date" name="day${dayNum}Date" 
+                        class="datepicker w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-base" 
+                        placeholder="MM/DD/YYYY" autocomplete="off">
                     
-                    <div class="flex items-center">
-                        <input id="day${dayNum}-shift-day1" name="day${dayNum}Shift" type="checkbox" value="Day1" checked 
-                               onchange="toggleHalfTourWarning(${dayNum})"
-                               class="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                        <label for="day${dayNum}-shift-day1" class="ml-3 text-sm font-medium text-gray-700">Day 1</label>
+                    <div class="mt-1 h-6">
+                        <span id="day${dayNum}-shift-feedback" class="text-xs text-gray-500 px-2 py-1 rounded-full font-semibold border border-transparent transition-all duration-300 whitespace-nowrap">
+                            MM-DD-YYYY (Click input)
+                        </span>
+                    </div>
+                    <div id="warning-${dayNum}" class="hidden mt-2 p-2 bg-yellow-50 rounded border border-yellow-200 flex items-start w-full sm:w-auto">
+                        <svg class="h-4 w-4 text-yellow-600 mr-2 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <p class="text-xs text-yellow-700 leading-snug">
+                            <strong>Half-Tour:</strong> Only 1 day selected.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="shrink-0 max-w-xs w-full sm:w-auto"> 
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-base font-medium text-gray-700">Shift Selection ${dayNum}</label>
+                        
+                        <div class="flex space-x-2 ml-2">
+                            <button type="button" id="btn-split-${dayNum}" onclick="performSplit(${dayNum})" class="text-gray-400 hover:text-blue-600" title="Split into two separate entries">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm8.486-8.486a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243z"></path></svg>
+                            </button>
+                            
+                            <button type="button" id="btn-merge-${dayNum}" onclick="performMerge(${dayNum})" class="hidden text-blue-500 hover:text-red-600" title="Merge back into one entry">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+                            </button>
+                        </div>
                     </div>
 
-                    <div class="flex items-center">
-                        <input id="day${dayNum}-shift-day2" name="day${dayNum}Shift" type="checkbox" value="Day2" checked 
-                               onchange="toggleHalfTourWarning(${dayNum})"
-                               class="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                        <label for="day${dayNum}-shift-day2" class="ml-3 text-sm font-medium text-gray-700">Day 2</label>
-                    </div>
+                    <div class="flex flex-col space-y-2">
+                        <div class="flex items-center">
+                            <input id="day${dayNum}-shift-day1" name="day${dayNum}Shift" type="checkbox" value="Day1" checked 
+                                onchange="toggleHalfTourWarning(${dayNum})"
+                                class="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                            <label for="day${dayNum}-shift-day1" class="ml-3 text-sm font-medium text-gray-700">Day 1</label>
+                        </div>
 
-                    <div class="mt-2 pt-2 border-t border-gray-100 flex items-center">
-                        <input id="day${dayNum}-prioritize" name="day${dayNum}Prioritize" type="checkbox" value="yes" disabled 
-                               class="h-5 w-5 text-orange-500 border-gray-300 rounded focus:ring-orange-400">
-                        <label for="day${dayNum}-prioritize" class="ml-3 text-xs italic text-gray-500">Prioritize Later Day First</label>
+                        <div class="flex items-center">
+                            <input id="day${dayNum}-shift-day2" name="day${dayNum}Shift" type="checkbox" value="Day2" checked 
+                                onchange="toggleHalfTourWarning(${dayNum})"
+                                class="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                            <label for="day${dayNum}-shift-day2" class="ml-3 text-sm font-medium text-gray-700">Day 2</label>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    `;
+        `;
     }
 
     /**
@@ -423,6 +427,215 @@
         }
     }
 
+
+    // --- SPLIT LOGIC ---
+
+    function performSplit(dayNum) {
+        const $originalBlock = $(`#day-${dayNum}-selection`);
+        const $dateInput = $(`#day${dayNum}-date`);
+        const currentDateVal = $dateInput.val();
+
+        // 1. Validation: Must have a date
+        if (!currentDateVal) {
+            alert("Please select a date before splitting.");
+            return;
+        }
+
+        // --- NEW VALIDATION: Must be a full tour ---
+        const day1Checked = $(`#day${dayNum}-shift-day1`).is(':checked');
+        const day2Checked = $(`#day${dayNum}-shift-day2`).is(':checked');
+
+        if (!day1Checked || !day2Checked) {
+            alert("You cannot split a Half-Tour. Please select both days first, or simply adjust the single day you have selected.");
+            return;
+        }
+
+        const splitId = generateUniqueId();
+
+        // 1. Create & Insert New Block
+        const newBlockHtml = createDayBlock(dayNum + 1);
+        const $newBlock = $(newBlockHtml);
+        $originalBlock.after($newBlock);
+        $newBlock.show();
+
+        // 2. POPULATE DATA
+        const $newInput = $newBlock.find('.datepicker');
+        $newInput.val(currentDateVal);
+
+        // 3. STAMP IDs
+        $originalBlock.attr('data-split-group', splitId);
+        $newBlock.attr('data-split-group', splitId);
+
+        // 4. REORDER
+        reorderDayIndices();
+
+        // 5. LOCKDOWN & CONFIGURE
+        const $linkedBlocks = $(`div[data-split-group="${splitId}"]`);
+        const $topBlock = $linkedBlocks.eq(0);
+        const $bottomBlock = $linkedBlocks.eq(1);
+
+        const topIndex = parseInt($topBlock.attr('id').match(/day-(\d+)-selection/)[1]);
+        const bottomIndex = parseInt($bottomBlock.attr('id').match(/day-(\d+)-selection/)[1]);
+
+        // --- STEP A: SET CHECKED STATE (But don't worry about locks yet) ---
+
+        // TOP (Day 1)
+        $(`#day${topIndex}-shift-day1`).prop('checked', true);
+        $(`#day${topIndex}-shift-day2`).prop('checked', false);
+
+        // BOTTOM (Day 2)
+        const $bottomDateInput = $(`#day${bottomIndex}-date`);
+        applyComplexDatepicker($bottomDateInput[0]);
+        // Force Day 2 checked, Day 1 unchecked
+        $(`#day${bottomIndex}-shift-day1`).prop('checked', false);
+        $(`#day${bottomIndex}-shift-day2`).prop('checked', true);
+
+
+        // --- STEP B: FIX LABELS (This will accidentally unlock the boxes) ---
+        enforceCheckboxState($(`#day${topIndex}-date`), topIndex);
+        enforceCheckboxState($(`#day${bottomIndex}-date`), bottomIndex);
+
+
+        // --- STEP C: RE-APPLY LOCKS (The Fix) ---
+        // updateBlockVisuals checks the 'checked' state we set in Step A,
+        // and forcibly disables the checkboxes again.
+        updateBlockVisuals($topBlock, topIndex);
+        updateBlockVisuals($bottomBlock, bottomIndex);
+
+        // Final warning check
+        toggleHalfTourWarning(topIndex);
+    }
+
+
+    function performMerge(dayNum) {
+        const $currentBlock = $(`#day-${dayNum}-selection`);
+        const splitId = $currentBlock.attr('data-split-group');
+
+        if (!splitId) return;
+
+        // Find partners based on ID
+        const $partners = $(`div[data-split-group="${splitId}"]`);
+
+        if ($partners.length < 2) {
+            // Orphaned block fallback
+            $currentBlock.removeAttr('data-split-group');
+            resetBlockToNormal($currentBlock, dayNum);
+            reorderDayIndices();
+            return;
+        }
+
+        // Identify Top and Bottom based on visual DOM order
+        // (If user swapped them, eq(0) is the one physically on top)
+        const $survivor = $partners.eq(0);
+        const $victim = $partners.eq(1);
+
+        // Get the index of the survivor
+        const survivorIndex = parseInt($survivor.attr('id').match(/day-(\d+)-selection/)[1]);
+
+        // 1. DELETE THE VICTIM (Bottom block)
+        $victim.remove();
+
+        // 2. CLEAN THE SURVIVOR (Top block)
+        $survivor.removeAttr('data-split-group');
+
+        // Run the deep clean
+        resetBlockToNormal($survivor, survivorIndex);
+
+        // 3. REORDER (Fixes IDs for everything below)
+        reorderDayIndices();
+    }
+
+    // Helper to make the merge function cleaner
+    function resetBlockToNormal($block, dayIndex) {
+        const $dateInput = $(`#day${dayIndex}-date`);
+
+        // 1. Unlock Date Input
+        $dateInput.prop('disabled', false)
+            .removeClass('bg-gray-100 text-gray-500 cursor-not-allowed');
+
+        // 2. Unlock & Reset Checkboxes
+        const $cb1 = $(`#day${dayIndex}-shift-day1`);
+        const $cb2 = $(`#day${dayIndex}-shift-day2`);
+        const $prio = $(`#day${dayIndex}-prioritize`);
+
+        $cb1.prop('disabled', false).prop('checked', true).parent().removeClass('opacity-50');
+        $cb2.prop('disabled', false).prop('checked', true).parent().removeClass('opacity-50');
+        $prio.prop('disabled', false).parent().removeClass('opacity-50');
+
+        // 3. Reset Buttons
+        $(`#btn-split-${dayIndex}`).removeClass('hidden');
+        $(`#btn-merge-${dayIndex}`).addClass('hidden');
+
+        // 4. Force Label Refresh
+        enforceCheckboxState($dateInput, dayIndex);
+
+        // 5. Update Visuals
+        updateBlockVisuals($block, dayIndex);
+
+        // 6. Hide warning
+        toggleHalfTourWarning(dayIndex);
+    }
+
+    function updateBlockVisuals($block, dayIndex) {
+        const isSplit = !!$block.attr('data-split-group');
+        const $splitBtn = $(`#btn-split-${dayIndex}`);
+        const $mergeBtn = $(`#btn-merge-${dayIndex}`);
+        const $dateInput = $(`#day${dayIndex}-date`);
+
+        if (isSplit) {
+            // --- SPLIT STATE (LOCKED) ---
+            // Blue background
+            $block.removeClass('bg-white border-t')
+                .addClass('bg-blue-50 border border-blue-300');
+
+            $splitBtn.addClass('hidden');
+            $mergeBtn.removeClass('hidden');
+
+            // Color the drag handle blue
+            $block.find('.drag-handle').addClass('bg-blue-100 border-blue-200').removeClass('bg-gray-50 border-gray-200');
+
+            // ENSURE LOCKS PERSIST
+            $dateInput.prop('disabled', true).addClass('bg-gray-100 text-gray-500 cursor-not-allowed');
+
+            // Re-lock checkboxes based on which one is checked
+            const day1Checked = $(`#day${dayIndex}-shift-day1`).is(':checked');
+            if (day1Checked) {
+                // Top Block logic
+                $(`#day${dayIndex}-shift-day1`).prop('disabled', true);
+                $(`#day${dayIndex}-shift-day2`).prop('disabled', true).parent().addClass('opacity-50');
+            } else {
+                // Bottom Block logic
+                $(`#day${dayIndex}-shift-day1`).prop('disabled', true).parent().addClass('opacity-50');
+                $(`#day${dayIndex}-shift-day2`).prop('disabled', true);
+            }
+
+        } else {
+            // --- NORMAL STATE (UNLOCKED) ---
+            $block.addClass('bg-white border-t')
+                .removeClass('bg-blue-50 border border-blue-300');
+
+            $splitBtn.removeClass('hidden');
+            $mergeBtn.addClass('hidden');
+
+            // Reset drag handle
+            $block.find('.drag-handle').removeClass('bg-blue-100 border-blue-200').addClass('bg-gray-50 border-gray-200');
+
+            // Ensure Date is unlocked
+            $dateInput.prop('disabled', false).removeClass('bg-gray-100 text-gray-500 cursor-not-allowed');
+        }
+    }
+
+    // Helper for the split function date conversion
+    function convertDateToIso(dateStr) {
+        // Converts MM/DD/YYYY to YYYY-MM-DD or Date Object string for the loader
+        const parts = dateStr.split('/');
+        return new Date(parts[2], parts[0] - 1, parts[1]).toString();
+    }
+
+    function generateUniqueId() {
+        return 'split_' + Math.random().toString(36).substr(2, 9);
+    }
+
     /**
      * Fills data into a specific date block and ensures the global state is updated.
      * This is called by fillPreviousPicks.
@@ -590,6 +803,7 @@
     }
 
     // Reorder day indices after sorting
+    // Reorder day indices after sorting
     function reorderDayIndices() {
         console.log("reorderDayIndicies");
 
@@ -606,7 +820,22 @@
             // Update block ID
             $block.attr('id', `day-${newIndex}-selection`);
 
-            // Update all IDs and names in the block
+            // --- FIX START: UPDATE BUTTONS ---
+            // We must find the buttons and update their IDs and ONCLICK handlers
+            // so they target the correct newIndex.
+
+            // Update Split Button
+            const $splitBtn = $block.find('button[id^="btn-split-"]');
+            $splitBtn.attr('id', `btn-split-${newIndex}`);
+            $splitBtn.attr('onclick', `performSplit(${newIndex})`);
+
+            // Update Merge Button
+            const $mergeBtn = $block.find('button[id^="btn-merge-"]');
+            $mergeBtn.attr('id', `btn-merge-${newIndex}`);
+            $mergeBtn.attr('onclick', `performMerge(${newIndex})`);
+            // --- FIX END ---
+
+            // Update all IDs and names in the block (Inputs, Labels, Spans)
             $block.find('input, label, span').each(function () {
                 const $el = $(this);
                 const oldId = $el.attr('id');
@@ -614,7 +843,7 @@
                 const oldFor = $el.attr('for');
 
                 if (oldId) {
-                    // Use a regex that replaces the last number sequence, regardless of size
+                    // Use a regex that replaces the last number sequence
                     $el.attr('id', oldId.replace(/day\d+/, `day${newIndex}`));
                 }
                 if (oldName) {
@@ -631,7 +860,6 @@
             // 2. Reconstruct new allSelectedBlockStarts map based on the dateValue
             if (dateValue) {
                 try {
-                    // Safely parse the MM/DD/YYYY string back into a Date object
                     const dateParts = dateValue.split('/');
                     const parsedDate = new Date(dateParts[2], dateParts[0] - 1, dateParts[1]);
 
@@ -642,26 +870,23 @@
                     console.error(`Re-indexing failed to parse date for new index ${newIndex}:`, dateValue, e);
                 }
             }
+
+            // 3. Force Visual Update (Colors/Icons) using the new index
+            // This ensures buttons hide/show correctly based on the NEW ID
+            updateBlockVisuals($block, newIndex);
         });
 
-        // 3. Update global state variables
+        // 4. Update global state variables
         currentDayCount = $('#day-selection-container .day-selection-block').length;
         console.log("reorderDayIndices set day count to: ", currentDayCount);
         allSelectedBlockStarts = newAllSelectedBlockStarts;
 
-        // 4. 🔥 CRITICAL FIX: Destroy and Re-apply Datepicker
-        // This is necessary because changing the ID of an input element requires 
-        // the jQuery UI Datepicker instance to be fully reset and re-initialized 
-        // so it can register the new ID and metadata.
+        // 5. Destroy and Re-apply Datepicker
         $('.datepicker').each(function () {
             const $input = $(this);
-
-            // Destroy the old instance if it exists
             if ($input.data('datepicker')) {
                 $input.datepicker('destroy');
             }
-
-            // Re-apply the complex datepicker (which includes the 'change' handler binding)
             applyComplexDatepicker(this);
         });
     }

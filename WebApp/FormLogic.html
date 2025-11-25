@@ -104,7 +104,7 @@
 
             // --- Determine User Data Source (UPDATED) ---
             // Check if window.USER_INFO was set by the manual entry modal
-            const isManual = window.USER_INFO && (window.USER_INFO.manualEntry === true || window.USER_INFO.trackingLevel === "Manual Entry");
+            const isManual = window.USER_INFO && (window.USER_INFO.manualEntry === true || window.USER_INFO.trackingLevel==="Manual Entry");
             const userData = isManual ? window.USER_INFO : window.USER_INFO || {};
 
             const submissionDateISO = new Date().toISOString();
@@ -209,3 +209,5 @@
         });
     }
 </script>
+
+

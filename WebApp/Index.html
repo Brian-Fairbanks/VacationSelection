@@ -407,12 +407,36 @@
 
         function onManualDataLoaded(data) {
             if (data && data.hasOwnProperty('userInfo') && data.userInfo) {
+                // 1. Calculate Entitlements (Important for window.USER_INFO)
+                const calculatedUserInfo = calculateEntitlements(data.userInfo);
+                window.USER_INFO = calculatedUserInfo;
+
+                // 2. Initialize the Form Logic & Datepickers (THIS WAS MISSING)
+                initializeFormLogic();
+                initializeDatepicker();
+
+                // 3. Fill UI
                 fillUserInfo(data.userInfo);
-                if (data.hasOwnProperty('previousPicks') && data.previousPicks) {
-                    fillPreviousPicks(data.previousPicks);
-                }
+
+                // 4. Handle Screen Switching
                 document.getElementById("manual-login").style.display = "none";
                 document.getElementById("form-content").style.display = "block";
+
+                // 5. Handle Previous Picks OR Default to "Continue"
+                if (data.hasOwnProperty('previousPicks') && data.previousPicks) {
+                    // If they have picks, load them
+                    fillPreviousPicks(data.previousPicks);
+
+                    // Note: fillPreviousPicks usually handles the radio button setting.
+                    // If you want to force the form to open even with previous picks:
+                    $('input[name="formCompletion"][value="continue"]').prop('checked', true);
+                    $('input[name="formCompletion"]').trigger('change');
+                } else {
+                    // No previous picks: Default to "Continue" and open the form
+                    $('input[name="formCompletion"][value="continue"]').prop('checked', true);
+                    $('input[name="formCompletion"]').trigger('change');
+                }
+
             } else {
                 document.getElementById("search-results").innerHTML = "<p style='color:red;'>Error loading data for that ID. Please try again.</p>";
             }
