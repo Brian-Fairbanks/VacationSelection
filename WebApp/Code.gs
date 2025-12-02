@@ -1,6 +1,7 @@
 // --- CONFIGURATION ---
 const HR_VALIDATION_ID = "1QDF8CUhbC4cZKK0dnf5gOPL3SA7hXFihK1BqmJsufic"; // 2026 HR Validations
 const HR_VALIDATION_SHEET_NAME = "Sheet1";
+const EMAILS_SHEET_NAME = "Emails";
 const ManualEntriesSheetName = "ManualEntries";
 const SHEET_CACHE = "Cache"; // The new sheet name created for maintaining fuzzy lookups of user names
 const SubmissionSheetName = "2026-Vacation Picks";
@@ -22,53 +23,71 @@ function include(filename) {
   return HtmlService.createTemplateFromFile(filename).evaluate().getContent();
 }
 
+
+// --- HELPER: GET EMAIL MAP ---
+// Returns an object: { "538": "bfairbanks@...", "123": "..." }
+function getEmployeeEmailMap() {
+  var ss = SpreadsheetApp.openById(HR_VALIDATION_ID);
+  var sheet = ss.getSheetByName(EMAILS_SHEET_NAME);
+  if (!sheet) return {};
+
+  var data = sheet.getDataRange().getValues();
+  var map = {};
+  
+  // Headers: [ID, First, Last, Email, ...]
+  // Assumes ID is Col A (0) and Email is Col D (3) based on your description
+  for (var i = 1; i < data.length; i++) {
+    var id = String(data[i][0]);
+    var email = String(data[i][3]).toLowerCase().trim();
+    if (id && email) {
+      map[id] = email;
+    }
+  }
+  return map;
+}
+
 // --- INITIAL PAGE LOAD ---
 function getInitialUserInfo(passedEmail) {
   var data = { userInfo: null, previousPicks: null, logs: [] };
 
-  var email = passedEmail || Session.getActiveUser().getEmail(); // This is the cleanest syntax
-  console.log("Scanning for ", email);
-  data.logs.push("Email found: " + (email || "NULL/BLANK"));
+  var email = (passedEmail || Session.getActiveUser().getEmail()).toLowerCase();
+
+  data.logs.push("Email found: " + email);
   if (!email) return data;
 
-  var searchName = convertEmailToSearchableName(email);
-  data.logs.push("Search term: " + searchName);
-  var matches = findMatchingUsers(searchName);
+  // --- 1. EXACT EMAIL MATCH (New Priority) ---
+  var roster = getHrRosterList();
+  var directMatch = roster.find(u => u.email === email);
 
-  data.logs.push("Matches found: " + JSON.stringify(matches));
-  if (matches.length === 0) {
-    data.logs.push("No matches found.");
-    return data;
-  }
-
-  // Confidence check
-  var bestMatch = matches[0];
-  var isConfident =
-    (matches.length === 1 && bestMatch.score === 1.0) ||
-    (matches.length > 1 && bestMatch.score === 1.0 && matches[1].score < 1.0);
-  data.logs.push("is confident: " + isConfident);
-
-  if (isConfident) {
-    // --- This is the correct logic ---
-    data.logs.push("Confident match found: " + JSON.stringify(bestMatch));
-    data.logs.push("Now calling getEmployeeDataAndPicks...");
-
-    // 1. Call the function to get the data
-    var successData = getEmployeeDataAndPicks(bestMatch.id);
-    // data.logs.push("Data (as JSON): " + JSON.stringify(successData));
-
-    // 2. Merge the results into your main 'data' object
+  if (directMatch) {
+    data.logs.push("Exact email match found: " + directMatch.id);
+    var successData = getEmployeeDataAndPicks(directMatch.id);
     data.userInfo = successData.userInfo;
     data.previousPicks = successData.previousPicks;
-
-    // 3. Log success and return the *full* object
-    // data.logs.push("Successfully retrieved data for user.");
     return data;
-    // --- End correct logic ---
-  } else {
-    data.logs.push("No confident match found.");
-    return data; // Not confident, return the object with logs
   }
+
+  // --- 2. FALLBACK: FUZZY SEARCH ---
+  data.logs.push("No email match. Falling back to name search.");
+  
+  var searchName = convertEmailToSearchableName(email);
+  var matches = findMatchingUsers(searchName); // This uses the roster we already fetched essentially
+
+  // ... (Existing Confidence Check Logic) ...
+  if (matches.length > 0) {
+      var bestMatch = matches[0];
+      var isConfident = (matches.length === 1 && bestMatch.score === 1.0) ||
+                        (matches.length > 1 && bestMatch.score === 1.0 && matches[1].score < 1.0);
+      
+      if (isConfident) {
+        var successData = getEmployeeDataAndPicks(bestMatch.id);
+        data.userInfo = successData.userInfo;
+        data.previousPicks = successData.previousPicks;
+        return data;
+      }
+  }
+  
+  return data; // No match found
 }
 
 function convertEmailToSearchableName(email) {
@@ -144,75 +163,66 @@ function findMatchingUsers(searchText) {
 function buildNormalizedCacheSheet() {
   var ss = SpreadsheetApp.openById(HR_VALIDATION_ID);
   var cacheSheet = ss.getSheetByName(SHEET_CACHE);
+  
+  if (!cacheSheet) { cacheSheet = ss.insertSheet(SHEET_CACHE); } 
+  else { cacheSheet.clear(); }
 
-  // Create Cache sheet if it doesn't exist
-  if (!cacheSheet) {
-    cacheSheet = ss.insertSheet(SHEET_CACHE);
-  } else {
-    cacheSheet.clear();
-  }
-
-  cacheSheet.appendRow([
-    "EmployeeID",
-    "DisplayName",
-    "NormalizedSearchString",
-    "TokensCSV",
-  ]);
+  // UPDATED HEADER: Added "Email" at index 2
+  cacheSheet.appendRow(["EmployeeID", "DisplayName", "Email", "NormalizedSearchString", "TokensCSV"]);
   cacheSheet.setFrozenRows(1);
 
   var outputRows = [];
+  
+  // 1. Get the Map of IDs to Emails
+  var emailMap = getEmployeeEmailMap();
 
-  // -- SOURCE 1: HR Validation Sheet --
+  // 2. Process HR Validation Sheet (Sheet1)
   var hrSheet = ss.getSheetByName(HR_VALIDATION_SHEET_NAME);
   if (hrSheet) {
-    // Assumes: Col A = ID, Col B = Name
-    processSheetForCache(hrSheet, outputRows);
+    processSheetForCache(hrSheet, outputRows, emailMap);
   }
 
-  // -- SOURCE 2: Manual Entries Sheet --
+  // 3. Process Manual Entries
   var manualSheet = ss.getSheetByName(ManualEntriesSheetName);
   if (manualSheet) {
-    // Assumes: Col A = ID, Col B = Name
-    processSheetForCache(manualSheet, outputRows);
+    // Manual entries won't be in the Email sheet, so they will get blank/default emails logic inside the helper
+    processSheetForCache(manualSheet, outputRows, emailMap);
   }
 
-  // Write to Cache
   if (outputRows.length > 0) {
-    cacheSheet.getRange(2, 1, outputRows.length, 4).setValues(outputRows);
+    // Write 5 columns now
+    cacheSheet.getRange(2, 1, outputRows.length, 5).setValues(outputRows);
   }
-
-  Logger.log(
-    "SUCCESS: 'Cache' built with " + outputRows.length + " employees."
-  );
+  
+  Logger.log("Cache built with " + outputRows.length + " rows.");
 }
 
 /**
  * Helper to process a sheet and add rows to the output array.
  */
-function processSheetForCache(sheet, outputArray) {
+function processSheetForCache(sheet, outputArray, emailMap) {
   var data = sheet.getDataRange().getValues();
   // Skip header (i=1)
   for (var i = 1; i < data.length; i++) {
-    var id = data[i][0];
+    var id = String(data[i][0]);
     var name = String(data[i][1] || "").trim();
+    
+    if (!id || !name) continue; 
 
-    if (!id || !name) continue; // Skip empty rows
+    // Deduplicate
+    var exists = outputArray.some(function(row){ return String(row[0]) === id; });
+    if(exists) continue;
 
-    // Check if this ID is already in our list (deduplicate if user exists in both sheets)
-    // This prevents duplicates if a Manual Entry gets moved to the Official HR sheet later
-    var exists = outputArray.some(function (row) {
-      return String(row[0]) === String(id);
-    });
-    if (exists) continue;
+    // LOOKUP EMAIL
+    // If found in map, use it. If not, check if it was manually entered in the row (unlikely for now).
+    var email = emailMap[id] || ""; 
 
-    var searchParts = normalizeRosterName(name);
-    var searchString = searchParts.join(" ");
-    // Create tokens from both the raw name and the normalized permutations
-    var toks = Array.from(
-      new Set(tokenize(name).concat(tokenize(searchString)))
-    );
-
-    outputArray.push([id, name, searchString, toks.join(" ")]);
+    var searchParts = normalizeRosterName(name); 
+    var searchString = searchParts.join(' ');
+    var toks = Array.from(new Set(tokenize(name).concat(tokenize(searchString))));
+    
+    // Push 5 columns: ID, Name, Email, SearchStr, Tokens
+    outputArray.push([id, name, email, searchString, toks.join(' ')]);
   }
 }
 
@@ -231,40 +241,38 @@ function appendUserToCache(userInfo) {
     return;
   }
 
-  // 1. Prepare the Data Row
   var id = String(userInfo.employeeId);
-  var displayName = userInfo.lastName + ", " + userInfo.firstName;
+  var displayName = userInfo.lastName + ", " + userInfo.firstName; 
+  
+  // --- HANDLE EMAIL ---
+  // Use provided email, or default to the dummy email
+  var email = (Session.getActiveUser().getEmail()).toLowerCase();
+
   var searchParts = normalizeRosterName(displayName);
-  var searchString = searchParts.join(" ");
-  var toks = Array.from(
-    new Set(tokenize(displayName).concat(tokenize(searchString)))
-  );
+  var searchString = searchParts.join(' ');
+  var toks = Array.from(new Set(tokenize(displayName).concat(tokenize(searchString))));
+  
+  // 5 Columns: ID, Name, Email, SearchString, Tokens
+  var newRowData = [id, displayName, email, searchString, toks.join(' ')];
 
-  var newRowData = [id, displayName, searchString, toks.join(" ")];
-
-  // 2. Scan for existing ID
+  // ... (Existing ID lookup and update/append logic) ...
+  // [Copy the loop logic from previous answer, just ensure setValues uses newRowData]
+  
   var data = cacheSheet.getDataRange().getValues();
   var rowIndexToUpdate = -1;
 
-  // Start at i=1 to skip header
   for (var i = 1; i < data.length; i++) {
-    // strict string comparison to ensure "538" matches 538
     if (String(data[i][0]) === id) {
-      rowIndexToUpdate = i + 1; // +1 because sheet rows are 1-based
+      rowIndexToUpdate = i + 1; 
       break;
     }
   }
 
   // 3. Execute Write
   if (rowIndexToUpdate > -1) {
-    // UPDATE existing row
-    // getRange(row, col, numRows, numCols)
-    cacheSheet.getRange(rowIndexToUpdate, 1, 1, 4).setValues([newRowData]);
-    Logger.log("UPDATED Cache for User ID: " + id);
+    cacheSheet.getRange(rowIndexToUpdate, 1, 1, 5).setValues([newRowData]); // Update 5 cols
   } else {
-    // APPEND new row
     cacheSheet.appendRow(newRowData);
-    Logger.log("APPENDED User ID to Cache: " + id);
   }
 }
 
@@ -291,33 +299,27 @@ function getHrRosterList() {
   try {
     var ss = SpreadsheetApp.openById(HR_VALIDATION_ID);
     var sh = ss.getSheetByName(SHEET_CACHE);
-
-    // --- AUTO-BUILD CHECK ---
+    
     if (!sh || sh.getLastRow() < 2) {
-      Logger.log("Cache empty or missing. Rebuilding now...");
       buildNormalizedCacheSheet();
-      // Refresh the sheet object after build
       sh = ss.getSheetByName(SHEET_CACHE);
     }
 
-    var rows = sh.getLastRow(),
-      cols = sh.getLastColumn();
-    if (rows < 2) return [];
-    var data = sh.getRange(2, 1, rows - 1, 4).getValues(); // Get all 4 columns
+    var rows = sh.getLastRow();
+    // Get 5 columns now
+    var data = sh.getRange(2, 1, rows - 1, 5).getValues(); 
     var roster = [];
     for (var i = 0; i < data.length; i++) {
       roster.push({
         id: data[i][0],
         name: String(data[i][1] || ""),
-        searchString: String(data[i][2] || ""), // This is the 'NormalizedSearchString' column
-        tokensCsv: String(data[i][3] || ""), // This is the 'TokensCSV' column
+        email: String(data[i][2] || "").toLowerCase(), // <--- NEW
+        searchString: String(data[i][3] || ""), 
+        tokensCsv: String(data[i][4] || ""), 
       });
     }
     return roster;
-  } catch (e) {
-    Logger.log(e);
-    return [];
-  }
+  } catch (e) { Logger.log(e); return []; }
 }
 
 // --- MAIN DATA LOOKUPS (Keep This) ---
