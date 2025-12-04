@@ -31,9 +31,14 @@
                 
                 <div class="flex-1 w-full sm:w-64 min-w-0"> 
                     <label for="day${dayNum}-date" class="block text-base font-medium text-gray-700 mb-1">Date</label>
+                    
                     <input type="text" id="day${dayNum}-date" name="day${dayNum}Date" 
                         class="datepicker w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-base" 
                         placeholder="MM/DD/YYYY" autocomplete="off">
+
+                    <input type="text" id="day${dayNum}-ghost-date" disabled
+                        class="hidden w-full p-2 border border-blue-300 bg-gray-100 text-gray-500 bg-blue-50 rounded-md cursor-not-allowed text-base" 
+                        value="">
                     
                     <div class="mt-1 h-6">
                         <span id="day${dayNum}-shift-feedback" class="text-xs text-gray-500 px-2 py-1 rounded-full font-semibold border border-transparent transition-all duration-300 whitespace-nowrap">
@@ -53,12 +58,10 @@
                 <div class="shrink-0 max-w-xs w-full sm:w-auto"> 
                     <div class="flex justify-between items-center mb-1">
                         <label class="block text-base font-medium text-gray-700">Shift Selection ${dayNum}</label>
-                        
                         <div class="flex space-x-2 ml-2">
                             <button type="button" id="btn-split-${dayNum}" onclick="performSplit(${dayNum})" class="text-gray-400 hover:text-blue-600" title="Split into two separate entries">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm8.486-8.486a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243z"></path></svg>
                             </button>
-                            
                             <button type="button" id="btn-merge-${dayNum}" onclick="performMerge(${dayNum})" class="hidden text-blue-500 hover:text-red-600" title="Merge back into one entry">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
                             </button>
@@ -435,18 +438,8 @@
         const $dateInput = $(`#day${dayNum}-date`);
         const currentDateVal = $dateInput.val();
 
-        // 1. Validation: Must have a date
         if (!currentDateVal) {
             alert("Please select a date before splitting.");
-            return;
-        }
-
-        // --- NEW VALIDATION: Must be a full tour ---
-        const day1Checked = $(`#day${dayNum}-shift-day1`).is(':checked');
-        const day2Checked = $(`#day${dayNum}-shift-day2`).is(':checked');
-
-        if (!day1Checked || !day2Checked) {
-            alert("You cannot split a Half-Tour. Please select both days first, or simply adjust the single day you have selected.");
             return;
         }
 
@@ -459,6 +452,7 @@
         $newBlock.show();
 
         // 2. POPULATE DATA
+        // Set BOTH real inputs to the START DATE (e.g., 11/23)
         const $newInput = $newBlock.find('.datepicker');
         $newInput.val(currentDateVal);
 
@@ -477,33 +471,28 @@
         const topIndex = parseInt($topBlock.attr('id').match(/day-(\d+)-selection/)[1]);
         const bottomIndex = parseInt($bottomBlock.attr('id').match(/day-(\d+)-selection/)[1]);
 
-        // --- STEP A: SET CHECKED STATE (But don't worry about locks yet) ---
-
-        // TOP (Day 1)
+        // --- TOP BLOCK (Day 1) ---
         $(`#day${topIndex}-shift-day1`).prop('checked', true);
         $(`#day${topIndex}-shift-day2`).prop('checked', false);
 
-        // BOTTOM (Day 2)
+        // --- BOTTOM BLOCK (Day 2) ---
         const $bottomDateInput = $(`#day${bottomIndex}-date`);
         applyComplexDatepicker($bottomDateInput[0]);
-        // Force Day 2 checked, Day 1 unchecked
+
         $(`#day${bottomIndex}-shift-day1`).prop('checked', false);
         $(`#day${bottomIndex}-shift-day2`).prop('checked', true);
 
-
-        // --- STEP B: FIX LABELS (This will accidentally unlock the boxes) ---
+        // --- FIX LABELS ---
+        // This reads the Real Input (11/23) and sets labels to 11/23 and 11/24 correctly
         enforceCheckboxState($(`#day${topIndex}-date`), topIndex);
         enforceCheckboxState($(`#day${bottomIndex}-date`), bottomIndex);
 
-
-        // --- STEP C: RE-APPLY LOCKS (The Fix) ---
-        // updateBlockVisuals checks the 'checked' state we set in Step A,
-        // and forcibly disables the checkboxes again.
+        // --- RE-APPLY LOCKS & GHOSTS ---
         updateBlockVisuals($topBlock, topIndex);
         updateBlockVisuals($bottomBlock, bottomIndex);
 
-        // Final warning check
         toggleHalfTourWarning(topIndex);
+        toggleHalfTourWarning(bottomIndex);
     }
 
 
@@ -548,21 +537,19 @@
     // Helper to make the merge function cleaner
     function resetBlockToNormal($block, dayIndex) {
         const $dateInput = $(`#day${dayIndex}-date`);
+        const $ghostInput = $(`#day${dayIndex}-ghost-date`);
 
-        // 1. Unlock Date Input
-        $dateInput.prop('disabled', false)
-            .removeClass('bg-gray-100 text-gray-500 cursor-not-allowed');
+        // Unlock Date, Hide Ghost
+        $dateInput.prop('disabled', false).removeClass('hidden bg-gray-100 text-gray-500 cursor-not-allowed');
+        $ghostInput.addClass('hidden');
 
-        // 2. Unlock & Reset Checkboxes
+        // Unlock Checkboxes
         const $cb1 = $(`#day${dayIndex}-shift-day1`);
         const $cb2 = $(`#day${dayIndex}-shift-day2`);
-        const $prio = $(`#day${dayIndex}-prioritize`);
-
         $cb1.prop('disabled', false).prop('checked', true).parent().removeClass('opacity-50');
         $cb2.prop('disabled', false).prop('checked', true).parent().removeClass('opacity-50');
-        $prio.prop('disabled', false).parent().removeClass('opacity-50');
 
-        // 3. Reset Buttons
+        // Reset Buttons
         $(`#btn-split-${dayIndex}`).removeClass('hidden');
         $(`#btn-merge-${dayIndex}`).addClass('hidden');
 
@@ -581,48 +568,81 @@
         const $splitBtn = $(`#btn-split-${dayIndex}`);
         const $mergeBtn = $(`#btn-merge-${dayIndex}`);
         const $dateInput = $(`#day${dayIndex}-date`);
+        const $ghostInput = $(`#day${dayIndex}-ghost-date`);
 
         if (isSplit) {
-            // --- SPLIT STATE (LOCKED) ---
-            // Blue background
-            $block.removeClass('bg-white border-t')
-                .addClass('bg-blue-50 border border-blue-300');
-
+            // --- SPLIT STATE ---
+            $block.removeClass('bg-white border-t').addClass('bg-blue-50 border border-blue-300');
             $splitBtn.addClass('hidden');
             $mergeBtn.removeClass('hidden');
-
-            // Color the drag handle blue
             $block.find('.drag-handle').addClass('bg-blue-100 border-blue-200').removeClass('bg-gray-50 border-gray-200');
 
-            // ENSURE LOCKS PERSIST
-            $dateInput.prop('disabled', true).addClass('bg-gray-100 text-gray-500 cursor-not-allowed');
-
-            // Re-lock checkboxes based on which one is checked
+            // Determine Top vs Bottom based on which box is checked
             const day1Checked = $(`#day${dayIndex}-shift-day1`).is(':checked');
+
             if (day1Checked) {
-                // Top Block logic
-                $(`#day${dayIndex}-shift-day1`).prop('disabled', true);
-                $(`#day${dayIndex}-shift-day2`).prop('disabled', true).parent().addClass('opacity-50');
+                // --- TOP BLOCK (Day 1 Active) ---
+
+                // Inputs
+                $dateInput.prop('disabled', true).removeClass('hidden').addClass('bg-gray-100 text-gray-500 cursor-not-allowed');
+                $ghostInput.addClass('hidden');
+
+                // Lock Checkboxes
+                // Day 1: Locked but VISIBLE (Remove opacity)
+                $(`#day${dayIndex}-shift-day1`)
+                    .prop('disabled', true)
+                    .parent().removeClass('opacity-50');
+
+                // Day 2: Locked and DIMMED
+                $(`#day${dayIndex}-shift-day2`)
+                    .prop('disabled', true)
+                    .parent().addClass('opacity-50');
+
             } else {
-                // Bottom Block logic
-                $(`#day${dayIndex}-shift-day1`).prop('disabled', true).parent().addClass('opacity-50');
-                $(`#day${dayIndex}-shift-day2`).prop('disabled', true);
+                // --- BOTTOM BLOCK (Day 2 Active) ---
+
+                // Inputs
+                $dateInput.addClass('hidden');
+                const realVal = $dateInput.val();
+                const displayVal = calculateNextDay(realVal);
+                $ghostInput.val(displayVal).removeClass('hidden');
+
+                // Lock Checkboxes
+                // Day 1: Locked and DIMMED
+                $(`#day${dayIndex}-shift-day1`)
+                    .prop('disabled', true)
+                    .parent().addClass('opacity-50');
+
+                // Day 2: Locked but VISIBLE (Remove opacity)
+                $(`#day${dayIndex}-shift-day2`)
+                    .prop('disabled', true)
+                    .parent().removeClass('opacity-50');
             }
 
         } else {
-            // --- NORMAL STATE (UNLOCKED) ---
-            $block.addClass('bg-white border-t')
-                .removeClass('bg-blue-50 border border-blue-300');
-
+            // --- NORMAL STATE ---
+            $block.addClass('bg-white border-t').removeClass('bg-blue-50 border border-blue-300');
             $splitBtn.removeClass('hidden');
             $mergeBtn.addClass('hidden');
-
-            // Reset drag handle
             $block.find('.drag-handle').removeClass('bg-blue-100 border-blue-200').addClass('bg-gray-50 border-gray-200');
 
-            // Ensure Date is unlocked
-            $dateInput.prop('disabled', false).removeClass('bg-gray-100 text-gray-500 cursor-not-allowed');
+            // Unlock Inputs
+            $dateInput.prop('disabled', false).removeClass('hidden bg-gray-100 text-gray-500 cursor-not-allowed');
+            $ghostInput.addClass('hidden');
         }
+    }
+
+    // Helper
+    function calculateNextDay(dateStr) {
+        try {
+            const parts = dateStr.split('/');
+            const d = new Date(parts[2], parts[0] - 1, parts[1]);
+            d.setDate(d.getDate() + 1);
+            const mm = (d.getMonth() + 1).toString().padStart(2, '0');
+            const dd = d.getDate().toString().padStart(2, '0');
+            const yyyy = d.getFullYear();
+            return `${mm}/${dd}/${yyyy}`;
+        } catch (e) { return dateStr; }
     }
 
     // Helper for the split function date conversion
