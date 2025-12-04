@@ -574,6 +574,100 @@ function flattenSubmissionData(formData) {
   return fullRow;
 }
 
+
+/**
+ * Sends a confirmation email to the user with a summary of their request.
+ * * @param {string} recipientEmail - The email address of the user.
+ * @param {object} formData - The data object submitted from the client.
+ */
+function sendConfirmationEmail(recipientEmail, formData) {
+  if (!recipientEmail) {
+    Logger.log("Skipping email: No recipient address found.");
+    return;
+  }
+
+  const user = formData.userInfo;
+  const selections = formData.daySelections || [];
+  
+  // Sort selections by date just to be safe
+  selections.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  // 1. Build Email Subject
+  const subject = `Vacation Request Receipt - ${user.lastName}, ${user.firstName}`;
+
+  // 2. Build Email Body (HTML)
+  let htmlBody = `
+    <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px;">
+      <h2 style="color: #2563eb;">Vacation Request Submitted</h2>
+      <p>Hello <strong>${user.firstName} ${user.lastName}</strong>,</p>
+      <p>This email confirms that your vacation selections have been recorded in the system.</p>
+      
+      <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
+        <p style="margin: 5px 0;"><strong>Employee ID:</strong> ${user.employeeId}</p>
+        <p style="margin: 5px 0;"><strong>Rank:</strong> ${user.rank}</p>
+        <p style="margin: 5px 0;"><strong>Shift:</strong> ${user.shift}</p>
+        <p style="margin: 5px 0;"><strong>Submission Time:</strong> ${new Date().toLocaleString()}</p>
+      </div>
+
+      <h3>Selection Summary</h3>
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+        <thead>
+          <tr style="background-color: #e5e7eb; text-align: left;">
+            <th style="padding: 10px; border-bottom: 2px solid #ccc;">#</th>
+            <th style="padding: 10px; border-bottom: 2px solid #ccc;">Date</th>
+            <th style="padding: 10px; border-bottom: 2px solid #ccc;">Shift Selection</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+
+  // Add rows for each selection
+  if (selections.length === 0) {
+    htmlBody += `<tr><td colspan="3" style="padding: 10px; text-align: center; color: #666;"><em>No dates selected (Blank Submission)</em></td></tr>`;
+  } else {
+    selections.forEach((sel, index) => {
+      // Format shifts (e.g., "Day 1, Day 2" or just "Day 1")
+      const shiftText = Array.isArray(sel.shifts) ? sel.shifts.join(", ") : sel.shifts;
+      
+      // Zebra striping for readability
+      const bg = index % 2 === 0 ? "#ffffff" : "#f9fafb";
+      
+      htmlBody += `
+        <tr style="background-color: ${bg};">
+          <td style="padding: 10px; border-bottom: 1px solid #eee;">${index + 1}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>${sel.date}</strong></td>
+          <td style="padding: 10px; border-bottom: 1px solid #eee;">${shiftText}</td>
+        </tr>
+      `;
+    });
+  }
+
+  htmlBody += `
+        </tbody>
+      </table>
+
+      <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+      <p style="font-size: 12px; color: #888;">
+        This is an automated message from the 2026 Vacation Selection System.<br>
+        Please do not reply to this email.
+      </p>
+    </div>
+  `;
+
+  // 3. Send via GmailApp (or MailApp)
+  try {
+    MailApp.sendEmail({
+      to: recipientEmail,
+      subject: subject,
+      htmlBody: htmlBody,
+      name: "Vacation System" // The "Sender Name" appearing in their inbox
+    });
+    Logger.log(`Confirmation email sent to ${recipientEmail}`);
+  } catch (e) {
+    Logger.log(`FAILED to send email to ${recipientEmail}: ${e.message}`);
+  }
+}
+
 /**
  * Processes the shift request data and appends it to the Google Sheet.
  * This function now handles versioning by superseding old picks.
@@ -646,6 +740,23 @@ function processShiftRequest(formData) {
 
   // --- 5. Append the New Row ---
   sheet.appendRow(newRow);
+
+  // --- 6. SEND CONFIRMATION EMAIL ---
+  try {
+    // 1. Get the email of the person using the app
+    const recipient = Session.getActiveUser().getEmail();
+    
+    // 2. Send the email
+    if (recipient) {
+      sendConfirmationEmail(recipient, formData);
+    } else {
+      Logger.log("Cannot send confirmation: No active user email found.");
+    }
+  } catch (e) {
+    // Don't crash the whole submission if email fails, just log it
+    console.error("Email notification error: " + e.message);
+  }
+  // ------------------------------------
 }
 
 // --- TEST FUNCTION ---
@@ -691,38 +802,38 @@ function testFormSubmissionData() {
 
   // 1. SIMULATE CLIENT PAYLOAD
   // Use the structure of the data the client would send.
-  // const testPayload = {
-  //   acknowledgment: "continue",
-  //   submittedAt: new Date().toISOString(),
-  //   userInfo: {
-  //     firstName: "Brian",
-  //     lastName: "Fairbanks",
-  //     employeeId: "538",
-  //     rank: "Probationary Firefighter",
-  //     shift: "B",
-  //     hireDate: "Mon Jan 13 2025 00:00:00 GMT-0600 (Central Standard Time)",
-  //     yearsOfService: "0",
-  //     vacationHours: 192,
-  //     holidayHours: 144
-  //   },
-  //   daySelections: [
-  //     { day: 1, date: "02/06/2026", shifts: ["Day1", "Day2"] },
-  //     { day: 2, date: "03/20/2026", shifts: ["Day1", "Day2"] },
-  //     { day: 4, date: "06/18/2026", shifts: ["Day1", "Day2"] }
-  //   ]
-  // };
+  const testPayload = {
+    acknowledgment: "continue",
+    submittedAt: new Date().toISOString(),
+    userInfo: {
+      firstName: "Brian",
+      lastName: "Fairbanks",
+      employeeId: "538",
+      rank: "Probationary Firefighter",
+      shift: "B",
+      hireDate: "Mon Jan 13 2025 00:00:00 GMT-0600 (Central Standard Time)",
+      yearsOfService: "0",
+      vacationHours: 192,
+      holidayHours: 144
+    },
+    daySelections: [
+      { day: 1, date: "02/06/2026", shifts: ["Day1", "Day2"] },
+      { day: 2, date: "03/20/2026", shifts: ["Day1", "Day2"] },
+      { day: 4, date: "06/18/2026", shifts: ["Day1", "Day2"] }
+    ]
+  };
 
-  // // 2. TEST DATA FLATTENING
-  // Logger.log("Testing data flattening...");
-  // const flatData = flattenSubmissionData(testPayload);
+  // 2. TEST DATA FLATTENING
+  Logger.log("Testing data flattening...");
+  const flatData = flattenSubmissionData(testPayload);
 
-  // Logger.log("--- FLATTENED DATA STRUCTURE ---");
-  // Logger.log("Total Columns: " + flatData.length);
-  // // Log the first 15 columns to check header data and Day 1/2 structure
-  // Logger.log("Header/Picks Preview (Cols 1-15): " + flatData.slice(0, 15).join(' | '));
+  Logger.log("--- FLATTENED DATA STRUCTURE ---");
+  Logger.log("Total Columns: " + flatData.length);
+  // Log the first 15 columns to check header data and Day 1/2 structure
+  Logger.log("Header/Picks Preview (Cols 1-15): " + flatData.slice(0, 15).join(' | '));
 
-  // // Example of what Day 4 (Cols 15-16) looks like (index 15)
-  // Logger.log("Day 4 Data (Cols 16-17): " + flatData[15] + " | " + flatData[16]);
+  // Example of what Day 4 (Cols 15-16) looks like (index 15)
+  Logger.log("Day 4 Data (Cols 16-17): " + flatData[15] + " | " + flatData[16]);
 
   // 3. TEST FIND PREVIOUS PICKS
   Logger.log("\nTesting previous picks lookup for ID 538...");
