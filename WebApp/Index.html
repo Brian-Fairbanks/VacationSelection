@@ -448,6 +448,16 @@
          * @returns {object} The updated userInfo object.
          */
         function calculateEntitlements(userInfo) {
+            // --- 1. SOURCE OF TRUTH CHECK ---
+            // If the server provided valid calculations (from the HR Sheet), TRUST THEM.
+            // Only recalculate if this is a Manual Entry or the data is missing.
+            if (!userInfo.manualEntry && userInfo.yearsOfService && userInfo.vacationHours) {
+                // Ensure they are strings/ints as expected for display
+                userInfo.yearsOfService = String(userInfo.yearsOfService);
+                return userInfo;
+            }
+            // --------------------------------
+
             const hireDateStr = userInfo.hireDate;
             if (!hireDateStr) {
                 console.warn("Hire date is missing, using default entitlement values.");
@@ -467,22 +477,27 @@
 
                 // Determine the reference date: Last October 1st
                 let referenceYear = now.getFullYear();
-                // If current date is BEFORE Oct 1st, use the previous year
                 if (now.getMonth() < 9) { // Months are 0-indexed, so 9 is October
                     referenceYear -= 1;
                 }
 
-                // Oct 1st of the reference year
-                const referenceDate = new Date(referenceYear, 9, 1); // Month 9 is October
+                // The Cutoff Date (October 1st of the reference year)
+                const referenceDate = new Date(referenceYear, 9, 1);
 
-                // Calculate the difference in years as of the reference date
-                let yearsOfService = referenceDate.getFullYear() - hireDate.getFullYear();
+                // --- 2. PRECISE MATH FIX ---
+                // Calculate raw year difference (e.g., 2025 - 2005 = 20)
+                let yearsOfService = referenceYear - hireDate.getFullYear();
 
-                // Adjust if the hire date month/day is after Oct 1st
-                // Note: For simplicity, we just check the difference in years since Oct 1st is the cut-off.
-                // A full date comparison is safer for edge cases but often overcomplicates this particular rule.
-                // The current logic works: YearsOfService = (Year of Last Oct 1st) - (Hire Year).
-                // Since Oct 1st is the cut-off, this simpler calculation should be correct.
+                // Create a comparison date: The employee's anniversary within the reference year
+                // e.g., October 10, 2025
+                const anniversaryInRefYear = new Date(referenceYear, hireDate.getMonth(), hireDate.getDate());
+
+                // If the Cutoff (Oct 1) is BEFORE the Anniversary (Oct 10), 
+                // they have NOT completed that full year yet. Subtract 1.
+                if (referenceDate < anniversaryInRefYear) {
+                    yearsOfService--;
+                }
+                // ---------------------------
 
                 // 1. Base Hours
                 let vacHours = 192;
