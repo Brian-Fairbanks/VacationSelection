@@ -22,9 +22,7 @@
         <div id="day-${dayNum}-selection" class="flex flex-row border-t mt-4 rounded-lg day-selection-block bg-white shadow-sm overflow-hidden transition-shadow duration-200 group" style="display: none;">
             
             <div class="drag-handle cursor-move w-12 flex-shrink-0 bg-gray-50 hover:bg-gray-100 border-r border-gray-200 flex flex-col items-center justify-center self-stretch" style="touch-action: none;">
-                <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M7 2a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM7 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM7 14a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM17 2a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM17 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM17 14a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"/>
-                </svg>
+                <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path d="M7 2a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM7 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM7 14a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM17 2a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM17 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM17 14a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"/></svg>
             </div>
             
             <div class="flex-1 flex flex-col sm:flex-row gap-2 sm:gap-8 items-start sm:items-center p-3 sm:p-4 min-w-0 relative">
@@ -37,7 +35,7 @@
                         placeholder="MM/DD/YYYY" autocomplete="off">
 
                     <input type="text" id="day${dayNum}-ghost-date" disabled
-                        class="hidden w-full p-2 border border-blue-300 bg-gray-100 text-gray-500 bg-blue-50 rounded-md cursor-not-allowed text-base" 
+                        class="hidden w-full p-2 border border-gray-300 bg-gray-50 text-gray-700 rounded-md cursor-not-allowed text-base font-medium" 
                         value="">
                     
                     <div class="mt-1 h-6">
@@ -45,13 +43,10 @@
                             MM-DD-YYYY (Click input)
                         </span>
                     </div>
+                    
                     <div id="warning-${dayNum}" class="hidden mt-2 p-2 bg-yellow-50 rounded border border-yellow-200 flex items-start w-full sm:w-auto">
-                        <svg class="h-4 w-4 text-yellow-600 mr-2 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                        <p class="text-xs text-yellow-700 leading-snug">
-                            <strong>Half-Tour:</strong> Only 1 day selected.
-                        </p>
+                        <svg class="h-4 w-4 text-yellow-600 mr-2 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                        <p class="text-xs text-yellow-700 leading-snug"><strong>Half-Tour:</strong> Only 1 day selected.</p>
                     </div>
                 </div>
 
@@ -59,27 +54,17 @@
                     <div class="flex justify-between items-center mb-1">
                         <label class="block text-base font-medium text-gray-700">Shift Selection ${dayNum}</label>
                         <div class="flex space-x-2 ml-2">
-                            <button type="button" id="btn-split-${dayNum}" onclick="performSplit(${dayNum})" class="text-gray-400 hover:text-blue-600" title="Split into two separate entries">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm8.486-8.486a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243z"></path></svg>
-                            </button>
-                            <button type="button" id="btn-merge-${dayNum}" onclick="performMerge(${dayNum})" class="hidden text-blue-500 hover:text-red-600" title="Merge back into one entry">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
-                            </button>
+                            <button type="button" id="btn-split-${dayNum}" onclick="performSplit(${dayNum})" class="text-gray-400 hover:text-blue-600" title="Split"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm8.486-8.486a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243z"></path></svg></button>
+                            <button type="button" id="btn-merge-${dayNum}" onclick="performMerge(${dayNum})" class="hidden text-blue-500 hover:text-red-600" title="Merge"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg></button>
                         </div>
                     </div>
-
                     <div class="flex flex-col space-y-2">
                         <div class="flex items-center">
-                            <input id="day${dayNum}-shift-day1" name="day${dayNum}Shift" type="checkbox" value="Day1" checked 
-                                onchange="toggleHalfTourWarning(${dayNum})"
-                                class="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                            <input id="day${dayNum}-shift-day1" name="day${dayNum}Shift" type="checkbox" value="Day1" checked onchange="toggleHalfTourWarning(${dayNum})" class="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
                             <label for="day${dayNum}-shift-day1" class="ml-3 text-sm font-medium text-gray-700">Day 1</label>
                         </div>
-
                         <div class="flex items-center">
-                            <input id="day${dayNum}-shift-day2" name="day${dayNum}Shift" type="checkbox" value="Day2" checked 
-                                onchange="toggleHalfTourWarning(${dayNum})"
-                                class="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                            <input id="day${dayNum}-shift-day2" name="day${dayNum}Shift" type="checkbox" value="Day2" checked onchange="toggleHalfTourWarning(${dayNum})" class="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
                             <label for="day${dayNum}-shift-day2" class="ml-3 text-sm font-medium text-gray-700">Day 2</label>
                         </div>
                     </div>
@@ -571,7 +556,7 @@
         const $ghostInput = $(`#day${dayIndex}-ghost-date`);
 
         if (isSplit) {
-            // --- SPLIT STATE ---
+            // --- SPLIT STATE (LOCKED) ---
             $block.removeClass('bg-white border-t').addClass('bg-blue-50 border border-blue-300');
             $splitBtn.addClass('hidden');
             $mergeBtn.removeClass('hidden');
@@ -620,15 +605,27 @@
             }
 
         } else {
-            // --- NORMAL STATE ---
+            // --- NORMAL STATE (EDITABLE) ---
             $block.addClass('bg-white border-t').removeClass('bg-blue-50 border border-blue-300');
             $splitBtn.removeClass('hidden');
             $mergeBtn.addClass('hidden');
             $block.find('.drag-handle').removeClass('bg-blue-100 border-blue-200').addClass('bg-gray-50 border-gray-200');
 
-            // Unlock Inputs
-            $dateInput.prop('disabled', false).removeClass('hidden bg-gray-100 text-gray-500 cursor-not-allowed');
-            $ghostInput.addClass('hidden');
+            // --- NEW: CHECKBOX LOGIC FOR GHOSTING ---
+            const c1 = $(`#day${dayIndex}-shift-day1`).is(':checked');
+            const c2 = $(`#day${dayIndex}-shift-day2`).is(':checked');
+
+            if (!c1 && c2) {
+                // Case: Day 2 Only -> SHOW GHOST
+                $dateInput.addClass('hidden');
+                const realVal = $dateInput.val();
+                const displayVal = calculateNextDay(realVal);
+                $ghostInput.val(displayVal).removeClass('hidden');
+            } else {
+                // Case: Full Tour or Day 1 Only -> SHOW REAL
+                $dateInput.prop('disabled', false).removeClass('hidden bg-gray-100 text-gray-500 cursor-not-allowed');
+                $ghostInput.addClass('hidden');
+            }
         }
     }
 
@@ -916,26 +913,26 @@
         const checkbox1 = document.getElementById(`day${dayNum}-shift-day1`);
         const checkbox2 = document.getElementById(`day${dayNum}-shift-day2`);
         const warningDiv = document.getElementById(`warning-${dayNum}`);
-        // Check if this row is part of a split group
-        const isSplit = $(`#day-${dayNum}-selection`).attr('data-split-group');
+        const $block = $(`#day-${dayNum}-selection`);
 
-        if (!checkbox1 || !checkbox2 || !warningDiv) return;
+        if (!checkbox1 || !checkbox2) return;
 
-        // If it's a split block (Blue), ALWAYS hide the warning.
-        // The user knows it's a half tour because they explicitly split it.
-        if (isSplit) {
-            warningDiv.classList.add('hidden');
-            return;
+        const isSplit = !!$block.attr('data-split-group');
+
+        // 1. Toggle Warning Message
+        if (warningDiv) {
+            if (isSplit) {
+                warningDiv.classList.add('hidden');
+            } else {
+                const count = (checkbox1.checked ? 1 : 0) + (checkbox2.checked ? 1 : 0);
+                if (count === 1) warningDiv.classList.remove('hidden');
+                else warningDiv.classList.add('hidden');
+            }
         }
 
-        // Otherwise, standard logic:
-        const count = (checkbox1.checked ? 1 : 0) + (checkbox2.checked ? 1 : 0);
-
-        if (count === 1) {
-            warningDiv.classList.remove('hidden');
-        } else {
-            warningDiv.classList.add('hidden');
-        }
+        // 2. Update Inputs (Ghost vs Real)
+        // We delegate this to the main visual manager so it matches the reorder logic
+        updateBlockVisuals($block, dayNum);
     }
 
     /**
