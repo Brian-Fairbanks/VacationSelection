@@ -1,0 +1,56 @@
+<!-- Form_Refactored.html -->
+<!DOCTYPE html>
+<html lang="en">
+
+<div id="Form_Refactored">
+    <div class="mb-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
+        <h2 class="text-lg font-semibold mb-2 text-gray-800">Shift Rotation Key (Starts Feb 4, 2026)</h2>
+        <div class="flex flex-wrap gap-4 text-sm font-medium">
+            <span class="px-2 py-0.5 rounded-full bg-red-200 text-red-800 border border-red-400">A Shift (Pale Red)</span>
+            <span class="px-2 py-0.5 rounded-full bg-blue-200 text-blue-800 border border-blue-400">B Shift (Blue)</span>
+            <span class="px-2 py-0.5 rounded-full bg-orange-200 text-orange-800 border border-orange-400">C Shift (Orange)</span>
+        </div>
+    </div>
+
+    <form id="request-form">
+        <fieldset class="mb-6">
+            <legend class="block text-lg font-semibold text-gray-900 mb-4">
+                Acknowledgment of Form Completion
+                <span class="text-red-500">*</span>
+            </legend>
+            <div class="space-y-4">
+                <div class="flex items-center">
+                    <input id="continue" name="formCompletion" type="radio" value="continue" class="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500">
+                    <label for="continue" class="ml-3 block text-sm font-medium text-gray-700">
+                        I would like to continue with the selection process.
+                    </label>
+                </div>
+                <div class="flex items-center">
+                    <input id="skip" name="formCompletion" type="radio" value="skip" class="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500">
+                    <label for="skip" class="ml-3 block text-sm font-medium text-gray-700">
+                        I choose to opt out from the leave pick process. I understand that no days will be submitted for me when I choose this option.
+                    </label>
+                </div>
+            </div>
+        </fieldset>
+
+        <div id="day-selection-container" class="mt-6 border border-gray-200 p-4 rounded-lg" style="display: none;">
+            <h3 class="text-xl font-semibold text-gray-800 mb-4 pb-2">Day Selection</h3>
+        </div>
+
+        <div class="text-right pt-6">
+            <button type="submit" id="submit-button" disabled class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-gray-400 cursor-not-allowed">
+                Submit
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Modular JavaScript Includes -->
+<?!= include('ShiftLogic'); ?>
+<?!= include('DatepickerInit'); ?>
+<?!= include('FormLogic'); ?>
+
+
+
+</div>

@@ -1,0 +1,185 @@
+<!-- Styles.html -->
+<style>
+    /* Base Datepicker Styling to fit Tailwind aesthetics */
+    .ui-datepicker {
+        padding: 1rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e5e7eb;
+    }
+
+    .ui-datepicker-header {
+        background: #fff;
+        border: none;
+    }
+
+    .ui-datepicker-prev,
+    .ui-datepicker-next {
+        cursor: pointer;
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+        transition: background-color 0.2s;
+    }
+
+    .ui-datepicker-prev:hover,
+    .ui-datepicker-next:hover {
+        background-color: #f3f4f6;
+    }
+
+    /* FIX: Ensure TDs are tight for gutter control */
+    .ui-datepicker td {
+        padding: 0 !important;
+    }
+
+    /* Create separation by adding margin to the inner link element (<a>) */
+    .ui-datepicker td span,
+    .ui-datepicker td a {
+        padding: 0.5rem;
+        text-align: center;
+        border-radius: 0;
+        /* Default: no rounding */
+        display: block;
+        font-weight: 500;
+        /* CRITICAL FIX: Add margin to create the visual gutter */
+        margin: 1px;
+        border: 1px solid transparent !important;
+        background-image: none !important;
+    }
+
+    /* Round the left side of the first day in a 2-day block */
+    .ui-datepicker td.shift-block-start a,
+    .ui-datepicker td.shift-block-start span {
+        border-top-left-radius: 0.25rem;
+        border-bottom-left-radius: 0.25rem;
+        margin-right: 0 !important;
+        border-right: none !important;
+    }
+
+    /* Round the right side of the second day in a 2-day block */
+    .ui-datepicker td.shift-block-end a,
+    .ui-datepicker td.shift-block-end span {
+        border-top-right-radius: 0.25rem;
+        border-bottom-right-radius: 0.25rem;
+        margin-left: 0 !important;
+        border-left: none !important;
+    }
+
+    /* If a day is both start and end (shouldn't happen in 2-day blocks, but for safety) */
+    .ui-datepicker td.shift-block-start.shift-block-end a,
+    .ui-datepicker td.shift-block-start.shift-block-end span {
+        border-radius: 0.25rem;
+    }
+
+    /* Weekend handling: Only break visual blocks if BOTH days are weekends */
+    .ui-datepicker td.ui-datepicker-week-end.shift-block-start:not(.both-days-weekend) a,
+    .ui-datepicker td.ui-datepicker-week-end.shift-block-start:not(.both-days-weekend) span {
+        border-top-left-radius: 0.25rem;
+        border-bottom-left-radius: 0.25rem;
+    }
+
+    .ui-datepicker td.ui-datepicker-week-end.shift-block-end:not(.both-days-weekend) a {
+        border-top-right-radius: 0.25rem;
+        border-bottom-right-radius: 0.25rem;
+    }
+
+    /* If both days of a shift are weekends, round all corners to separate them visually */
+    .ui-datepicker td.ui-datepicker-week-end.both-days-weekend a {
+        border-radius: 0.25rem !important;
+    }
+
+    /* Highlighted/Selected Day (for the 2-day block selection) */
+    .ui-state-highlight {
+        border: none !important;
+        background-color: transparent !important;
+    }
+
+    /* Hover effect for the 2-day block */
+    .ui-datepicker td a.shift-hover {
+        opacity: 0.7;
+        /* Subtle hover outline */
+        transition: opacity 0.1s, box-shadow 0.1s;
+    }
+
+
+    /* Custom Shift Color Classes (applied to TD via beforeShowDay) */
+    /* A Shift (Pale Red) */
+    .shift-A a.ui-state-default,
+    .shift-A span {
+        /* Target the link within the colored TD */
+        background-color: #fee2e2 !important;
+        color: #991b1b !important;
+        border-color: #fca5a5 !important;
+    }
+
+    /* B Shift (Blue) */
+    .shift-B a.ui-state-default,
+    .shift-B span {
+        background-color: #dbeafe !important;
+        color: #1e40af !important;
+        border-color: #93c5fd !important;
+    }
+
+    /* C Shift (Orange) */
+    .shift-C a.ui-state-default,
+    .shift-C span {
+        background-color: #ffedd5 !important;
+        color: #9a3412 !important;
+        border-color: #fed7aa !important;
+    }
+
+    .ui-datepicker td.ui-state-highlight a,
+    .ui-datepicker td.ui-state-active a,
+    .ui-datepicker td.selected-shift-day a,
+    .ui-datepicker-current-day a.ui-state-default,
+    .ui-datepicker td.ui-datepicker-current-day+td a.ui-state-default {
+        background: linear-gradient(to bottom, #e8ecf1, #d2d4d6, #d6e0ec) !important;
+        /* Slate background */
+        color: #FFF !important;
+        text-shadow: .7px .7px 1.5px #10243f !important;
+        /* Slate text */
+        border: none !important;
+        border-top: 1px solid #7b8c9f !important;
+        border-bottom: 1px solid #7b8c9f !important;
+    }
+
+
+    //  Disabled days will show slightly brighter, just for context
+    .ui-datepicker td.ui-state-disabled {
+        opacity: .6 !important;
+    }
+
+    .ui-datepicker td.ui-state-disabled span {
+        color: #666 !important;
+    }
+
+    /* ================================================= */
+    /* FIX: Force Globally Booked (Disabled) Days to retain Highlight Style */
+    /* ================================================= */
+
+    /* Target the link element (<a>) inside a disabled TD that is styled as selected */
+    .ui-datepicker td.ui-state-disabled.ui-state-active span {
+        opacity: 1 !important;
+        /* Prevents fading */
+    }
+
+    .ui-datepicker td.ui-state-disabled.selected-shift-day span,
+    .ui-datepicker td.ui-state-disabled.globally-booked-disabled span {
+
+        /* 1. Force the highlight appearance */
+        /* Copying the background and shadow from your existing selected-shift-day rule */
+        background: linear-gradient(to bottom, #e8ecf1, #d2d4d6, #d6e0ec) !important;
+        color: #FFF !important;
+        text-shadow: .7px .7px 1.5px #10243f !important;
+
+        /* 2. Overriding the default disabled properties */
+        opacity: 1 !important;
+        /* Prevents fading */
+        border: none !important;
+        border-top: 1px solid #7b8c9f !important;
+        border-bottom: 1px solid #7b8c9f !important;
+
+        /* 3. Ensure it is NOT clickable */
+        cursor: default !important;
+        pointer-events: none !important;
+    }
+</style>

@@ -1,0 +1,612 @@
+<!-- Index.HTML -->
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vacation Selection Form</title>
+
+    <!-- External Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui-touch-punch/0.2.3/jquery.ui.touch-punch.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                },
+            },
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.css">
+
+    <?!= include('Styles'); ?>
+    <base target="_top">
+</head>
+
+<body class="bg-gray-100 font-sans antialiased flex items-center justify-center min-h-screen py-12">
+
+
+    <script>
+        // This 'rosterData' variable is injected by Code.gs (in doGet)
+        const allEmployees = <?!= rosterData ?>;
+    </script>
+
+
+    <div id="form-content" style="display:none;">
+        <div class="bg-white p-8 rounded-lg shadow-md max-w-xl w-full">
+            <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 24px; background-color: #f8fafc;">
+
+                <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 12px;">
+                    <h3 style="font-size: 1.25rem; font-weight: 600; color: #1e293b; margin: 0;">
+                        Welcome, <span id="emp-name"></span>
+                    </h3>
+                    <span id="emp-rank" style="font-size: 0.9rem; font-weight: 500; color: #475569; background-color: #e2e8f0; padding: 4px 8px; border-radius: 6px;"></span>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; font-size: 0.9rem;">
+
+                    <div>
+                        <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Employee ID</span>
+                        <strong id="emp-id" style="color: #334155;"></strong>
+                    </div>
+
+                    <div>
+                        <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Hire Date</span>
+                        <strong id="emp-hire-date" style="color: #334155;"></strong>
+                    </div>
+
+                    <div>
+                        <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Years of Service</span>
+                        <strong id="emp-years" style="color: #334155;"></strong>
+                    </div>
+
+                    <div>
+                        <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Vacation Hours</span>
+                        <strong id="emp-vac-hours" style="color: #334155;"></strong>
+                    </div>
+
+                    <div>
+                        <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Holiday Hours</span>
+                        <strong id="emp-hol-hours" style="color: #334155;"></strong>
+                    </div>
+
+                    <div>
+                        <span style="display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Shift</span>
+                        <strong id="emp-shift" style="color: #334155;"></strong>
+                    </div>
+
+                </div>
+            </div>
+
+            <?!= include('Form_Refactored'); ?>
+        </div>
+    </div>
+
+
+    <div id="manual-login" style="display:none;">
+        <h2>Could not find your user profile.</h2>
+        <p>Please enter your Employee ID or Name to search:</p>
+
+        <input type="text" id="manual-search-text" style="width: 100%;">
+
+        <div id="search-results" style="margin-top: 15px;">
+        </div>
+
+        <!-- Add the "I cannot be found" button -->
+        <div style="margin-top: 20px; text-align: center;">
+            <button id="btn-manual-entry" type="button" class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                I cannot be found - Enter my information manually
+            </button>
+        </div>
+    </div>
+
+    <!-- Manual Entry Modal (hidden by default) -->
+    <div id="manual-entry-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full flex items-center justify-center" style="display: none;">
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
+            <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">
+                Enter Your Information
+            </h3>
+
+            <form id="manual-entry-form">
+                <div class="space-y-4">
+                    <div>
+                        <label for="manual-first-name" class="block text-sm font-medium text-gray-700">First Name *</label>
+                        <input type="text" id="manual-first-name" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <div>
+                        <label for="manual-last-name" class="block text-sm font-medium text-gray-700">Last Name *</label>
+                        <input type="text" id="manual-last-name" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <div>
+                        <label for="manual-employee-id" class="block text-sm font-medium text-gray-700">Employee ID *</label>
+                        <input type="text" id="manual-employee-id" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <div>
+                        <label for="manual-rank" class="block text-sm font-medium text-gray-700">Rank *</label>
+                        <select id="manual-rank" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Select Rank</option>
+                            <option value="Probationary Firefighter">Probationary Firefighter</option>
+                            <option value="Firefighter">Firefighter</option>
+                            <option value="Apparatus Specialist">Apparatus Specialist</option>
+                            <option value="Lieutenant">Lieutenant</option>
+                            <option value="Captain">Captain</option>
+                            <option value="Battalion Chief">Battalion Chief</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="manual-shift" class="block text-sm font-medium text-gray-700">Shift *</label>
+                        <select id="manual-shift" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Select Shift</option>
+                            <option value="A">A Shift</option>
+                            <option value="B">B Shift</option>
+                            <option value="C">C Shift</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="manual-hire-date" class="block text-sm font-medium text-gray-700">Hire Date *</label>
+                        <input type="date" id="manual-hire-date" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button type="button" id="btn-cancel-manual" class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Cancel
+                    </button>
+                    <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                        Continue
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="alert-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full flex items-center justify-center" style="display: none;">
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
+
+            <h3 id="modal-title" class="text-lg font-medium leading-6 text-gray-900 mb-4">
+                Form Submission Data
+            </h3>
+
+            <div id="modal-content" class="bg-gray-50 p-4 rounded-md">
+                <pre id="json-pre" class="text-sm text-gray-800"></pre>
+            </div>
+
+            <div id="modal-buttons" class="mt-6 text-right">
+                <button id="close-modal" type="button" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Close
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+
+    <script>
+        // This runs as soon as the page is loaded
+        window.addEventListener("load", function () {
+            // --- STEP 1: Show the LOADING modal immediately ---
+            var loadingContent = `
+              <div class="flex flex-col items-center justify-center h-24">
+                  <div class="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                  
+                  <p class="text-gray-600">Please wait while we retrieve your information...</p>
+              </div>
+          `;
+            // We pass empty string "" for buttons
+            showAppModal("Loading Your Information", loadingContent, "");
+
+            // --- STEP 2: Call the server ---
+            google.script.run
+                .withSuccessHandler(onInitialDataLoaded)
+                .withFailureHandler(onLoadError)
+                .getInitialUserInfo();
+        });
+
+        /**
+        * Shows the reusable application modal with custom content.
+        * @param {string} title - The text for the modal's title.
+        * @param {string} content - The HTML or text for the modal's body.
+        * @param {string} buttonHtml - The HTML string for the buttons.
+        */
+        function showAppModal(title, content, buttonHtml) {
+            // Target the *existing* alert modal's children
+            $('#alert-modal').find('#modal-title').text(title);
+            $('#alert-modal').find('#modal-content').html(content); // This will overwrite the <pre> tag, which is fine
+            $('#alert-modal').find('#modal-buttons').html(buttonHtml);
+
+            $('#alert-modal').fadeIn(200);
+        }
+
+        /**
+         * Hides the reusable application modal.
+         */
+        function hideAppModal() {
+            $('#alert-modal').fadeOut(200);
+        }
+
+        //
+        // --- THIS IS THE CRITICAL FUNCTION ---
+        //
+        function onInitialDataLoaded(data) {
+            console.log(data)
+
+            // 2. Check for success
+            if (data && data.hasOwnProperty('userInfo') && data.userInfo) {
+                // SUCCESS!
+                const calculatedUserInfo = calculateEntitlements(data.userInfo);
+                window.USER_INFO = calculatedUserInfo;
+
+                // Initialize the form components (this is safe now)
+                initializeFormLogic();
+                initializeDatepicker();
+
+
+                // Fill the static user info header
+                fillUserInfo(data.userInfo);
+
+                // --- STEP 3: Handle Previous Picks ---
+                if (data.hasOwnProperty('previousPicks') && data.previousPicks) {
+
+                    // --- A. Show CONFIRMATION modal ---
+                    var title = "Previous Submission Found";
+                    var content = "Would you like to load your previous selections or start a new form?";
+
+                    // Define buttons with Tailwind classes and IDs
+                    var buttons =
+                        '<button id="btn-start-new" type="button" class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">' +
+                        'Start New' +
+                        '</button>' +
+                        '<button id="btn-load-previous" type="button" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">' +
+                        'Load Previous' +
+                        '</button>';
+
+                    // Hide the loading modal and show the confirmation modal
+                    hideAppModal();
+                    showAppModal(title, content, buttons);
+
+                    // --- B. Attach click handlers to the new buttons ---
+                    // Use .one() to prevent double-click issues
+                    $('#btn-load-previous').one('click', function () {
+                        fillPreviousPicks(data.previousPicks);
+                        hideAppModal();
+                        document.getElementById("form-content").style.display = "block";
+                    });
+
+                    $('#btn-start-new').one('click', function () {
+                        // User clicked Cancel - just start a blank form
+                        $('input[name="formCompletion"][value="continue"]').prop('checked', true);
+                        $('input[name="formCompletion"]').trigger('change');
+                        hideAppModal();
+                        document.getElementById("form-content").style.display = "block";
+                    });
+
+                } else {
+                    // --- C. No previous picks found ---
+                    // Just start a blank form
+                    $('input[name="formCompletion"][value="continue"]').prop('checked', true);
+                    $('input[name="formCompletion"]').trigger('change');
+
+                    // Hide the loading modal and show the form
+                    hideAppModal();
+                    document.getElementById("form-content").style.display = "block";
+                }
+
+            } else {
+                // FAILURE!
+                hideAppModal(); // Hide the loading modal
+                document.getElementById("manual-login").style.display = "block";
+            }
+        }
+
+        function onLoadError(err) {
+            document.getElementById("manual-login").style.display = "block";
+            // // Hard script failure
+            // // Show an error in our new modal
+            // var errorContent = "A critical error occurred: " + err.message +
+            //     "<br><br>Please try refreshing the page.";
+            // var closeButton = '<button id="btn-close-error" type="button" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700">Close</button>';
+
+            // showAppModal("Script Error", errorContent, closeButton);
+
+            // $('#btn-close-error').one('click', function () {
+            //     hideAppModal();
+            //     document.getElementById("manual-login").style.display = "block";
+            // });
+        }
+
+
+        // --- ALL THE OTHER FUNCTIONS ARE CORRECT ---
+
+        document.getElementById("manual-search-text").addEventListener("input", function () {
+            var searchLower = String(this.value).toLowerCase().trim();
+            var localMatches = [];
+
+            if (searchLower.length > 0) {
+                for (var i = 0; i < allEmployees.length; i++) {
+                    var emp = allEmployees[i];
+                    var searchCorpus = emp.id + " " + emp.name + " " + emp.searchString + " " + emp.tokensCsv;
+                    if (searchCorpus.toLowerCase().includes(searchLower)) {
+                        localMatches.push(emp);
+                    }
+                }
+            }
+            onMatchesFound(localMatches);
+        });
+
+        function onMatchesFound(matches) {
+            var resultsDiv = document.getElementById("search-results");
+            if (!matches || matches.length === 0) {
+                resultsDiv.innerHTML = "<p style='color:red;'>No matches found.</p>";
+                return;
+            }
+            var maxResults = 10;
+            var truncated = matches.length > maxResults;
+            var displayMatches = matches.slice(0, maxResults);
+            var listHtml = "<p>" + matches.length + " people found. Please select your name:</p>";
+            listHtml += "<ul style='list-style: none; padding-left: 0;'>";
+            displayMatches.forEach(function (user) {
+                listHtml += "<li style='margin-bottom: 5px;'>" +
+                    "<a href='#' class='user-select' data-id='" + user.id + "' style='text-decoration: none; padding: 5px 10px; border: 1px solid #ccc; display: inline-block; border-radius: 4px;'>" +
+                    user.name + " (ID: " + user.id + ")" +
+                    "</a>" +
+                    "</li>";
+            });
+            if (truncated) {
+                listHtml += "<li>...and " + (matches.length - maxResults) + " more.</li>";
+            }
+            listHtml += "</ul>";
+            resultsDiv.innerHTML = listHtml;
+        }
+
+        document.getElementById("search-results").addEventListener("click", function (event) {
+            var clickedLink = event.target.closest('a.user-select');
+            if (clickedLink) {
+                event.preventDefault();
+                var selectedId = clickedLink.getAttribute("data-id");
+                document.getElementById("search-results").innerHTML = "<p>Loading data for ID " + selectedId + "...</p>";
+                loadFullData(selectedId);
+            }
+        });
+
+        function formatCleanDate(dateString) {
+            if (!dateString) return '';
+            try {
+                const date = new Date(dateString);
+                if (isNaN(date.getTime())) {
+                    return dateString; // Return original if parsing fails
+                }
+                // Format as MM/DD/YYYY
+                let month = (date.getMonth() + 1).toString().padStart(2, '0');
+                let day = date.getDate().toString().padStart(2, '0');
+                let year = date.getFullYear();
+                return `${month}/${day}/${year}`;
+            } catch (e) {
+                console.error("Error formatting hire date:", e);
+                return dateString;
+            }
+        }
+
+        function loadFullData(employeeId) {
+            google.script.run
+                .withSuccessHandler(onManualDataLoaded)
+                .withFailureHandler(onLoadError)
+                .getEmployeeDataAndPicks(employeeId);
+        }
+
+        function onManualDataLoaded(data) {
+            if (data && data.hasOwnProperty('userInfo') && data.userInfo) {
+                // 1. Calculate Entitlements (Important for window.USER_INFO)
+                const calculatedUserInfo = calculateEntitlements(data.userInfo);
+                window.USER_INFO = calculatedUserInfo;
+
+                // 2. Initialize the Form Logic & Datepickers (THIS WAS MISSING)
+                initializeFormLogic();
+                initializeDatepicker();
+
+                // 3. Fill UI
+                fillUserInfo(data.userInfo);
+
+                // 4. Handle Screen Switching
+                document.getElementById("manual-login").style.display = "none";
+                document.getElementById("form-content").style.display = "block";
+
+                // 5. Handle Previous Picks OR Default to "Continue"
+                if (data.hasOwnProperty('previousPicks') && data.previousPicks) {
+                    // If they have picks, load them
+                    fillPreviousPicks(data.previousPicks);
+
+                    // Note: fillPreviousPicks usually handles the radio button setting.
+                    // If you want to force the form to open even with previous picks:
+                    $('input[name="formCompletion"][value="continue"]').prop('checked', true);
+                    $('input[name="formCompletion"]').trigger('change');
+                } else {
+                    // No previous picks: Default to "Continue" and open the form
+                    $('input[name="formCompletion"][value="continue"]').prop('checked', true);
+                    $('input[name="formCompletion"]').trigger('change');
+                }
+
+            } else {
+                document.getElementById("search-results").innerHTML = "<p style='color:red;'>Error loading data for that ID. Please try again.</p>";
+            }
+        }
+
+        /**
+         * Calculates years of service as of the last Oct 1st and updates vacation/holiday hours.
+         * @param {object} userInfo - The user object containing hireDate.
+         * @returns {object} The updated userInfo object.
+         */
+        function calculateEntitlements(userInfo) {
+            // --- 1. SOURCE OF TRUTH CHECK ---
+            // If the server provided valid calculations (from the HR Sheet), TRUST THEM.
+            // Only recalculate if this is a Manual Entry or the data is missing.
+            if (!userInfo.manualEntry && userInfo.yearsOfService && userInfo.vacationHours) {
+                // Ensure they are strings/ints as expected for display
+                userInfo.yearsOfService = String(userInfo.yearsOfService);
+                return userInfo;
+            }
+            // --------------------------------
+
+            const hireDateStr = userInfo.hireDate;
+            if (!hireDateStr) {
+                console.warn("Hire date is missing, using default entitlement values.");
+                userInfo.yearsOfService = "0";
+                userInfo.vacationHours = 192;
+                userInfo.holidayHours = 144;
+                return userInfo;
+            }
+
+            try {
+                const hireDate = new Date(hireDateStr);
+                if (isNaN(hireDate.getTime())) {
+                    throw new Error("Invalid hire date format.");
+                }
+
+                const now = new Date();
+
+                // Determine the reference date: Last October 1st
+                let referenceYear = now.getFullYear();
+                if (now.getMonth() < 9) { // Months are 0-indexed, so 9 is October
+                    referenceYear -= 1;
+                }
+
+                // The Cutoff Date (October 1st of the reference year)
+                const referenceDate = new Date(referenceYear, 9, 1);
+
+                // --- 2. PRECISE MATH FIX ---
+                // Calculate raw year difference (e.g., 2025 - 2005 = 20)
+                let yearsOfService = referenceYear - hireDate.getFullYear();
+
+                // Create a comparison date: The employee's anniversary within the reference year
+                // e.g., October 10, 2025
+                const anniversaryInRefYear = new Date(referenceYear, hireDate.getMonth(), hireDate.getDate());
+
+                // If the Cutoff (Oct 1) is BEFORE the Anniversary (Oct 10), 
+                // they have NOT completed that full year yet. Subtract 1.
+                if (referenceDate < anniversaryInRefYear) {
+                    yearsOfService--;
+                }
+                // ---------------------------
+
+                // 1. Base Hours
+                let vacHours = 192;
+                const holHours = 144; // Holiday hours are static
+
+                // 2. Add extra vacation hours for every 5 years of service
+                if (yearsOfService > 0) {
+                    // Check for service milestones (5, 10, 15, 20, ...)
+                    const milestoneBonus = Math.floor(yearsOfService / 5) * 24;
+                    vacHours += milestoneBonus;
+                }
+
+                // 3. Update the userInfo object
+                userInfo.yearsOfService = String(yearsOfService);
+                userInfo.vacationHours = vacHours;
+                userInfo.holidayHours = holHours;
+
+                return userInfo;
+
+            } catch (e) {
+                console.error("Entitlement calculation failed:", e);
+                // Fallback to default if calculation fails
+                userInfo.yearsOfService = userInfo.yearsOfService || "0";
+                userInfo.vacationHours = userInfo.vacationHours || 192;
+                userInfo.holidayHours = userInfo.holidayHours || 144;
+                return userInfo;
+            }
+        }
+
+        function fillUserInfo(userInfo) {
+            document.getElementById("emp-name").innerText = userInfo.employeeName;
+            document.getElementById("emp-id").innerText = userInfo.employeeId;
+            document.getElementById("emp-rank").innerText = userInfo.rank;
+            document.getElementById("emp-hire-date").innerText = formatCleanDate(userInfo.hireDate);
+            document.getElementById("emp-years").innerText = userInfo.yearsOfService;
+            document.getElementById("emp-vac-hours").innerText = userInfo.vacationHours;
+            document.getElementById("emp-hol-hours").innerText = userInfo.holidayHours;
+            document.getElementById("emp-shift").innerText = userInfo.shift;
+        }
+
+        // Remove autocomplete from date inputs globally
+        $(document).on('focus', 'input[type="date"]', function () {
+            $(this).removeAttr('autocomplete').attr('autocomplete', 'off');
+        });
+
+        // Add event handler for manual entry button
+        document.getElementById("btn-manual-entry").addEventListener("click", function () {
+            document.getElementById("manual-entry-modal").style.display = "flex";
+        });
+
+        // Add event handler for cancel button
+        document.getElementById("btn-cancel-manual").addEventListener("click", function () {
+            document.getElementById("manual-entry-modal").style.display = "none";
+            // Clear the form
+            document.getElementById("manual-entry-form").reset();
+        });
+
+        // Add event handler for manual entry form submission
+        document.getElementById("manual-entry-form").addEventListener("submit", function (event) {
+            event.preventDefault();
+
+            // Collect the manual entry data
+            const manualUserInfo = {
+                firstName: document.getElementById("manual-first-name").value.trim(),
+                lastName: document.getElementById("manual-last-name").value.trim(),
+                employeeId: document.getElementById("manual-employee-id").value.trim(),
+                rank: document.getElementById("manual-rank").value,
+                shift: document.getElementById("manual-shift").value,
+                hireDate: document.getElementById("manual-hire-date").value,
+                // Set default values for fields not collected
+                yearsOfService: "0",
+                vacationHours: 0,
+                holidayHours: 0,
+                // Add flag to indicate this is manual entry
+                manualEntry: true,
+                // Create employeeName in the expected format for compatibility
+                employeeName: `${document.getElementById("manual-last-name").value.trim()}, ${document.getElementById("manual-first-name").value.trim()}`
+            };
+
+            // Validate required fields
+            if (!manualUserInfo.firstName || !manualUserInfo.lastName || !manualUserInfo.employeeId ||
+                !manualUserInfo.rank || !manualUserInfo.shift || !manualUserInfo.hireDate) {
+                alert("Please fill in all required fields.");
+                return;
+            }
+
+            // Set the global USER_INFO
+            const calculatedUserInfo = calculateEntitlements(manualUserInfo);
+            window.USER_INFO = calculatedUserInfo;
+
+            // Initialize the form components
+            initializeFormLogic();
+            initializeDatepicker();
+
+            // Fill the static user info header
+            fillUserInfo(manualUserInfo);
+
+            // Hide the manual entry modal and manual login section
+            document.getElementById("manual-entry-modal").style.display = "none";
+            document.getElementById("manual-login").style.display = "none";
+
+            // Show the form
+            document.getElementById("form-content").style.display = "block";
+
+            // Set the form to continue mode
+            $('input[name="formCompletion"][value="continue"]').prop('checked', true);
+            $('input[name="formCompletion"]').trigger('change');
+        });
+    </script>
+</body>
+
+</html>
